@@ -9,15 +9,18 @@ for reference only.
 
 ## SpeakJet User's Manual
 
-[`speakjet-usermanual.pdf`](speakjet-usermanual.pdf)
-
 *SpeakJet Natural Speech & Complex Sound Synthesizer User's Manual*,
-Magnevation LLC, revision 1.0, July 27, 2004.
+Magnevation LLC. Two editions:
 
-**Copyright 2004 Magnevation LLC. All rights reserved.** It is included for
-reference because Magnevation no longer exists and the manual's original home
-(www.speakjet.com) has gone. If you hold the rights to it and want it removed,
-please open an issue.
+| File | Edition |
+|---|---|
+| [`speakjet-user-manual_v1_1.pdf`](speakjet-user-manual_v1_1.pdf) | Revision 1.1, September 17, 2004 (the later edition) |
+| [`speakjet-user-manual_v1_0.pdf`](speakjet-user-manual_v1_0.pdf) | Revision 1.0, July 27, 2004 |
+
+**Copyright 2004 Magnevation LLC. All rights reserved.** They are included
+for reference because Magnevation no longer exists and the manual's original
+home (www.speakjet.com) has gone. If you hold the rights to them and want them
+removed, please open an issue.
 
 The emulation is written from this manual. It gives the synthesizer's design,
 the allophone and sound effect codes with their durations, the control codes,
@@ -25,6 +28,14 @@ and the input buffer and status lines. [`../design.md`](../design.md) says
 which parts of the library come from it and which are choices made where it
 is silent. The duration of every sound in the library matches the manual's
 tables, and `tests/speakjet_test.c` checks this.
+
+The two editions describe the same chip. Their code tables, durations,
+control codes and synthesizer registers are identical. Revision 1.1 rewords
+the general description, notes that the serial input is TTL level, lets an
+Event Input trigger on both edges, drops the claim that each Serial Control
+Protocol command returns an acknowledgement character, explains that the
+volumes of oscillators 1 to 3 must total 63 or less, and lays out the
+phonetic guide table more clearly. None of that changes the library.
 
 ## NRL Report 7948
 

@@ -1,9 +1,9 @@
 # Design
 
 speakjet is a clean room emulation of the Magnevation SpeakJet. It was
-written from the *SpeakJet User's Manual* (Magnevation, revision 1.0, July
-27, 2004) and from general phonetics. A copy of the manual is in
-[`reference/`](reference/). No other SpeakJet implementation was consulted.
+written from the *SpeakJet User's Manual* (Magnevation, revisions 1.0 and
+1.1, 2004, whose tables are identical) and from general phonetics. Copies of
+both are in [`reference/`](reference/). No other SpeakJet implementation was consulted.
 
 The manual documents the chip's synthesizer in some detail, but not the MSA
 "sound component database" that drives it: what oscillator settings make each
