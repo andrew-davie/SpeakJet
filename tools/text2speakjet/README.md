@@ -150,7 +150,8 @@ Mix these into the text wherever you need them.
 | `[fast]` `[slow]` `[stress]` `[relax]` `[soft]` | apply to the next sound only (`[soft]`, code 18, comes from PhraseALator; the manual doesn't list it, and the speakjet library ignores it) |
 | `[pause 0-6]` or `[p0]`-`[p6]` | 0, 100, 200, 700, 30, 60, 90ms |
 | `[digits]` | read the numbers that follow digit by digit, up to the next word (not a SpeakJet code) |
-| `[contour 100 90]` | the next word's pitch, one value per syllable (the last is held): a Pitch command goes before each syllable's vowel |
+| `[contour 100 90]` | the next word's pitch, one value per syllable (the last is held): a Pitch command goes before each syllable's vowel where the pitch changes |
+| `[gap 4]` `[gap none]` | the pause between words (a pause code 0-6), from where it's written (that gap included) to the end of the phrase; `--word-gap` sets it for every phrase |
 | `[reset]` `[wait]` | Reset, Wait |
 
 A pause written in brackets replaces the normal pause between words at that

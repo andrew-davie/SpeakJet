@@ -123,15 +123,27 @@ class Markup(unittest.TestCase):
         # a pitch before each syllable's vowel, ahead of its STRESS/FAST
         self.assertEqual(t2s.apply_contour([147, 14, 159, 195, 7, 133, 140], [100, 90]),
                          [147, 22, 100, 14, 159, 195, 22, 90, 7, 133, 140])
-        # fewer pitches than syllables: the last is held
-        self.assertEqual(t2s.apply_contour([128, 129, 130], [90]),
-                         [22, 90, 128, 22, 90, 129, 22, 90, 130])
+        # fewer pitches than syllables: the last is held, and not sent again
+        self.assertEqual(t2s.apply_contour([128, 129, 130], [90]), [22, 90, 128, 129, 130])
+        # no Pitch where it wouldn't change, including from the pitch before the word
+        self.assertEqual(t2s.apply_contour([128, 129], [90, 90]), [22, 90, 128, 129])
+        self.assertEqual(t2s.apply_contour([128, 129], [90, 95], current=90), [128, 22, 95, 129])
+        self.assertEqual(dec("[pitch 92] [contour 92 104] {IH MM}")[:3], [22, 92, 129])
         # a two byte command in the word is kept whole
         self.assertEqual(t2s.apply_contour([21, 128, 131], [95]), [21, 128, 22, 95, 131])
         codes = dec("[contour 100 90] welcome", CMU)
         self.assertEqual(codes[:3], [147, 22, 100])
         self.assertEqual(codes[-1], 31)                 # pitch changed, so Reset added
         self.assertEqual(run("[contour 300] hi").returncode, 1)
+
+    def test_gap(self):
+        # [gap none]: words run together; [gap n] from where it's written on,
+        # including the gap at that point
+        self.assertEqual(dec("[gap none] one two", CMU), dec("one", CMU) + dec("two", CMU))
+        self.assertEqual(dec("one two [gap 5] three four", CMU),
+                         dec("one", CMU) + [4] + dec("two", CMU) + [5] + dec("three", CMU)
+                         + [5] + dec("four", CMU))
+        self.assertEqual(run("[gap 9] hi").returncode, 1)
 
     def test_explicit_pause_at_end_kept(self):
         self.assertEqual(dec("level [p5]", CMU)[-1], 5)

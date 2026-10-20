@@ -38,6 +38,7 @@ Inline markup, mixed freely with the text:
     (HH AH1 S K)                                   ARPAbet for one word
     [digits]                                       numbers digit by digit, to the next word
     [contour 100 90]                               the next word's pitch, per syllable
+    [gap 4] [gap none]                             the pause between words from here on
 Persistent controls (pitch, speed, volume, bend...) get a Reset (31) added
 at the end unless --no-reset.
 
@@ -131,6 +132,7 @@ CONTROL_NAME = {v: k for k, v in SINGLE_CONTROLS.items()}
 ARG_NAME = {v[0]: k for k, v in ARG_CONTROLS.items()}
 
 DEFAULT_SPEED = 114
+DEFAULT_PITCH = 88
 
 
 class MarkupError(Exception):
@@ -830,9 +832,11 @@ NUCLEI = set(range(128, 140)) | set(range(149, 165))
 MODIFIERS = {7, 8, 14, 15, 18}      # FAST SLOW STRESS RELAX SOFT, which lead a sound
 
 
-def apply_contour(codes, pitches):
+def apply_contour(codes, pitches, current=None):
     """Put a Pitch command before each syllable's vowel, ahead of the
-    modifiers leading it: one pitch per syllable, the last one held."""
+    modifiers leading it: one pitch per syllable, the last one held. None is
+    put where the pitch (current: the one in force before the word) wouldn't
+    change."""
     out = []
     lead = None             # where the modifiers before the next sound start
     syllable = 0
@@ -848,8 +852,11 @@ def apply_contour(codes, pitches):
             if lead is None:
                 lead = len(out)
         elif c in NUCLEI:
-            at = len(out) if lead is None else lead
-            out[at:at] = [22, pitches[min(syllable, len(pitches) - 1)]]
+            want = pitches[min(syllable, len(pitches) - 1)]
+            if want != current:
+                at = len(out) if lead is None else lead
+                out[at:at] = [22, want]
+                current = want
             syllable += 1
             lead = None
         else:
@@ -901,6 +908,13 @@ class Converter:
             if re.fullmatch(r"\[\s*digits\s*\]", tok, re.I):
                 digits = True
                 continue
+            m = re.fullmatch(r"\[\s*gap\s+(none|\d)\s*\]", tok, re.I)
+            if m:
+                g = m.group(1).lower()
+                if g != "none" and int(g) > 6:
+                    raise MarkupError("'gap' needs a pause code 0-6 or 'none'")
+                words.append(("gap", None if g == "none" else int(g), tok))
+                continue
             m = re.fullmatch(r"\[\s*contour((?:\s+\d+)+)\s*\]", tok, re.I)
             if m:
                 pitches = [int(v) for v in m.group(1).split()]
@@ -927,11 +941,17 @@ class Converter:
         last_content = content_idx[-1] if content_idx else -1
         pitch_now = args.pitch
         contour = None          # [contour]: pitches for the next word's syllables
+        word_gap = args.word_gap    # [gap]: changes it for the rest of the phrase
         gap_explicit = False    # the gap owed was written out, so it's kept at the end
 
         for k, (kind, payload, label) in enumerate(words):
             if kind == "contour":
                 contour = payload
+                continue
+            if kind == "gap":
+                word_gap = payload
+                if gap is not None and not gap_explicit:
+                    gap = None if payload is None else [payload]
                 continue
             if kind == "punct":
                 if segs:
@@ -946,9 +966,10 @@ class Converter:
                     continue
                 self._flush_gap(segs, gap)
                 gap = None
+                pitch_now = self._pitch_after(codes, pitch_now)
                 if any(c >= 128 for c in codes):
                     if contour:
-                        codes = apply_contour(codes, contour)
+                        codes = apply_contour(codes, contour, pitch_now)
                         pitch_now = contour[-1]
                         contour = None
                     seg = Segment(label)
@@ -966,7 +987,7 @@ class Converter:
             else:
                 codes, stressed = self.word_codes(payload)
             if contour:
-                codes = apply_contour(codes, contour)
+                codes = apply_contour(codes, contour, pitch_now)
                 pitch_now = contour[-1]
                 contour = None
             elif args.intonation is not None:
@@ -984,7 +1005,7 @@ class Converter:
             seg.codes = prefix + codes
             prefix = []
             segs.append(seg)
-            gap = None if args.word_gap is None else [args.word_gap]
+            gap = None if word_gap is None else [word_gap]
             gap_explicit = False
 
         # a pause written at the very end is kept; a word gap or punctuation
@@ -1002,6 +1023,22 @@ class Converter:
             if segs:
                 segs[-1].codes.append(31)
         return segs
+
+    @staticmethod
+    def _pitch_after(codes, pitch):
+        """The pitch in force after codes: Pitch (22) sets it, Reset (31)
+        puts it back to the default."""
+        i = 0
+        while i < len(codes):
+            if codes[i] in ARG_NAME:
+                if codes[i] == 22 and i + 1 < len(codes):
+                    pitch = codes[i + 1]
+                i += 2
+                continue
+            if codes[i] == 31:
+                pitch = DEFAULT_PITCH
+            i += 1
+        return pitch
 
     @staticmethod
     def _flush_gap(segs, gap):
