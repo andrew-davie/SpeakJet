@@ -37,6 +37,7 @@ Inline markup, mixed freely with the text:
     {OHIY TT} {M2} {200}                           raw allophones/SFX/bytes
     (HH AH1 S K)                                   ARPAbet for one word
     [digits]                                       numbers digit by digit, to the next word
+    [contour 100 90]                               the next word's pitch, per syllable
 Persistent controls (pitch, speed, volume, bend...) get a Reset (31) added
 at the end unless --no-reset.
 
@@ -824,6 +825,40 @@ class Segment:
         self.codes = []
 
 
+# The vowel allophones: the nucleus of each syllable, for [contour]
+NUCLEI = set(range(128, 140)) | set(range(149, 165))
+MODIFIERS = {7, 8, 14, 15, 18}      # FAST SLOW STRESS RELAX SOFT, which lead a sound
+
+
+def apply_contour(codes, pitches):
+    """Put a Pitch command before each syllable's vowel, ahead of the
+    modifiers leading it: one pitch per syllable, the last one held."""
+    out = []
+    lead = None             # where the modifiers before the next sound start
+    syllable = 0
+    i = 0
+    while i < len(codes):
+        c = codes[i]
+        if c in ARG_NAME and i + 1 < len(codes):
+            out += codes[i:i + 2]       # a two byte command, kept whole
+            lead = None
+            i += 2
+            continue
+        if c in MODIFIERS:
+            if lead is None:
+                lead = len(out)
+        elif c in NUCLEI:
+            at = len(out) if lead is None else lead
+            out[at:at] = [22, pitches[min(syllable, len(pitches) - 1)]]
+            syllable += 1
+            lead = None
+        else:
+            lead = None
+        out.append(c)
+        i += 1
+    return out
+
+
 class Converter:
     def __init__(self, lexicon, args):
         self.lex = lexicon
@@ -866,6 +901,13 @@ class Converter:
             if re.fullmatch(r"\[\s*digits\s*\]", tok, re.I):
                 digits = True
                 continue
+            m = re.fullmatch(r"\[\s*contour((?:\s+\d+)+)\s*\]", tok, re.I)
+            if m:
+                pitches = [int(v) for v in m.group(1).split()]
+                if any(v > 255 for v in pitches):
+                    raise MarkupError("'contour' pitches must be 0-255")
+                words.append(("contour", pitches, tok))
+                continue
             if tok[0] in "[{":
                 words.append(("codes", tok[1:-1], tok))
             elif tok[0] == "(":
@@ -884,20 +926,31 @@ class Converter:
         content_idx = [k for k, w in enumerate(words) if w[0] in ("word", "arpa")]
         last_content = content_idx[-1] if content_idx else -1
         pitch_now = args.pitch
+        contour = None          # [contour]: pitches for the next word's syllables
+        gap_explicit = False    # the gap owed was written out, so it's kept at the end
 
         for k, (kind, payload, label) in enumerate(words):
+            if kind == "contour":
+                contour = payload
+                continue
             if kind == "punct":
                 if segs:
                     gap = PUNCTUATION_PAUSE[payload] if payload != "-" else []
+                    gap_explicit = False
                 continue
             if kind == "codes":
                 codes = parse_codes(payload)
                 if codes and all(c <= 6 for c in codes):
                     gap = codes                 # an explicit pause replaces the word gap
+                    gap_explicit = True
                     continue
                 self._flush_gap(segs, gap)
                 gap = None
                 if any(c >= 128 for c in codes):
+                    if contour:
+                        codes = apply_contour(codes, contour)
+                        pitch_now = contour[-1]
+                        contour = None
                     seg = Segment(label)
                     seg.codes = prefix + codes
                     prefix = []
@@ -912,7 +965,11 @@ class Converter:
                 codes, stressed = self.word_codes(label, parse_arpabet(payload))
             else:
                 codes, stressed = self.word_codes(payload)
-            if args.intonation is not None:
+            if contour:
+                codes = apply_contour(codes, contour)
+                pitch_now = contour[-1]
+                contour = None
+            elif args.intonation is not None:
                 base = args.intonation
                 if k == last_content:
                     want = base - 10
@@ -928,6 +985,12 @@ class Converter:
             prefix = []
             segs.append(seg)
             gap = None if args.word_gap is None else [args.word_gap]
+            gap_explicit = False
+
+        # a pause written at the very end is kept; a word gap or punctuation
+        # pause there isn't
+        if gap_explicit:
+            self._flush_gap(segs, gap)
 
         if prefix:
             seg = Segment("")

@@ -119,6 +119,26 @@ class Markup(unittest.TestCase):
         self.assertEqual(dec("{WW EHLE}"), [147, 159])
         self.assertIn("EHLL", run("{EHLE}").stdout)
 
+    def test_contour(self):
+        # a pitch before each syllable's vowel, ahead of its STRESS/FAST
+        self.assertEqual(t2s.apply_contour([147, 14, 159, 195, 7, 133, 140], [100, 90]),
+                         [147, 22, 100, 14, 159, 195, 22, 90, 7, 133, 140])
+        # fewer pitches than syllables: the last is held
+        self.assertEqual(t2s.apply_contour([128, 129, 130], [90]),
+                         [22, 90, 128, 22, 90, 129, 22, 90, 130])
+        # a two byte command in the word is kept whole
+        self.assertEqual(t2s.apply_contour([21, 128, 131], [95]), [21, 128, 22, 95, 131])
+        codes = dec("[contour 100 90] welcome", CMU)
+        self.assertEqual(codes[:3], [147, 22, 100])
+        self.assertEqual(codes[-1], 31)                 # pitch changed, so Reset added
+        self.assertEqual(run("[contour 300] hi").returncode, 1)
+
+    def test_explicit_pause_at_end_kept(self):
+        self.assertEqual(dec("level [p5]", CMU)[-1], 5)
+        self.assertEqual(dec("level {5}", CMU)[-1], 5)
+        self.assertNotIn(dec("level,", CMU)[-1], range(7))     # punctuation: dropped
+        self.assertNotIn(dec("level", CMU)[-1], range(7))      # word gap: dropped
+
     def test_bad_markup(self):
         for bad in ("{BOGUS}", "[pitch 300]", "{255}", "(XX1)"):
             r = run(bad)
