@@ -59,8 +59,10 @@ while (sj_render(sj, buf, 256) || sj_buffered(sj) > 0) {
 sj_free(sj);
 ```
 
-On a real AtariVox the READY pin is the chip's Buffer Half Full line, so READY
-is `!sj_buffer_half_full(sj)`. The input buffer drains as you render, so
+The AtariVox's READY pin goes low when the SpeakJet's buffer is filling, so
+drive READY as `!sj_buffer_half_full(sj)` (see
+[`docs/design.md`](docs/design.md); the chip's own pin named *Ready* is a
+different signal). The input buffer drains as you render, so
 render in step with the emulated time to keep READY's timing right.
 
 | Function | Description |
@@ -125,6 +127,7 @@ English speech.
 | `tools/text2speakjet/` | Text to SpeakJet codes, with the CMU dictionary and its tests |
 | `samples/` | Sample phrases, their codes and WAVs |
 | `docs/design.md` | How the emulation works, and what is guessed |
+| `docs/reference/` | The SpeakJet User's Manual and NRL Report 7948, which the code is written from |
 
 ## License
 

@@ -1,8 +1,9 @@
 # Design
 
 speakjet is a clean room emulation of the Magnevation SpeakJet. It was
-written from the *SpeakJet User's Manual* (Magnevation, revision 1.1, 2004)
-and from general phonetics. No other SpeakJet implementation was consulted.
+written from the *SpeakJet User's Manual* (Magnevation, revision 1.0, July
+27, 2004) and from general phonetics. A copy of the manual is in
+[`reference/`](reference/). No other SpeakJet implementation was consulted.
 
 The manual documents the chip's synthesizer in some detail, but not the MSA
 "sound component database" that drives it: what oscillator settings make each
@@ -24,11 +25,19 @@ tables with the MSA sequencer, and the chip (input buffer and API).
 
 - The buffer is 64 bytes.
 - The Buffer Half Full line is set when the buffer holds more than 32 bytes.
-  The AtariVox wires this line to its READY pin.
+  It is the chip's flow-control line.
 - "Each command is removed from the input buffer after the command is
   executed": a command counts towards the buffer until it has finished
   playing, not just until it starts.
 - Codes 20 to 26 and 28 to 30 take a data byte; the rest are one byte.
+
+**The AtariVox's READY pin.** The *AtariVox Programmer's Guide* (Alex
+Herbert, 2004) says READY, on joystick pin 2, reads 0 when the SpeakJet's
+input buffer is full and data should not be sent. That is the flow control
+the manual gives Buffer Half Full, so an emulator should drive READY as
+`!sj_buffer_half_full()`. Note that the SpeakJet also has a pin named
+*Ready* (D0); that one only shows the chip has passed its self-test and is
+on, and isn't the AtariVox's READY.
 
 **Choices:**
 
