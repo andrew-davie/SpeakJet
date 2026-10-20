@@ -52,8 +52,9 @@ removed, please open an issue.
 text2speakjet doesn't read this file directly. `tools/text2speakjet/convert_phrasealator.py`
 turns it into `tools/text2speakjet/phrasealator.txt`, in text2speakjet's own
 format, which the tool uses before the CMU dictionary. On the way, codes are
-written in upper case, `\EHLE` (PhraseALator's name for allophone 159) is
-written EHLL, and `\SOFT`, which neither edition of the manual defines, is
+written in upper case, `\EHLE` (PhraseALator's name for allophone 159; see
+"Allophone names" in [`../design.md`](../design.md)) is written with the
+manual's name, EHLL, and `\SOFT`, which neither edition of the manual defines, is
 dropped. The `fx...` demos are left out: they are built from other entries
 and from PhraseALator's musical-note pitch macros (`\NTC2`...), whose byte
 values aren't documented. So are "x-ray" and "yo-yo", which text2speakjet

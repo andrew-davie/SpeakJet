@@ -101,6 +101,12 @@ for _i, (_n, _ms) in enumerate(SOUND_EFFECTS):
     DURATION[200 + _i] = _ms
 NAME = {c: n for n, c in CODE.items()}
 
+# Other names for codes, accepted on input. Output always uses the manual's
+# names. EHLE is PhraseALator's spelling of EHLL (159), and is used by its
+# dictionary, the AtariVox Programmer's Guide and other SpeakJet code; the
+# manual calls it EHLL in both editions.
+ALIASES = {"EHLE": "EHLL"}
+
 PAUSE_MS = [0, 100, 200, 700, 30, 60, 90]
 SINGLE_CONTROLS = {"FAST": 7, "SLOW": 8, "STRESS": 14, "RELAX": 15, "WAIT": 16, "RESET": 31}
 for _i in range(7):
@@ -137,6 +143,8 @@ def parse_codes(text):
             out.append(v)
         elif t in CODE:
             out.append(CODE[t])
+        elif t in ALIASES:
+            out.append(CODE[ALIASES[t]])
         elif t in SINGLE_CONTROLS:
             out.append(SINGLE_CONTROLS[t])
         elif t == "PAUSE":

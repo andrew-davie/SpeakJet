@@ -31,7 +31,8 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import text2speakjet as t2s  # noqa: E402
 
-RENAME = {"EHLE": "EHLL"}
+# written with the manual's names, though text2speakjet would accept these too
+RENAME = t2s.ALIASES
 DROP = {"SOFT"}
 
 HEADER = """\

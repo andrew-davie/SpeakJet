@@ -100,6 +100,21 @@ what joins one sound smoothly to the next.
   contents of the AtariVox's SpeakJet EEPROM aren't known. Unknown codes,
   including 255, are ignored.
 
+## Allophone names
+
+The library and text2speakjet use the manual's names for the codes:
+`sj_sound_name()` returns them, and text2speakjet writes them in its output.
+
+One name needs a note. Allophone 159, the "EL" of "saddle" and "angle", is
+**EHLL** in the manual: in its code table (`159 EHLL Saddle, Angle, Spell`)
+and its phonetic guide (`\EHLL`), in both revision 1.0 and revision 1.1.
+Magnevation's PhraseALator software spells it **EHLE**, and that spelling has
+spread: it is in the PhraseALator dictionary, the *AtariVox Programmer's
+Guide*'s example phrase, and Mike McCauley's Arduino SpeakJet library
+(`Phoneme_EHLE = 159`). The two names mean the same byte, so the choice
+doesn't affect the sound. text2speakjet accepts EHLE as an alias on input
+and writes EHLL.
+
 ## Synthesizer
 
 **From the manual:**

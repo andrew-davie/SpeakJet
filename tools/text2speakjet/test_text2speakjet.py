@@ -86,6 +86,12 @@ class Markup(unittest.TestCase):
         self.assertEqual(t2s.parse_codes("M2 200"), [254, 200])
         self.assertEqual(t2s.parse_codes("pitch 100"), [22, 100])
 
+    def test_ehle_alias(self):
+        # PhraseALator's name for EHLL; the manual's name is used on output
+        self.assertEqual(t2s.parse_codes("EHLE"), [159])
+        self.assertEqual(dec("{WW EHLE}"), [147, 159])
+        self.assertIn("EHLL", run("{EHLE}").stdout)
+
     def test_bad_markup(self):
         for bad in ("{BOGUS}", "[pitch 300]", "{255}", "(XX1)"):
             r = run(bad)

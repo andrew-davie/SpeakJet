@@ -156,6 +156,10 @@ point.
 {200 14}       plain byte values (0-254)
 ```
 
+Names are the SpeakJet manual's. `EHLE`, PhraseALator's spelling of `EHLL`
+(code 159) that the AtariVox Programmer's Guide also uses, is accepted too;
+the output always says `EHLL`. See "Allophone names" in `docs/design.md`.
+
 **One word's pronunciation**, in round brackets, as ARPAbet with stress
 digits (1 = stressed, 2 = secondary, 0 = unstressed):
 
