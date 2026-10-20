@@ -9,12 +9,17 @@
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(HERE, "text2speakjet.py")
 sys.path.insert(0, HERE)
 import text2speakjet as t2s  # noqa: E402
+import convert_phrasealator as cpa  # noqa: E402
+
+ROOT = os.path.dirname(os.path.dirname(HERE))
+CMU = "--no-phrasealator"
 
 
 def run(*args, stdin=None):
@@ -40,7 +45,7 @@ class CodeTable(unittest.TestCase):
 class Words(unittest.TestCase):
     def test_dictionary_word(self):
         # HO FAST AX LO STRESS OWWW
-        self.assertEqual(dec("hello"), [184, 7, 133, 146, 14, 164])
+        self.assertEqual(dec("hello", CMU), [184, 7, 133, 146, 14, 164])
 
     def test_word_gap_and_punctuation(self):
         codes = dec("hello, hello")
@@ -48,7 +53,7 @@ class Words(unittest.TestCase):
         self.assertNotEqual(codes[-1], 2)       # no pause at the very end
 
     def test_no_fast(self):
-        self.assertNotIn(7, dec("hello", "--no-fast"))
+        self.assertNotIn(7, dec("hello", "--no-fast", CMU))
 
     def test_exceptions_file(self):
         r = run("atarivox")
@@ -93,7 +98,53 @@ class Markup(unittest.TestCase):
         self.assertNotEqual(dec("[pitch 100] hello", "--no-reset")[-1], 31)
 
     def test_inline_arpabet(self):
-        self.assertEqual(dec("(HH AH0 L OW1)"), dec("hello"))
+        self.assertEqual(dec("(HH AH0 L OW1)"), dec("hello", CMU))
+
+
+class PhraseALator(unittest.TestCase):
+    def test_used_by_default(self):
+        # HE FAST EHLL LO OWWW, Magnevation's spelling
+        self.assertEqual(dec("hello"), [183, 7, 159, 146, 164])
+        self.assertIn("[phrasealator]", run("-v", "hello").stderr)
+
+    def test_weak_forms_come_first(self):
+        # PhraseALator's "a" is the letter name; in a sentence it's the weak form
+        self.assertIn("[weak form]", run("-v", "a").stderr)
+
+    def test_exceptions_come_first(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+            f.write("hello {MM}\n")
+        try:
+            self.assertEqual(dec("hello", "--dict", f.name), [140])
+        finally:
+            os.unlink(f.name)
+
+    def test_works_without_it(self):
+        lex = t2s.Lexicon([], None)
+        self.assertEqual(lex.lookup("hello")[2], "cmudict")
+
+    def test_conversion(self):
+        words, skipped = cpa.convert([
+            "[words]",
+            "well = \\WW \\Fast \\EHLE ",
+            "bird=\\FAST \\SOFT \\BE \\AXRR \\ED",
+            "fxtest=\\Reset testing,, one",
+            "x-ray= \\EH \\EK \\SE",
+        ])
+        self.assertEqual(words, [("well", "WW FAST EHLL"), ("bird", "FAST BE AXRR ED")])
+        self.assertEqual(skipped, ["fxtest", "x-ray"])
+
+    def test_converted_file_is_up_to_date(self):
+        src = os.path.join(ROOT, "docs", "reference", "PhraseALator.Dic")
+        committed = os.path.join(HERE, "phrasealator.txt")
+        if not (os.path.exists(src) and os.path.exists(committed)):
+            self.skipTest("PhraseALator files not present")
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, "phrasealator.txt")
+            subprocess.run([sys.executable, os.path.join(HERE, "convert_phrasealator.py"), src, out],
+                           check=True, capture_output=True)
+            with open(out, encoding="utf-8") as a, open(committed, encoding="utf-8") as b:
+                self.assertEqual(a.read(), b.read(), "rerun convert_phrasealator.py")
 
 
 class Formats(unittest.TestCase):

@@ -37,6 +37,31 @@ Protocol command returns an acknowledgement character, explains that the
 volumes of oscillators 1 to 3 must total 63 or less, and lays out the
 phonetic guide table more clearly. None of that changes the library.
 
+## PhraseALator dictionary
+
+[`PhraseALator.Dic`](PhraseALator.Dic)
+
+The word dictionary supplied with Magnevation's PhraseALator software (2004):
+1,452 entries of hand-made SpeakJet spellings, 1,425 of them words and 27
+`fx...` demo phrases.
+
+**Copyright Magnevation LLC.** It is included unmodified, for reference, on
+the same basis as the manual. If you hold the rights to it and want it
+removed, please open an issue.
+
+text2speakjet doesn't read this file directly. `tools/text2speakjet/convert_phrasealator.py`
+turns it into `tools/text2speakjet/phrasealator.txt`, in text2speakjet's own
+format, which the tool uses before the CMU dictionary. On the way, codes are
+written in upper case, `\EHLE` (PhraseALator's name for allophone 159) is
+written EHLL, and `\SOFT`, which neither edition of the manual defines, is
+dropped. The `fx...` demos are left out: they are built from other entries
+and from PhraseALator's musical-note pitch macros (`\NTC2`...), whose byte
+values aren't documented. So are "x-ray" and "yo-yo", which text2speakjet
+can't look up because it splits words at hyphens. That leaves 1,423 words.
+
+`phrasealator.txt` carries the same copyright as this file and isn't covered
+by the MIT licence either. text2speakjet works without it.
+
 ## NRL Report 7948
 
 [`nrl-report-7948.pdf`](nrl-report-7948.pdf)

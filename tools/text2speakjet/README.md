@@ -13,6 +13,8 @@ one folder:
 | `cmudict.dict.gz` | CMU Pronouncing Dictionary (~134,000 words) |
 | `LICENSE.cmudict` | the dictionary's licence (keep it with the dictionary) |
 | `exceptions.txt` | your own pronunciations, checked before the dictionary |
+| `phrasealator.txt` | Magnevation's SpeakJet spellings of 1,423 words (optional; not MIT licensed, see below) |
+| `convert_phrasealator.py` | rebuilds `phrasealator.txt` from `docs/reference/PhraseALator.Dic` |
 | `test_text2speakjet.py` | its tests (`python3 test_text2speakjet.py`; `make test` runs them too) |
 
 ## Quick start
@@ -97,11 +99,14 @@ same format from stdin.
 Each word is looked up in this order:
 
 1. `exceptions.txt`
-2. the CMU dictionary
-3. two dictionary words joined together (`moonbase` = `moon` + `base`)
-4. a guess from the spelling (the NRL letter-to-sound rules)
+2. the short spoken forms of "a", "the", "to", "for", "of", "and", "an" and
+   "from"
+3. `phrasealator.txt`, the PhraseALator dictionary
+4. the CMU dictionary
+5. two dictionary words joined together (`moonbase` = `moon` + `base`)
+6. a guess from the spelling (the NRL letter-to-sound rules)
 
-Steps 3 and 4 are guesses, so the tool prints a warning for each one:
+Steps 5 and 6 are guesses, so the tool prints a warning for each one:
 
 ```
 warning: 'fnorbix' not in the dictionary -- spelling rules: F N AO1 R B IH0 K S
@@ -218,6 +223,22 @@ python3 tools/text2speakjet/text2speakjet.py --format bin -o hello.bin "Hello"
 - `--list-codes` prints every MSA code with its name and duration.
 - The duration in each header comment is an estimate from the SpeakJet
   manual's sound lengths, not a measurement.
+
+## The PhraseALator dictionary
+
+`phrasealator.txt` holds the SpeakJet spellings Magnevation made by hand for
+the dictionary supplied with its PhraseALator software, converted to this
+tool's format. They were tuned for the real chip, so for the 1,423 words it
+covers they're used ahead of the CMU dictionary. `-v` shows `[phrasealator]`
+for those words.
+
+The spellings are Magnevation's, not covered by this repository's MIT licence
+(see `docs/reference/README.md`). The tool works without them: run with
+`--no-phrasealator`, or delete `phrasealator.txt`, and the CMU dictionary is
+used instead. Your own `exceptions.txt` is always checked first.
+
+`convert_phrasealator.py` rebuilds `phrasealator.txt` from the original
+`docs/reference/PhraseALator.Dic`; `make phrasealator` runs it.
 
 ## Limits
 

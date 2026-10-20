@@ -31,7 +31,11 @@ test: tests/speakjet_test tests/reference_test
 samples: sjwav
 	$(PYTHON) samples/generate.py ./sjwav
 
+# rebuild tools/text2speakjet/phrasealator.txt from docs/reference/PhraseALator.Dic
+phrasealator:
+	$(PYTHON) tools/text2speakjet/convert_phrasealator.py
+
 clean:
 	rm -f speakjet.o libspeakjet.a sjwav tests/speakjet_test tests/reference_test
 
-.PHONY: all test samples clean
+.PHONY: all test samples phrasealator clean

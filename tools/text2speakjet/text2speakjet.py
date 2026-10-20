@@ -7,7 +7,8 @@
 """text2speakjet.py -- English text to SpeakJet (AtariVox) MSA codes.
 
 Stand-alone (Python 3.8+, standard library only). Needs cmudict.dict.gz next to
-this script; exceptions.txt there is loaded too, if present.
+this script; exceptions.txt and phrasealator.txt there are loaded too, if
+present.
 
     text2speakjet.py "Welcome to the AtariVox"           DASM .byte lines on stdout
     text2speakjet.py --format c "Well done"              C array
@@ -15,7 +16,9 @@ this script; exceptions.txt there is loaded too, if present.
     text2speakjet.py --format bin -o out.bin "Hello"     raw bytes
     text2speakjet.py -f phrases.txt                      one label per line
 
-Pipeline: each word is looked up in the exceptions file, then the CMU
+Pipeline: each word is looked up in the exceptions file, then the converted
+PhraseALator dictionary (Magnevation's own SpeakJet spellings, if
+phrasealator.txt is present; --no-phrasealator skips it), then the CMU
 Pronouncing Dictionary (ARPAbet with stress), then tried as two dictionary
 words joined ("moonbase" = moon + base), and last guessed with the NRL
 letter-to-sound rules (Elovitz et al., 1976). Anything not from the dictionary
@@ -55,6 +58,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 CMUDICT_PATH = os.path.join(HERE, "cmudict.dict.gz")
 EXCEPTIONS_PATH = os.path.join(HERE, "exceptions.txt")
+PHRASEALATOR_PATH = os.path.join(HERE, "phrasealator.txt")
 
 
 # ---------------------------------------------------------------------------
@@ -253,9 +257,10 @@ def parse_arpabet(text):
 
 
 class Lexicon:
-    def __init__(self, exception_files):
+    def __init__(self, exception_files, phrasealator_file=None):
         self.cmu = {}
         self.exceptions = {}
+        self.phrasealator = {}
         if not os.path.exists(CMUDICT_PATH):
             sys.exit("text2speakjet: missing %s" % CMUDICT_PATH)
         with gzip.open(CMUDICT_PATH, "rt", encoding="utf-8") as f:
@@ -266,8 +271,12 @@ class Lexicon:
                 self.cmu.setdefault(line[0], " ".join(line[1:]))
         for path in exception_files:
             self.load_exceptions(path)
+        if phrasealator_file:
+            self.load_exceptions(phrasealator_file, self.phrasealator)
 
-    def load_exceptions(self, path):
+    def load_exceptions(self, path, into=None):
+        """Read a file of 'word pronunciation' lines into the exceptions (or into)."""
+        table = self.exceptions if into is None else into
         with open(path, encoding="utf-8") as f:
             for n, line in enumerate(f, 1):
                 line = line.split("#", 1)[0].strip()
@@ -279,9 +288,9 @@ class Lexicon:
                 word, pron = parts[0].lower(), parts[1].strip()
                 try:
                     if pron.startswith("{") and pron.endswith("}"):
-                        self.exceptions[word] = ("raw", parse_codes(pron[1:-1]))
+                        table[word] = ("raw", parse_codes(pron[1:-1]))
                     else:
-                        self.exceptions[word] = ("arpa", parse_arpabet(pron))
+                        table[word] = ("arpa", parse_arpabet(pron))
                 except MarkupError as e:
                     sys.exit("%s:%d: %s" % (path, n, e))
 
@@ -293,6 +302,10 @@ class Lexicon:
             return kind, data, "exceptions"
         if w in WEAK_FORMS:
             return "arpa", parse_arpabet(WEAK_FORMS[w]), "weak form"
+        # after the weak forms: PhraseALator's "a" is the letter name
+        if w in self.phrasealator:
+            kind, data = self.phrasealator[w]
+            return kind, data, "phrasealator"
         if w in self.cmu:
             return "arpa", parse_arpabet(self.cmu[w]), "cmudict"
         split = self.compound(w)
@@ -1018,6 +1031,8 @@ def main():
                     help="simple pitch contour: raised on stressed words, falling on the last (default base 88)")
     ap.add_argument("--dict", action="append", default=[], help="extra exceptions file (repeatable)")
     ap.add_argument("--no-exceptions", action="store_true", help="don't load exceptions.txt")
+    ap.add_argument("--no-phrasealator", action="store_true",
+                    help="don't use the PhraseALator dictionary (phrasealator.txt); use the CMU dictionary instead")
     ap.add_argument("-v", "--verbose", action="store_true", help="show each word's ARPAbet and allophones on stderr")
     ap.add_argument("--list-codes", action="store_true", help="print the MSA code table and exit")
     args = ap.parse_args()
@@ -1056,7 +1071,8 @@ def main():
             phrases = [(args.name, phrases[0][1])]
 
     files = [] if args.no_exceptions or not os.path.exists(EXCEPTIONS_PATH) else [EXCEPTIONS_PATH]
-    lexicon = Lexicon(files + args.dict)
+    phrasealator = None if args.no_phrasealator or not os.path.exists(PHRASEALATOR_PATH) else PHRASEALATOR_PATH
+    lexicon = Lexicon(files + args.dict, phrasealator)
     conv = Converter(lexicon, args)
 
     built = []

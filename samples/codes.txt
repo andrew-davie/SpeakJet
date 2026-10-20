@@ -1,5 +1,5 @@
 # Generated from phrases.txt by generate.py -- do not edit.
-# name: codes, as text2speakjet --format dec --terminator none
+# name: codes, as text2speakjet --format dec --terminator none --no-phrasealator
 
 # Hello, world.
 hello: 184, 7, 133, 146, 14, 164, 2, 147, 14, 151, 146, 176

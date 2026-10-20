@@ -36,11 +36,14 @@ def main():
                 phrases.append((name.strip(), text.strip()))
 
     lines = ["# Generated from phrases.txt by generate.py -- do not edit.",
-             "# name: codes, as text2speakjet --format dec --terminator none",
+             "# name: codes, as text2speakjet --format dec --terminator none --no-phrasealator",
              ""]
     for name, text in phrases:
         codes = subprocess.run(
-            [sys.executable, TOOL, "--format", "dec", "--terminator", "none", text],
+            # not the PhraseALator dictionary: it isn't MIT licensed and may be
+            # deleted, and the samples must regenerate without it
+            [sys.executable, TOOL, "--format", "dec", "--terminator", "none",
+             "--no-phrasealator", text],
             check=True, capture_output=True, text=True).stdout.strip()
         lines.append("# " + text)
         lines.append("%s: %s" % (name, codes))

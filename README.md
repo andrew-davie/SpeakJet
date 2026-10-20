@@ -87,8 +87,10 @@ every function.
 ## text2speakjet
 
 `tools/text2speakjet/text2speakjet.py` converts English into SpeakJet codes,
-as DASM `.byte` lines, a C array, decimal or raw bytes. It uses the CMU
-Pronouncing Dictionary (about 134,000 words) and picks the right allophone
+as DASM `.byte` lines, a C array, decimal or raw bytes. It uses
+Magnevation's own SpeakJet spellings of 1,423 common words (from its
+PhraseALator dictionary) and the CMU Pronouncing Dictionary (about 134,000
+words) for the rest, and picks the right allophone
 variant for each sound from its neighbours. It adds stress, pauses for
 punctuation and spoken numbers, and takes markup for pitch, speed and raw
 codes. It needs Python 3.8 or later and nothing else.
@@ -124,10 +126,10 @@ English speech.
 | `speakjet.c`, `speakjet.h` | The library |
 | `tests/` | Unit tests and the reference sample test |
 | `tools/sjwav.c`, `tools/render.c` | The WAV renderer |
-| `tools/text2speakjet/` | Text to SpeakJet codes, with the CMU dictionary and its tests |
+| `tools/text2speakjet/` | Text to SpeakJet codes, with its dictionaries and tests |
 | `samples/` | Sample phrases, their codes and WAVs |
 | `docs/design.md` | How the emulation works, and what is guessed |
-| `docs/reference/` | The SpeakJet User's Manual and NRL Report 7948, which the code is written from |
+| `docs/reference/` | The SpeakJet User's Manual, NRL Report 7948 and the PhraseALator dictionary |
 
 ## License
 
@@ -136,6 +138,16 @@ MIT. See [`LICENSE`](LICENSE).
 The CMU Pronouncing Dictionary (`tools/text2speakjet/cmudict.dict.gz`) is
 copyright Carnegie Mellon University, under the BSD-style licence in
 [`tools/text2speakjet/LICENSE.cmudict`](tools/text2speakjet/LICENSE.cmudict).
+
+These are **not** covered by the MIT licence, and are included for reference;
+see [`docs/reference/README.md`](docs/reference/README.md):
+
+- the SpeakJet User's Manuals and the PhraseALator dictionary
+  (`docs/reference/`), and its converted form
+  `tools/text2speakjet/phrasealator.txt`, copyright Magnevation LLC.
+  Everything works without them; text2speakjet falls back to the CMU
+  dictionary
+- NRL Report 7948, a US Government work in the public domain
 
 ## How it was made
 
