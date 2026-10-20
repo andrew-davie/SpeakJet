@@ -65,7 +65,8 @@ what joins one sound smoothly to the next.
 | Pauses | Codes 0 to 6: 0, 100, 200, 700, 30, 60 and 90 ms |
 | Pause behaviour | Pauses 1 to 3 "ramp the volume while the formant frequencies are being changed"; pauses 4 to 6 "wait for silence before changing the formant frequencies" |
 | Delay | Code 30 waits "the number of 10ms intervals" in its data byte |
-| Modifiers | Fast (7), Slow (8), Stress (14) and Relax (15) apply to the next sound only. Repeat (26) plays the next sound n times. Reset (31) restores the defaults |
+| Modifiers | Fast (7), Slow (8), Stress (14) and Relax (15) apply to the next sound only: Fast plays it "at 1/2 the time it normally would play", Slow "at 1 and 1/2 the time". Repeat (26) plays the next sound n times. Reset (31) restores the defaults |
+| Pitch | In Hz, and only for voiced sounds; 0 "will not actually vocalize" |
 
 **Choices** (the manual gives no figures for these):
 
@@ -79,7 +80,6 @@ what joins one sound smoothly to the next.
   same oscillators. Their lengths match the manual.
 - **Speed.** Duration is taken to be inversely proportional to Speed, with
   Speed held to 8 or more.
-- **Fast and Slow** scale the next sound's duration by 0.5 and 1.5.
 - **Stress** raises the pitch by 12% and tenses the vowel (F1 × 0.94,
   F2 × 1.06). **Relax** does the opposite (pitch × 0.9, F1 × 1.06,
   F2 × 0.94). The manual says only that "with STRESS, IH sounds more like (but
@@ -162,6 +162,41 @@ follow the manual. A real SpeakJet would settle it: send 183 135 191 and
 - Distortion is applied as random frequency modulation of oscillators 4 and
   5, from a xorshift noise source.
 - The output filter is a Butterworth low pass at 3400 Hz, after a DC blocker.
+
+## What isn't known, and what isn't emulated
+
+### Unknown
+
+The manual doesn't say, so these are guesses (described above):
+
+| | What the library does |
+|---|---|
+| The oscillator settings behind each allophone | Built from published formant measurements of English speech, not from the chip |
+| The sound effects, apart from DTMF | Approximations, with the manual's lengths |
+| How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties |
+| The Speed curve | Duration inversely proportional to Speed, Speed held to 8 or more |
+| How much Stress and Relax change a sound | Pitch × 1.12 or × 0.9, with the first two formants shifted (the manual says only "a small amount") |
+| The Bend curve | A semitone per step either side of 5 |
+| The synthesizer's details | Formant oscillators restarting each voicing period, distortion as random frequency modulation, a 3400 Hz output filter |
+| What Soft (18) does | Ignored; it is a real command (see PhraseALator above), but nothing describes its effect |
+| Whether 135 is OH and 136 AW | The manual's order is followed; PhraseALator has them swapped (see above) |
+
+None of this has been compared with a real SpeakJet. Recordings from one
+would settle most of it.
+
+### Not emulated
+
+| Chip feature | Here |
+|---|---|
+| Wait (16), and the Start that ends it | Accepted and ignored |
+| The Serial Control Protocol, entered by the escape character `\` (byte 92) and a node digit (`0` to `7` as text), then commands: EEPROM programming, direct access to the synthesizer registers, buffer clearing, baud rate and detune | Not modelled; the library takes the MSA byte stream only, and ignores 92 like any other reserved code, where a real chip would switch to control mode |
+| EEPROM phrases: Call Phrase (28), Goto Phrase (29) and the 16 phrase cells | Ignored; the contents of the AtariVox's SpeakJet EEPROM aren't known |
+| The power-up and reset announcement (the chip says "ready" unless configured not to) | Not made; a new or reset chip is silent |
+| The eight Event Inputs, including RC servo mode | Not modelled; the AtariVox doesn't use them |
+| Port control and output (24, 25) and the status pins in user mode | Ignored |
+| The Auto Silence setting | Always on, the chip's factory default |
+| The D0 Ready line (self-test passed) | Not provided; the library is always ready. Buffer Half Full and Speaking are |
+| Serial timing (baud rate) | Not modelled; the library takes whole bytes |
 
 ## The C API's additions
 

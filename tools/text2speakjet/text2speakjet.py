@@ -36,6 +36,7 @@ Inline markup, mixed freely with the text:
     [relax] [reset] [wait] [pause 0-6] [p0-p6]     control codes
     {OHIY TT} {M2} {200}                           raw allophones/SFX/bytes
     (HH AH1 S K)                                   ARPAbet for one word
+    [digits]                                       numbers digit by digit, to the next word
 Persistent controls (pitch, speed, volume, bend...) get a Reset (31) added
 at the end unless --no-reset.
 
@@ -775,19 +776,41 @@ def number_words(n):
     return []
 
 
-def expand_number(tok):
-    whole, _, frac = tok.partition(".")
-    words = number_words(int(whole))
+def digit_words(digits):
+    return [_ONES[int(d)] for d in digits]
+
+
+def expand_number(tok, digits=False):
+    """'42' -> forty two. Read digit by digit when asked (digits=True), when
+    there are two or more dots (an IP address or version number: 'one nine
+    two dot one six eight...') or when it starts with a zero ('007': 'zero
+    zero seven'). Commas grouping thousands are ignored."""
+    if tok.count(".") >= 2:
+        words = []
+        for i, part in enumerate(tok.split(".")):
+            words += (["dot"] if i else []) + digit_words(part)
+        return words
+    whole, _, frac = tok.replace(",", "").partition(".")
+    if digits:
+        words = digit_words(whole)
+    elif len(whole) > 1 and whole[0] == "0":
+        words = digit_words(whole)
+    else:
+        words = number_words(int(whole))
     if frac:
-        words += ["point"] + [_ONES[int(d)] for d in frac]
+        words += ["point"] + digit_words(frac)
     return words
 
 
 # ---------------------------------------------------------------------------
 # Phrase builder
 
+# numbers: dotted (192.168.1.1, two or more dots), grouped in thousands
+# (1,000,000: exactly three digits after each comma, so "1, 2, 3" stays a
+# list), or plain, with an optional decimal part
+NUMBER_RE = r"\d+(?:\.\d+){2,}|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?"
 TOKEN_RE = re.compile(
-    r"\[[^\]]*\]|\{[^}]*\}|\([^)]*\)|\d+(?:\.\d+)?|[A-Za-z]+(?:'[A-Za-z]+)*"
+    r"\[[^\]]*\]|\{[^}]*\}|\([^)]*\)|" + NUMBER_RE + r"|[A-Za-z]+(?:'[A-Za-z]+)*"
     r"|\.\.\.|…|--|—|[.,;:!?\-]|\S")
 PUNCTUATION_PAUSE = {
     ",": [2], ";": [2], ":": [2], ".": [3], "!": [3], "?": [3],
@@ -838,16 +861,21 @@ class Converter:
             prefix += [21, args.speed]
 
         words = []              # (kind, payload, label)
+        digits = False          # [digits]: numbers read digit by digit, up to the next word
         for tok in TOKEN_RE.findall(text):
+            if re.fullmatch(r"\[\s*digits\s*\]", tok, re.I):
+                digits = True
+                continue
             if tok[0] in "[{":
                 words.append(("codes", tok[1:-1], tok))
             elif tok[0] == "(":
                 words.append(("arpa", tok[1:-1], tok))
             elif tok[0].isdigit():
-                for w in expand_number(tok):
+                for w in expand_number(tok, digits):
                     words.append(("word", w, w))
             elif tok[0].isalpha():
                 words.append(("word", tok, tok))
+                digits = False
             elif tok in PUNCTUATION_PAUSE:
                 words.append(("punct", tok, tok))
             elif tok not in "\"'`":

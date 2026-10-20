@@ -79,6 +79,33 @@ class Numbers(unittest.TestCase):
     def test_spoken(self):
         self.assertEqual(dec("42"), dec("forty two"))
 
+    def test_thousands_separators(self):
+        self.assertEqual(t2s.expand_number("1,000,000"), ["one", "million"])
+        self.assertEqual(t2s.expand_number("2,500.75"),
+                         ["two", "thousand", "five", "hundred", "point", "seven", "five"])
+        self.assertEqual(dec("1,000,000"), dec("one million"))
+        # a list stays a list: only groups of exactly three digits join
+        self.assertEqual(dec("1, 2, 3"), dec("one, two, three"))
+
+    def test_dotted_numbers(self):
+        self.assertEqual(t2s.expand_number("192.168.1.1"),
+                         "one nine two dot one six eight dot one dot one".split())
+        self.assertEqual(dec("version 1.2.3"), dec("version one dot two dot three"))
+        # one dot is still a decimal point
+        self.assertEqual(t2s.expand_number("3.5"), ["three", "point", "five"])
+
+    def test_leading_zeros(self):
+        self.assertEqual(t2s.expand_number("007"), ["zero", "zero", "seven"])
+        self.assertEqual(t2s.expand_number("0"), ["zero"])
+        self.assertEqual(t2s.expand_number("0.5"), ["zero", "point", "five"])
+
+    def test_digits_markup(self):
+        self.assertEqual(dec("[digits] 5551234"), dec("five five five one two three four"))
+        # every number up to the next word, so a phone number reads whole
+        self.assertEqual(dec("call [digits] 555-1234 now 42"),
+                         dec("call five five five - one two three four now forty two"))
+        self.assertNotEqual(dec("5551234"), dec("[digits] 5551234"))
+
 
 class Markup(unittest.TestCase):
     def test_raw_codes(self):

@@ -127,7 +127,13 @@ sounds (AWRR, EHLL, IYUW...). It also adds:
   (pause code) or turn it off with `--word-gap none`.
 - **Pauses for punctuation:** `,` `;` `:` 200ms, `...` and `--` 300ms, `.` `!`
   `?` 700ms. A pause at the very end is dropped.
-- **Numbers as words:** `42` is spoken "forty two", `3.5` "three point five".
+- **Numbers as words:** `42` is spoken "forty two" and `3.5` "three point
+  five". Commas grouping thousands are understood (`1,000,000` is "one
+  million"; `1, 2, 3` is still a list). Two or more dots are read digit by
+  digit (`192.168.1.1` is "one nine two dot one six eight dot one dot one"),
+  and so is a number starting with zero (`007` is "zero zero seven"). Put
+  `[digits]` before a number to read it digit by digit too, such as a phone
+  number: `[digits] 555-1234`. It lasts until the next word.
 
 ## Fine-tuning inside the text
 
@@ -143,6 +149,7 @@ Mix these into the text wherever you need them.
 | `[bend 5]` | Bend, 0-15 |
 | `[fast]` `[slow]` `[stress]` `[relax]` `[soft]` | apply to the next sound only (`[soft]`, code 18, comes from PhraseALator; the manual doesn't list it, and the speakjet library ignores it) |
 | `[pause 0-6]` or `[p0]`-`[p6]` | 0, 100, 200, 700, 30, 60, 90ms |
+| `[digits]` | read the numbers that follow digit by digit, up to the next word (not a SpeakJet code) |
 | `[reset]` `[wait]` | Reset, Wait |
 
 A pause written in brackets replaces the normal pause between words at that
@@ -268,3 +275,7 @@ PhraseALator itself did, but with the SpeakJet manual's names for the codes;
   `[pitch]` markup (or `--intonation` as a starting point) for that.
 - Where a word has more than one pronunciation in the dictionary, the first
   one is used. Use `(...)` or `exceptions.txt` to choose another.
+- Words are split at hyphens and digits, so `x-ray` is "x" and "ray". Write
+  `xray`, or add the word to `exceptions.txt`.
+- The PhraseALator spellings were tuned by ear on a real SpeakJet, not on
+  the speakjet library's emulation of it; `--no-phrasealator` compares.
