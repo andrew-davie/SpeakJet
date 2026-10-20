@@ -8,3 +8,4 @@
 Makefile text eol=lf
 *.pdf binary
 *.Dic -text
+*.zip binary

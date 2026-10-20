@@ -60,6 +60,10 @@ CMUDICT_PATH = os.path.join(HERE, "cmudict.dict.gz")
 EXCEPTIONS_PATH = os.path.join(HERE, "exceptions.txt")
 PHRASEALATOR_PATH = os.path.join(HERE, "phrasealator.txt")
 
+# The PhraseALator EULA lets its parts be used in other programs "as long as
+# the following clause is prominently displayed during the use"
+MAGNEVATION_NOTICE = "Portions of this program are provided by and copyrighted by Magnevation LLC."
+
 
 # ---------------------------------------------------------------------------
 # MSA codes (SpeakJet user manual). Durations in ms at the default speed.
@@ -108,7 +112,10 @@ NAME = {c: n for n, c in CODE.items()}
 ALIASES = {"EHLE": "EHLL"}
 
 PAUSE_MS = [0, 100, 200, 700, 30, 60, 90]
-SINGLE_CONTROLS = {"FAST": 7, "SLOW": 8, "STRESS": 14, "RELAX": 15, "WAIT": 16, "RESET": 31}
+# SOFT (18) isn't in the SpeakJet manual. It comes from Magnevation's
+# PhraseALator, which sends it before a sound ("Play the Next Sound Soft"); its
+# dictionary uses it, mostly before BE/BO. The speakjet library ignores it.
+SINGLE_CONTROLS = {"FAST": 7, "SLOW": 8, "STRESS": 14, "RELAX": 15, "WAIT": 16, "SOFT": 18, "RESET": 31}
 for _i in range(7):
     SINGLE_CONTROLS["P%d" % _i] = _i
 # name: (code, max argument). These persist until changed or Reset.
@@ -183,8 +190,8 @@ def describe(codes):
             continue
         if c <= 6:
             item("pause %dms" % PAUSE_MS[c])
-        elif c in (7, 8, 14, 15):
-            run.append(CONTROL_NAME[c])         # FAST/SLOW/STRESS/RELAX read with the allophones
+        elif c in (7, 8, 14, 15, 18):
+            run.append(CONTROL_NAME[c])         # FAST/SLOW/STRESS/RELAX/SOFT read with the allophones
         elif c in CONTROL_NAME:
             item(CONTROL_NAME[c].lower())
         elif c in NAME:
@@ -269,6 +276,7 @@ class Lexicon:
         self.cmu = {}
         self.exceptions = {}
         self.phrasealator = {}
+        self.used_phrasealator = False      # the EULA's notice is then shown
         if not os.path.exists(CMUDICT_PATH):
             sys.exit("text2speakjet: missing %s" % CMUDICT_PATH)
         with gzip.open(CMUDICT_PATH, "rt", encoding="utf-8") as f:
@@ -313,6 +321,7 @@ class Lexicon:
         # after the weak forms: PhraseALator's "a" is the letter name
         if w in self.phrasealator:
             kind, data = self.phrasealator[w]
+            self.used_phrasealator = True
             return kind, data, "phrasealator"
         if w in self.cmu:
             return "arpa", parse_arpabet(self.cmu[w]), "cmudict"
@@ -1019,7 +1028,8 @@ def main():
     ap = argparse.ArgumentParser(
         description="Convert English text to SpeakJet (AtariVox) MSA codes.",
         epilog="Markup: [pitch 96] [speed 86] [fast] [slow] [stress] [pause 0-6] [reset]; "
-               "{RAW ALLOPHONES or numbers}; (ARPAbet for one word). See the script header for details.")
+               "{RAW ALLOPHONES or numbers}; (ARPAbet for one word). See the script header for details. "
+               + MAGNEVATION_NOTICE + " (the PhraseALator dictionary, phrasealator.txt)")
     ap.add_argument("text", nargs="*", help="text to convert (omit to read a phrase file from -f or stdin)")
     ap.add_argument("-f", "--file", help="phrase file: one 'name: text' per line")
     ap.add_argument("-o", "--output", help="output file (default stdout)")
@@ -1102,6 +1112,9 @@ def main():
 
     for w in dict.fromkeys(conv.warnings):
         print("warning: " + w, file=sys.stderr)
+    if lexicon.used_phrasealator:
+        # required by the PhraseALator EULA for programs using its parts
+        print(MAGNEVATION_NOTICE, file=sys.stderr)
 
     if args.format == "bin":
         data = emit_bin(built, args)

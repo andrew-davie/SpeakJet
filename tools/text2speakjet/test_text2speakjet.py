@@ -129,19 +129,54 @@ class PhraseALator(unittest.TestCase):
         lex = t2s.Lexicon([], None)
         self.assertEqual(lex.lookup("hello")[2], "cmudict")
 
+    def convert(self, *lines):
+        return dict(cpa.convert(["[words]"] + list(lines))[0])
+
     def test_conversion(self):
-        words, skipped = cpa.convert([
-            "[words]",
+        words = self.convert(
             "well = \\WW \\Fast \\EHLE ",
             "bird=\\FAST \\SOFT \\BE \\AXRR \\ED",
-            "fxtest=\\Reset testing,, one",
-            "x-ray= \\EH \\EK \\SE",
-        ])
-        self.assertEqual(words, [("well", "WW FAST EHLL"), ("bird", "FAST BE AXRR ED")])
-        self.assertEqual(skipped, ["fxtest", "x-ray"])
+            # words looked up; each comma is P2, two spaces P6; a note is
+            # Pitch and its frequency; \\120 is a byte
+            "fxtest=\\Reset well,, bird  \\NTA2 \\SPEED \\120",
+            "x-ray= \\EH \\EK \\SE")
+        self.assertEqual(words["well"], "WW FAST EHLL")
+        self.assertEqual(words["bird"], "FAST SOFT BE AXRR ED")
+        self.assertEqual(words["fxtest"],
+                         "RESET WW FAST EHLL P2 P2 FAST SOFT BE AXRR ED P6 PITCH 110 SPEED 120")
+        self.assertNotIn("x-ray", words)
+
+    def test_conversion_quirks(self):
+        words = self.convert(
+            "sharp=\\NTA#2",          # the '#' is dropped, as in PhraseALator
+            "spaces=\\IY   \\IY",     # three or more spaces: P4 P1
+            "saw=\\SE \\AW",         # the manual's AW (136), not PhraseALator's 135
+            "slip=\\BEND \\C0",      # a value past the range stays as raw bytes
+            "unknown=\\IY \\XYZZY")  # unknown codes are dropped
+        self.assertEqual(words["sharp"], "PITCH 110")
+        self.assertEqual(words["spaces"], "IY P4 P1 IY")
+        self.assertEqual(t2s.parse_codes(words["saw"]), [187, 136])
+        self.assertEqual(words["slip"], "23 230")
+        self.assertEqual(words["unknown"], "IY")
+
+    def test_notes_match_phrasealator(self):
+        self.assertEqual(cpa.NOTES["NTC1"], 33)
+        self.assertEqual(cpa.NOTES["NTA2"], 110)
+        self.assertEqual(cpa.NOTES["NTF#2"], 93)
+        self.assertEqual(cpa.NOTES["NTB3"], 247)
+
+    def test_soft(self):
+        self.assertEqual(t2s.parse_codes("SOFT BE"), [18, 170])
+        self.assertEqual(dec("[soft] {BE}"), [18, 170])
+        self.assertIn("SOFT BE", run("{SOFT BE}").stdout)
+
+    def test_magnevation_notice(self):
+        notice = "Portions of this program are provided by and copyrighted by Magnevation LLC."
+        self.assertIn(notice, run("hello").stderr)
+        self.assertNotIn(notice, run("hello", CMU).stderr)
 
     def test_converted_file_is_up_to_date(self):
-        src = os.path.join(ROOT, "docs", "reference", "PhraseALator.Dic")
+        src = cpa.DEFAULT_SRC
         committed = os.path.join(HERE, "phrasealator.txt")
         if not (os.path.exists(src) and os.path.exists(committed)):
             self.skipTest("PhraseALator files not present")

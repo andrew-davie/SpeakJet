@@ -97,8 +97,9 @@ what joins one sound smoothly to the next.
 - **Commands with no effect.** Wait (16), port control and output (24, 25)
   and the EEPROM phrase commands (28, 29) are accepted but do nothing. There
   is no serial control protocol to restart a wait, no output pins, and the
-  contents of the AtariVox's SpeakJet EEPROM aren't known. Unknown codes,
-  including 255, are ignored.
+  contents of the AtariVox's SpeakJet EEPROM aren't known. Soft (18), which
+  the manual doesn't list (see below), is ignored too, as are unknown codes,
+  including 255.
 
 ## Allophone names
 
@@ -114,6 +115,29 @@ Guide*'s example phrase, and Mike McCauley's Arduino SpeakJet library
 (`Phoneme_EHLE = 159`). The two names mean the same byte, so the choice
 doesn't affect the sound. text2speakjet accepts EHLE as an alias on input
 and writes EHLL.
+
+## Magnevation's PhraseALator
+
+Magnevation's PhraseALator software (in
+[`reference/phrasealator/`](reference/phrasealator/), deprecated and kept for
+reference only) shipped with its Visual Basic source, and its code table
+settles two things the manual doesn't:
+
+- **Soft (18).** The manual's command list goes from Wait (16) to Volume
+  (20). PhraseALator has a button for code 18, "Play the Next Sound Soft",
+  and its dictionary uses it, mostly just before BE or BO. So it is a real
+  command the manual leaves out. Nothing says what it does to the sound, so
+  the library ignores it; text2speakjet accepts `SOFT` and `[soft]`, and
+  keeps it where the dictionary has it, so a real chip still gets it.
+- **Notes.** Its `\NTC1` to `\NTB3` buttons send Pitch with the note's
+  frequency in Hz, which agrees with the manual saying Pitch is in Hz.
+
+It also disagrees with the manual about two codes: it calls 135 AW and 136
+OH, where both editions of the manual have 135 OH ("Hot, Clock, Fox") and 136
+AW ("Father, Fall"). Its dictionary's spellings use the manual's names, so
+PhraseALator sent the two vowels swapped. The library and text2speakjet
+follow the manual. A real SpeakJet would settle it: send 183 135 191 and
+183 136 191 and listen for which says "hot".
 
 ## Synthesizer
 

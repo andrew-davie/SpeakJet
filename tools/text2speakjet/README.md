@@ -13,8 +13,8 @@ one folder:
 | `cmudict.dict.gz` | CMU Pronouncing Dictionary (~134,000 words) |
 | `LICENSE.cmudict` | the dictionary's licence (keep it with the dictionary) |
 | `exceptions.txt` | your own pronunciations, checked before the dictionary |
-| `phrasealator.txt` | Magnevation's SpeakJet spellings of 1,423 words (optional; not MIT licensed, see below) |
-| `convert_phrasealator.py` | rebuilds `phrasealator.txt` from `docs/reference/PhraseALator.Dic` |
+| `phrasealator.txt` | Magnevation's SpeakJet spellings of 1,423 words and 25 sound effect phrases (optional; not MIT licensed, see below) |
+| `convert_phrasealator.py` | rebuilds `phrasealator.txt` from `docs/reference/phrasealator/PhraseALator.Dic` |
 | `test_text2speakjet.py` | its tests (`python3 test_text2speakjet.py`; `make test` runs them too) |
 
 ## Quick start
@@ -141,7 +141,7 @@ Mix these into the text wherever you need them.
 | `[speed 86]` | Speed, 0-127 (default 114) |
 | `[volume 100]` | Volume, 0-127 |
 | `[bend 5]` | Bend, 0-15 |
-| `[fast]` `[slow]` `[stress]` `[relax]` | apply to the next sound only |
+| `[fast]` `[slow]` `[stress]` `[relax]` `[soft]` | apply to the next sound only (`[soft]`, code 18, comes from PhraseALator; the manual doesn't list it, and the speakjet library ignores it) |
 | `[pause 0-6]` or `[p0]`-`[p6]` | 0, 100, 200, 700, 30, 60, 90ms |
 | `[reset]` `[wait]` | Reset, Wait |
 
@@ -232,17 +232,33 @@ python3 tools/text2speakjet/text2speakjet.py --format bin -o hello.bin "Hello"
 
 `phrasealator.txt` holds the SpeakJet spellings Magnevation made by hand for
 the dictionary supplied with its PhraseALator software, converted to this
-tool's format. They were tuned for the real chip, so for the 1,423 words it
+tool's format. They were tuned on the real chip, so for the 1,423 words it
 covers they're used ahead of the CMU dictionary. `-v` shows `[phrasealator]`
 for those words.
 
-The spellings are Magnevation's, not covered by this repository's MIT licence
-(see `docs/reference/README.md`). The tool works without them: run with
-`--no-phrasealator`, or delete `phrasealator.txt`, and the CMU dictionary is
-used instead. Your own `exceptions.txt` is always checked first.
+It also has 25 of PhraseALator's sound effect phrases, which you use like
+words: `fxalarm`, `fxalpha`, `fxburp`, `fxcountdown`, `fxcrickets`,
+`fxdanger`, `fxfrogs`, `fxmonths`, `fxnumbers`, `fxping`, `fxsongscales`,
+`fxufo`, `fxwomwom` and others (see the file for the full list).
+
+The spellings are Magnevation's, used under the terms of PhraseALator's
+licence and not covered by this repository's MIT licence (see
+`docs/reference/phrasealator/README.md`). That licence asks for this notice
+to be shown when its parts are used, so the tool prints it whenever it uses
+a word from the file:
+
+```
+Portions of this program are provided by and copyrighted by Magnevation LLC.
+```
+
+The tool works without the file: run with `--no-phrasealator`, or delete
+`phrasealator.txt`, and the CMU dictionary is used instead. Your own
+`exceptions.txt` is always checked first.
 
 `convert_phrasealator.py` rebuilds `phrasealator.txt` from the original
-`docs/reference/PhraseALator.Dic`; `make phrasealator` runs it.
+`docs/reference/phrasealator/PhraseALator.Dic`, converting each entry the way
+PhraseALator itself did, but with the SpeakJet manual's names for the codes;
+`make phrasealator` runs it.
 
 ## Limits
 
