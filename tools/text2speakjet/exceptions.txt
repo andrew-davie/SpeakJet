@@ -1,0 +1,8 @@
+# Pronunciations for text2speakjet.py, checked before the CMU dictionary.
+# word  ARPAbet (stress digits 1/2/0 on vowels; optional)
+# word  {SpeakJet codes}   -- used exactly as written, no STRESS/FAST added
+#
+# Add the names and made-up words your program says here.
+
+atarivox    AE1 T AA0 R IY0 V AA2 K S
+speakjet    S P IY1 K JH EH2 T

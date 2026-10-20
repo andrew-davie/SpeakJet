@@ -1,0 +1,15 @@
+# Sample phrases: name: text, in text2speakjet's markup.
+# `make samples` turns these into codes.txt and one WAV per phrase.
+# The WAVs are also the reference the tests compare the library against.
+
+hello: Hello, world.
+intro: This is the SpeakJet, the speech chip inside the AtariVox.
+pangram: The quick brown fox jumps over the lazy dog.
+countdown: Ten, nine, eight, seven, six, five, four, three, two, one. Lift off!
+pitch: [pitch 60] A low voice. [pitch 140] A high voice.
+speed: [speed 70] Slowly now. [speed 127] And now quickly.
+stress: [stress] Danger. [relax] Danger. [fast] Danger. [slow] Danger.
+robot: [bend 1] I am a robot. [bend 12] I am a robot.
+effects: {R0 R3 R6 R9} [p2] {A0 A4 A7} [p2] {B2 B9 C0} [p2] {C8 C9 M0 M1 M2}
+dtmf: {D1 D2 D3 D4 D5 D6 D7 D8 D9 D10 D0 D11}
+repeat: {26 4 KE} [p2] {26 3 A1}

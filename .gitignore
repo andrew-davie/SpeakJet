@@ -1,0 +1,14 @@
+# build output
+*.o
+*.a
+/sjwav
+/sjwav.exe
+/tests/speakjet_test
+/tests/reference_test
+*.exe
+
+# python
+__pycache__/
+*.pyc
+
+.DS_Store
