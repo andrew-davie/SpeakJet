@@ -95,9 +95,12 @@ static void synth_init(synth *s) {
   memset(s, 0, sizeof(*s));
   s->noise = 0x2545f491u;
 
-  /* butterworth low pass at 3400Hz, standing in for the "two pole" filter
-   * the manual places after the PWM output */
-  const double cutoff = 3400.0;
+  /* butterworth low pass for the "two pole" filter the manual places after
+   * the PWM output. its 2200Hz corner was fitted by the openFPGA-7800
+   * AtariVox engine (MIT licence) to a recording of the real chip, using a
+   * synthesizer like this one; the corner Stella's SpeakJet engine measured
+   * independently is close (1700Hz) */
+  const double cutoff = 2200.0;
   const double w = 2 * SJ_PI * cutoff / SJ_SAMPLE_RATE;
   const double alpha = sin(w) / SJ_SQRT2;
   const double cw = cos(w);
@@ -233,7 +236,21 @@ typedef struct sound {
 } sound;
 
 /* formant targets. frequencies are approximate values for an adult male
- * speaker, from published measurements of English vowels and consonants */
+ * speaker, from published measurements of English vowels and consonants,
+ * except where two independent measurements of the real chip agree.
+ *
+ * measured on the chip: where two independent measurements of a sound's
+ * formant agree, it is set to their mean. they agree when they are within 10%
+ * of each other or within 88Hz (the spacing of the voice's harmonics at the
+ * default pitch, about as finely as a formant can be read from a recording).
+ * the measurements are the openFPGA-7800 AtariVox engine's, read from
+ * recordings of games speaking (docs/ATARIVOX.md, MIT licence), and those
+ * behind Stella's SpeakJet engine (feature/speakjet branch). formants where the
+ * two disagree, or that only one of them measured, keep their published
+ * values:
+ *
+ *   OW: F1 F2      AX: F1 F2 F3   RR: F1 F2 F3   UX: F1 F2   IH: F1 F2 F3
+ *   MM: F1 F3      EY: F1 F2 F3   EH: F1 F2      AW: F2 */
 typedef struct formants {
   double f[3];
 } formants;
@@ -241,20 +258,20 @@ typedef struct formants {
 #define FM(a, b, c) ((formants){{(a), (b), (c)}})
 
 static const formants fIY = {{270, 2290, 3010}};
-static const formants fIH = {{390, 1990, 2550}};
-static const formants fEY = {{470, 2000, 2600}};
-static const formants fEH = {{530, 1840, 2480}};
+static const formants fIH = {{322, 1774, 2490}};
+static const formants fEY = {{508, 1820, 2425}};
+static const formants fEH = {{600, 1666, 2480}};
 static const formants fAY = {{660, 1720, 2410}};
-static const formants fAX = {{520, 1500, 2450}};
-static const formants fUX = {{640, 1190, 2390}};
+static const formants fAX = {{521, 1510, 2395}};
+static const formants fUX = {{613, 1328, 2390}};
 static const formants fOH = {{730, 1090, 2440}};
-static const formants fAW = {{590, 880, 2540}};
-static const formants fOW = {{480, 900, 2350}};
+static const formants fAW = {{590, 998, 2540}};
+static const formants fOW = {{512, 891, 2350}};
 static const formants fUH = {{440, 1020, 2240}};
 static const formants fUW = {{300, 870, 2240}};
 static const formants fAH = {{700, 1220, 2600}};
 static const formants fER = {{480, 1350, 1650}};
-static const formants fRR = {{350, 1100, 1450}};
+static const formants fRR = {{439, 1318, 1720}};
 static const formants fLE = {{360, 1300, 2700}};
 static const formants fLO = {{400, 900, 2500}};
 static const formants fWW = {{300, 650, 2200}};
@@ -463,7 +480,7 @@ static void allophone(sound *s, int code) {
   case 137: steady(s, 70, vowel_frame(fOW)); break;
   case 138: steady(s, 70, vowel_frame(fUH)); break;
   case 139: steady(s, 70, vowel_frame(fUW)); break;
-  case 140: steady(s, 70, nasal_frame(FM(250, 1000, 2200))); break; /* MM */
+  case 140: steady(s, 70, nasal_frame(FM(268, 1000, 2187))); break; /* MM */
   case 141: steady(s, 70, nasal_frame(FM(250, 1800, 2600))); break; /* NE */
   case 142: steady(s, 70, nasal_frame(FM(250, 1300, 2400))); break; /* NO */
   case 143: steady(s, 70, nasal_frame(FM(250, 2100, 2700))); break; /* NGE */
@@ -868,10 +885,16 @@ static double msa_bend_factor(const msa *m) {
 }
 
 /* the duration multiplier from the Speed control. the manual gives the range
- * and default but not the curve, so duration is taken to be inversely
- * proportional to speed */
+ * and default but not the curve. each step of speed changes the length by
+ * about 2%: exp(-0.02 (speed - 114)), the curve the openFPGA-7800 AtariVox
+ * engine fitted to recordings of games speaking at speeds 80 to 127 (MIT
+ * licence). measurements of the chip behind Stella's SpeakJet engine agree
+ * with it to within 8% from 60 to 114. above 114 and below 60 the two
+ * disagree with each other, though both make sounds shorter than an inverse
+ * law would at the top and longer at speed 40, so the curve is used for every
+ * speed */
 static double msa_speed_factor(const msa *m) {
-  return SJ_DEFAULT_SPEED / fmax2((double)m->speed, 8);
+  return exp(-0.02 * (double)(m->speed - SJ_DEFAULT_SPEED));
 }
 
 /* first frame of a sound after the controls in effect now. used to glide the

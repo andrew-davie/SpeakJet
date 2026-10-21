@@ -1,6 +1,6 @@
 # speakjet
 
-A clean room emulation of the Magnevation **SpeakJet** speech and sound
+An emulation of the Magnevation **SpeakJet** speech and sound
 synthesizer, the chip in the AtariVox peripheral for the Atari 2600, as a
 small C library. It also includes **text2speakjet**, which turns English text
 into SpeakJet codes, and **sjwav**, which renders codes to a WAV file.
@@ -117,7 +117,10 @@ sequencer and the synthesizer. It says what each takes from the SpeakJet
 User's Manual and what is a choice made here: the manual documents the
 synthesizer and the timings, but not the oscillator settings behind each
 allophone, so those are derived from published formant measurements of
-English speech.
+English speech. Where two independent sets of measurements of the real chip
+agree, they replace guesses: some formants of nine allophones, the Speed
+curve and the output filter's corner. `docs/design.md` explains how agreement
+was decided and lists every measured value.
 
 ## Layout
 
@@ -161,8 +164,10 @@ to build and how it should behave, reviewed and tested the results, including
 running the library in an Atari 2600 emulator's AtariVox, and edited them.
 
 The emulation is written from the SpeakJet User's Manual, as described in
-[`docs/design.md`](docs/design.md). Its behaviour is checked by the tests in
-`tests/` against the manual's figures and the reference samples.
+[`docs/design.md`](docs/design.md), and corrected where two independent sets
+of measurements of the real chip agree. No code or tables were taken from
+other SpeakJet emulations. Its behaviour is checked by the tests in `tests/`
+against the manual's figures and the reference samples.
 
 ## Credits
 
@@ -172,3 +177,10 @@ The letter-to-sound rules text2speakjet uses for words that aren't in the
 dictionary are from Elovitz, Johnson, McHugh and Shore, *Automatic
 Translation of English Text to Phonetics by Means of Letter-to-Sound Rules*,
 NRL Report 7948 (1976).
+
+The measured formants, Speed curve and output filter corner rest on two
+independent sets of measurements of the real SpeakJet: those of the AtariVox
+engine in [openFPGA-7800](https://github.com/Miasmark/openFPGA-7800) (MIT
+licence), taken from recordings of games speaking, and those behind Stella's
+SpeakJet engine (its `feature/speakjet` branch). Only values both agree on
+are used.

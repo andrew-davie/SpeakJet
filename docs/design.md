@@ -1,9 +1,17 @@
 # Design
 
-speakjet is a clean room emulation of the Magnevation SpeakJet. It was
-written from the *SpeakJet User's Manual* (Magnevation, revisions 1.0 and
-1.1, 2004, whose tables are identical) and from general phonetics. Copies of
-both are in [`reference/`](reference/). No other SpeakJet implementation was consulted.
+speakjet is an emulation of the Magnevation SpeakJet. It was written from the
+*SpeakJet User's Manual* (Magnevation, revisions 1.0 and 1.1, 2004, whose
+tables are identical) and from general phonetics. Copies of both are in
+[`reference/`](reference/).
+
+Where two independent sets of measurements of the real chip agree, they
+replace guesses: the [openFPGA-7800](https://github.com/Miasmark/openFPGA-7800)
+AtariVox engine's, read from recordings of games speaking (MIT licence), and
+those behind Stella's SpeakJet engine (its `feature/speakjet` branch). They
+set the output filter's corner, the Speed curve and some formants of nine
+allophones; see [Measurements of the real chip](#measurements-of-the-real-chip).
+No code or tables were taken from either.
 
 The manual documents the chip's synthesizer in some detail, but not the MSA
 "sound component database" that drives it: what oscillator settings make each
@@ -71,15 +79,20 @@ what joins one sound smoothly to the next.
 **Choices** (the manual gives no figures for these):
 
 - **Formants.** Each allophone's oscillator frequencies and volumes come from
-  published formant measurements of adult male English speech. Diphthongs
-  hold their first target, slide to the second, and briefly hold it. Stops
+  published formant measurements of adult male English speech, except 23
+  formants of nine allophones that two sets of measurements of the chip agree
+  on (see [Measurements of the real chip](#measurements-of-the-real-chip)).
+  Diphthongs hold their first target, slide to the second, and briefly hold
+  it. Stops
   are a closure (silence, or a low voice bar for voiced stops), a noise burst
   and then aspiration or voicing.
 - **Sound effects.** Apart from DTMF (standard tone pairs), the manual gives
   only names and lengths, so the effects are approximations built from the
   same oscillators. Their lengths match the manual.
-- **Speed.** Duration is taken to be inversely proportional to Speed, with
-  Speed held to 8 or more.
+- **Speed.** Each step of Speed changes a sound's length by about 2%:
+  exp(−0.02 (Speed − 114)), measured between Speeds 60 and 114 and
+  extrapolated outside them (see
+  [Measurements of the real chip](#measurements-of-the-real-chip)).
 - **Stress** raises the pitch by 12% and tenses the vowel (F1 × 0.94,
   F2 × 1.06). **Relax** does the opposite (pitch × 0.9, F1 × 1.06,
   F2 × 0.94). The manual says only that "with STRESS, IH sounds more like (but
@@ -161,7 +174,91 @@ follow the manual. A real SpeakJet would settle it: send 183 135 191 and
   envelope frequency is the voicing pitch.
 - Distortion is applied as random frequency modulation of oscillators 4 and
   5, from a xorshift noise source.
-- The output filter is a Butterworth low pass at 3400 Hz, after a DC blocker.
+- The output filter is a Butterworth low pass at 2200 Hz, after a DC blocker.
+  The corner is measured (see
+  [Measurements of the real chip](#measurements-of-the-real-chip)).
+
+## Measurements of the real chip
+
+### Sources
+
+- **openFPGA-7800's AtariVox engine** (MIT licence;
+  [`docs/ATARIVOX.md`](https://github.com/Miasmark/openFPGA-7800/blob/Mister-Pocket-Port/docs/ATARIVOX.md)).
+  It took the exact codes games send from their ROMs (Juno First, Stratovox,
+  Gorf, rubyQ), measured clean recordings of those games and of Magnevation's
+  alphabet demo, and fitted a synthesizer much like this one to them: sine
+  formants restarted each pitch period, a two-pole output filter, 8192 Hz.
+- **Stella's SpeakJet engine** (its `feature/speakjet` branch), whose
+  parameters were fitted to recordings of the chip.
+
+Neither is definitive. Each was fitted with its own model, and each has gaps.
+
+### Method
+
+1. Only what **both** sources measured is a candidate. A value from one source
+   alone is not used, however plausible.
+2. The tolerance was set before comparing: two measurements **agree** when
+   they are within **10% or 88 Hz** of each other, whichever is wider. 88 Hz is
+   the spacing of the voice's harmonics at the default pitch (88). A formant
+   read from a recording at that pitch can only be placed to within about one
+   harmonic, so a tighter tolerance would reject real agreement as noise.
+3. A value the two agree on is set to their **mean**, so neither source is
+   preferred over the other.
+4. Anything not confirmed **stays as it was**, including values where both
+   sources disagree with this library in the same direction but not with each
+   other.
+
+### Formants
+
+openFPGA measured nine allophones, and Stella has values for all of them. In
+Hz, as F1 / F2 / F3; "–" is a formant openFPGA didn't measure, and openFPGA's
+ranges are taken at their midpoints:
+
+| | openFPGA | Stella | Agree | Was | Now |
+|---|---|---|---|---|---|
+| AX | 520 / 1515 / 2400 | 523 / 1505 / 2390 | all | 520 / 1500 / 2450 | 521 / 1510 / 2395 |
+| RR | 438 / 1318 / 1763 | 440 / 1318 / 1676 | all | 350 / 1100 / 1450 | 439 / 1318 / 1720 |
+| IH | 300 / 1775 / 2520 | 344 / 1773 / 2460 | all | 390 / 1990 / 2550 | 322 / 1774 / 2490 |
+| EY | 480 / 1870 / 2460 | 535 / 1771 / 2390 | all | 470 / 2000 / 2600 | 508 / 1820 / 2425 |
+| OW | 495 / 904 / – | 529 / 879 / – | F1 F2 | 480 / 900 / 2350 | 512 / 891 / 2350 |
+| UX | 605 / 1335 / – | 622 / 1321 / – | F1 F2 | 640 / 1190 / 2390 | 613 / 1328 / 2390 |
+| EH | 590 / 1650 / – | 610 / 1681 / – | F1 F2 | 530 / 1840 / 2480 | 600 / 1666 / 2480 |
+| MM | 280 / 1150 / 2200 | 256 / 1420 / 2174 | F1 F3 | 250 / 1000 / 2200 | 268 / 1000 / 2187 |
+| AW | 610 / 1030 / – | 712 / 965 / – | F2 | 590 / 880 / 2540 | 590 / 998 / 2540 |
+
+The diphthongs built from these vowels change with them. Oscillator volumes
+are unchanged: only one source measured them.
+
+### Speed
+
+Duration is exp(−0.02 (Speed − 114)), openFPGA's fit to games speaking at
+Speeds 80 to 127. The measurements behind Stella's engine agree with it to
+within 8% from 60 to 114:
+
+| Speed | openFPGA | Stella | Was (114 / Speed) |
+|---|---|---|---|
+| 60 | 2.94 | 2.76 | 1.90 |
+| 80 | 1.97 | 2.12 | 1.43 |
+| 100 | 1.32 | 1.43 | 1.14 |
+| 114 | 1.00 | 1.00 | 1.00 |
+
+Above 114 and below 60 the two disagree with each other, so the curve is
+extrapolated there. Both contradict the old inverse law in the same direction
+(shorter at 127, longer at 40), so the curve is the better fit throughout.
+
+### Output filter
+
+A Butterworth low pass at 2200 Hz, after a DC blocker. openFPGA fitted 2200 Hz
+to the long-term spectrum of the alphabet recording, using a synthesizer like
+this one; Stella's measurement, made independently, is 1700 Hz. Both put the
+real voice's top end far below what the earlier 3400 Hz let through. Of the
+two, openFPGA's value is used because its model matches this library's.
+
+### Not used
+
+Bend, how fast formants move from one sound to the next, oscillator volumes,
+the other allophones and the sound effects are measured by at most one of
+the sources, so they remain the choices described above.
 
 ## What isn't known, and what isn't emulated
 
@@ -171,18 +268,18 @@ The manual doesn't say, so these are guesses (described above):
 
 | | What the library does |
 |---|---|
-| The oscillator settings behind each allophone | Built from published formant measurements of English speech, not from the chip |
+| The oscillator settings behind each allophone | Built from published formant measurements of English speech; only the formants that two sets of measurements of the chip agree on are from the chip, and no volumes are |
 | The sound effects, apart from DTMF | Approximations, with the manual's lengths |
 | How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties |
-| The Speed curve | Duration inversely proportional to Speed, Speed held to 8 or more |
+| The Speed curve below 60 and above 114 | The curve measured between them, extrapolated |
 | How much Stress and Relax change a sound | Pitch × 1.12 or × 0.9, with the first two formants shifted (the manual says only "a small amount") |
 | The Bend curve | A semitone per step either side of 5 |
-| The synthesizer's details | Formant oscillators restarting each voicing period, distortion as random frequency modulation, a 3400 Hz output filter |
+| The synthesizer's details | Formant oscillators restarting each voicing period, distortion as random frequency modulation |
 | What Soft (18) does | Ignored; it is a real command (see PhraseALator above), but nothing describes its effect |
 | Whether 135 is OH and 136 AW | The manual's order is followed; PhraseALator has them swapped (see above) |
 
-None of this has been compared with a real SpeakJet. Recordings from one
-would settle most of it.
+Apart from the measured values above, none of this has been compared with a
+real SpeakJet. Recordings from one would settle most of it.
 
 ### Not emulated
 

@@ -7,8 +7,8 @@
  */
 
 /*
- * speakjet: a clean room emulation of the SpeakJet speech and sound
- * synthesizer used in the AtariVox.
+ * speakjet: an emulation of the SpeakJet speech and sound synthesizer used
+ * in the AtariVox.
  *
  * Written by Claude, Anthropic's AI model, under the direction of Andrew
  * Davie. See "How it was made" in README.md.
