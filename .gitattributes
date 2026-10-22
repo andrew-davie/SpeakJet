@@ -1,5 +1,4 @@
-* linguist-vendored
-*.c linguist-vendored=false
+*.c linguist-vendored=true
 *.wav binary
 *.gz binary
 *.c text eol=lf
