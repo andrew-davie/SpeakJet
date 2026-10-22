@@ -12,6 +12,9 @@ one folder:
 | `text2speakjet.py` | the tool |
 | `cmudict.dict.gz` | CMU Pronouncing Dictionary (~134,000 words) |
 | `LICENSE.cmudict` | the dictionary's licence (keep it with the dictionary) |
+| `lts_cmu.json.gz` | letter-to-sound decision trees for words in no dictionary, from Festival |
+| `LICENSE.festival` | the trees' licence (keep it with them) |
+| `convert_festival_lts.py` | rebuilds `lts_cmu.json.gz` from Festival's `cmu_lts_rules.scm` |
 | `exceptions.txt` | your own pronunciations, checked before the dictionary |
 | `phrasealator.txt` | Magnevation's SpeakJet spellings of 1,423 words and 25 sound effect phrases (optional; not MIT licensed, see below) |
 | `convert_phrasealator.py` | rebuilds `phrasealator.txt` from `docs/reference/phrasealator/PhraseALator.Dic` |
@@ -104,12 +107,18 @@ Each word is looked up in this order:
 3. `phrasealator.txt`, the PhraseALator dictionary
 4. the CMU dictionary
 5. two dictionary words joined together (`moonbase` = `moon` + `base`)
-6. a guess from the spelling (the NRL letter-to-sound rules)
+6. a guess from the spelling: Festival's letter-to-sound decision trees,
+   trained on the CMU dictionary. On words the trees weren't trained on they get 43% of
+   words exactly right and 87% of sounds, against 24% and 78% for the 1976
+   NRL rules earlier versions used. A capitalised word of up to four letters
+   (an acronym), or one with no vowel, is spelled out instead: `FBX` is
+   "eff bee ex". A possessive not in a dictionary is the word plus S, Z or
+   IH Z, by the sound it ends with (`bus's` ends IH Z).
 
 Steps 5 and 6 are guesses, so the tool prints a warning for each one:
 
 ```
-warning: 'fnorbix' not in the dictionary -- spelling rules: F N AO1 R B IH0 K S
+warning: 'fnorbix' not in the dictionary -- letter-to-sound: F N AO1 R B IH0 K S
 ```
 
 If the guess sounds wrong, add the word to `exceptions.txt`.
@@ -134,6 +143,13 @@ sounds (AWRR, EHLL, IYUW...). It also adds:
   and so is a number starting with zero (`007` is "zero zero seven"). Put
   `[digits]` before a number to read it digit by digit too, such as a phone
   number: `[digits] 555-1234`. It lasts until the next word.
+- **Years, ordinals, money, times:** a four-figure number from 1000 to 1999
+  that isn't a round hundred is a year (`1984` "nineteen eighty four", `1066`
+  "ten sixty six", `1905` "nineteen oh five"); `21st` "twenty first"; `$5.50`
+  "five dollars and fifty cents"; `3:00` "three o'clock", `3:05` "three oh
+  five"; `%` "percent", `&` "and", `+` "plus", `=` "equals", `@` "at".
+- **Abbreviations:** dotted ones are spelled out (`U.S.A.`).
+- **"the"** is "thee" before a vowel sound ("thee apple"), "thuh" otherwise.
 
 ## Fine-tuning inside the text
 
@@ -200,7 +216,7 @@ the end automatically so later speech isn't affected. Turn that off with
 |---|---|
 | `--pitch N` | Pitch at the start of the phrase |
 | `--speed N` | Speed at the start of the phrase |
-| `--intonation [BASE]` | Pitch raised on stressed words and falling on the last word, around BASE (default 88). Adds 2 bytes per pitch change. |
+| `--intonation [BASE]` | Intonation around BASE Hz (default 88), after Festival's "simple" model: in each phrase the pitch falls gently from just above BASE, peaks on each content word's stressed syllable, and drops at the end, or rises for a question. The last syllable before each pause is lengthened (SLOW instead of FAST). Pitch is set only where it moves (2 bytes each); the speakjet library glides between. Words with a hand-made `[contour]` or `[pitch]` are left alone. |
 
 ## The exceptions file
 

@@ -74,7 +74,7 @@ class Numbers(unittest.TestCase):
     def test_expand(self):
         self.assertEqual(t2s.expand_number("42"), ["forty", "two"])
         self.assertEqual(t2s.expand_number("3.5"), ["three", "point", "five"])
-        self.assertEqual(t2s.expand_number("1066"), ["one", "thousand", "sixty", "six"])
+        self.assertEqual(t2s.expand_number("2066"), ["two", "thousand", "sixty", "six"])
 
     def test_spoken(self):
         self.assertEqual(dec("42"), dec("forty two"))
@@ -245,6 +245,80 @@ class PhraseALator(unittest.TestCase):
                            check=True, capture_output=True)
             with open(out, encoding="utf-8") as a, open(committed, encoding="utf-8") as b:
                 self.assertEqual(a.read(), b.read(), "rerun convert_phrasealator.py")
+
+
+class Normalisation(unittest.TestCase):
+    def words(self, text):
+        r = run("-v", CMU, text)
+        return [l.split()[0] for l in r.stderr.splitlines() if l.startswith("  ")]
+
+    def test_years(self):
+        self.assertEqual(t2s.expand_number("1984"), ["nineteen", "eighty", "four"])
+        self.assertEqual(t2s.expand_number("1066"), ["ten", "sixty", "six"])
+        self.assertEqual(t2s.expand_number("1905"), ["nineteen", "oh", "five"])
+        # a round hundred, or 2000 on, is a number
+        self.assertEqual(t2s.expand_number("1500"), ["one", "thousand", "five", "hundred"])
+        self.assertEqual(t2s.expand_number("2024"), ["two", "thousand", "twenty", "four"])
+
+    def test_ordinals_money_times_symbols(self):
+        self.assertEqual(self.words("21st 2nd 103rd"),
+                         "twenty first second one hundred third".split())
+        self.assertEqual(self.words("$5.50 $1 $0.05"),
+                         "five dollars and fifty cents one dollar five cents".split())
+        self.assertEqual(self.words("3:00 3:05 12:30"),
+                         "three o'clock three oh five twelve thirty".split())
+        self.assertEqual(self.words("50% & 2"), "fifty percent and two".split())
+
+    def test_spelling_out(self):
+        r = run("-v", CMU, "the U.S.A. and the BBC and FBX")
+        self.assertIn("Y UW1 EH1 S EY1", r.stderr)         # dotted: always spelled
+        self.assertIn("[spelled]", r.stderr)                # FBX: capitals, no entry
+        self.assertIn("[cmudict]", r.stderr)                # BBC: the dictionary has it
+
+    def test_possessive(self):
+        r = run("-v", CMU, "bus's")
+        self.assertIn("IH0 Z", r.stderr)
+        self.assertIn("+ 's", r.stderr)
+
+    def test_the_before_a_vowel(self):
+        self.assertIn("[the before a vowel]", run("-v", "the apple").stderr)
+        self.assertIn("[the before a vowel]", run("-v", "the [stress] owl").stderr)
+        self.assertNotIn("[the before a vowel]", run("-v", "the cat").stderr)
+
+
+class LetterToSound(unittest.TestCase):
+    def test_festival_trees(self):
+        # unknown words go through Festival's trees (checked against Festival 2.5 itself)
+        syms = [s for s, _ in t2s.letter_to_sound("zorgblatt")]
+        self.assertEqual(syms, "Z AO R G B L AH T".split())
+        self.assertIn("letter-to-sound", run("fnorbix").stderr)
+
+    def test_tidied(self):
+        # no doubled consonant ("trillian": Festival gives L L), one primary stress
+        self.assertNotIn(("L", None), list(zip(*[iter([p for p in t2s.letter_to_sound("trillian")
+                                                       if p[0] == "L"])] * 2)))
+        self.assertEqual(sum(1 for _, st in t2s.letter_to_sound("swilint") if st == 1), 1)
+
+
+class Intonation(unittest.TestCase):
+    def test_statement_falls_and_question_rises(self):
+        statement = dec("hello there", "--intonation", CMU)
+        question = dec("hello there?", "--intonation", CMU)
+        last_pitch = lambda codes: [codes[i + 1] for i in range(len(codes) - 1) if codes[i] == 22][-1]
+        self.assertLess(last_pitch(statement), 88)
+        self.assertGreater(last_pitch(question), 88)
+
+    def test_accent_and_lengthening(self):
+        codes = dec("welcome home", "--intonation", CMU)
+        pitches = [codes[i + 1] for i in range(len(codes) - 1) if codes[i] == 22]
+        self.assertGreater(max(pitches), 88 + 0.6 * 18)     # an accent peak
+        self.assertIn(8, codes)                             # SLOW on the last syllable
+
+    def test_hand_pitch_left_alone(self):
+        codes = dec("[contour 140] hello there", "--intonation", CMU)
+        hello = codes[:codes.index(4)]                      # up to the word gap
+        pitches = [hello[i + 1] for i in range(len(hello) - 1) if hello[i] == 22]
+        self.assertEqual(pitches, [140])                    # only the hand-made one
 
 
 class Formats(unittest.TestCase):

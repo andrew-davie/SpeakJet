@@ -20,8 +20,9 @@ Pipeline: each word is looked up in the exceptions file, then the converted
 PhraseALator dictionary (Magnevation's own SpeakJet spellings, if
 phrasealator.txt is present; --no-phrasealator skips it), then the CMU
 Pronouncing Dictionary (ARPAbet with stress), then tried as two dictionary
-words joined ("moonbase" = moon + base), and last guessed with the NRL
-letter-to-sound rules (Elovitz et al., 1976). Anything not from the dictionary
+words joined ("moonbase" = moon + base), and last guessed with letter-to-sound
+decision trees (Festival's, trained on the CMU dictionary; lts_cmu.json.gz).
+"the" is "thee" before a vowel. Anything not from the dictionary
 or exceptions is reported on stderr -- add it to exceptions.txt to fix it.
 
 ARPAbet is then mapped to SpeakJet allophones by context: front/back variants
@@ -54,6 +55,7 @@ optional) or SpeakJet codes in braces, used exactly as written:
 
 import argparse
 import gzip
+import json
 import os
 import re
 import sys
@@ -329,12 +331,25 @@ class Lexicon:
             return kind, data, "phrasealator"
         if w in self.cmu:
             return "arpa", parse_arpabet(self.cmu[w]), "cmudict"
+        # in no dictionary: an acronym or a word with no vowel is spelled out
+        if (word.isupper() and 2 <= len(word) <= 4) or not re.search("[aeiouy]", w):
+            return "arpa", parse_arpabet(spell(w)), "spelled"
+        # a possessive: the word, then S, Z or IH Z after the sound it ends with
+        m = re.fullmatch(r"(.+)'s", w)
+        if m:
+            kind, data, source = self.lookup(m.group(1))
+            if kind == "raw":
+                return "raw", list(data) + [CODE["ZZ"]], source + " + 's"
+            last = data[-1][0] if data else ""
+            ending = ("IH0 Z" if last in ("S", "Z", "SH", "ZH", "CH", "JH")
+                      else "S" if last in ("P", "T", "K", "F", "TH") else "Z")
+            return "arpa", data + parse_arpabet(ending), source + " + 's"
         split = self.compound(w)
         if split:
             a, b = split
             second = [(s, 2 if st == 1 else st) for s, st in parse_arpabet(self.cmu[b])]
             return "arpa", parse_arpabet(self.cmu[a]) + second, "GUESS: %s + %s" % (a, b)
-        return "arpa", letter_to_sound(w), "GUESS: spelling rules"
+        return "arpa", letter_to_sound(w), "GUESS: letter-to-sound"
 
     def compound(self, w):
         best = None
@@ -347,225 +362,53 @@ class Lexicon:
 
 
 # ---------------------------------------------------------------------------
-# NRL letter-to-sound rules (Elovitz, Johnson, McHugh & Shore, NRL Report 7948,
-# 1976). (left context, match, right context, ARPAbet). Context symbols:
-#   #  one or more vowels          :  zero or more consonants
-#   ^  one consonant               .  one voiced consonant (B D V G J L M N R W Z)
-#   +  E, I or Y                   %  suffix: ER E ES ED ING ELY (right only)
-#   &  sibilant (S C G Z X J CH SH)    @  T S R D L Z N J TH CH SH
-#   space  word boundary
+# Letter to sound, for words in no dictionary: Festival's decision trees for
+# the CMU lexicon (lts_cmu.json.gz, made by convert_festival_lts.py; see
+# LICENSE.festival). One tree per letter, asking about the letters up to three
+# places either side; each leaf is the phones that letter makes.
 
-NRL_RULES = [
-    (" ", "A", " ", "AH"), (" ", "ARE", " ", "AA R"), (" ", "AR", "O", "AH R"),
-    ("", "AR", "#", "EH R"), ("^", "AS", "#", "EY S"), ("", "A", "WA", "AH"),
-    ("", "AW", "", "AO"), (" :", "ANY", "", "EH N IY"), ("", "A", "^+#", "EY"),
-    ("#:", "ALLY", "", "AH L IY"), (" ", "AL", "#", "AH L"), ("", "AGAIN", "", "AH G EH N"),
-    ("#:", "AG", "E", "IH JH"), ("", "A", "^+:#", "AE"), (" :", "A", "^+ ", "EY"),
-    ("", "A", "^%", "EY"), (" ", "ARR", "", "AH R"), ("", "ARR", "", "AE R"),
-    (" :", "AR", " ", "AA R"), ("", "AR", " ", "ER"), ("", "AR", "", "AA R"),
-    ("", "AIR", "", "EH R"), ("", "AI", "", "EY"), ("", "AY", "", "EY"), ("", "AU", "", "AO"),
-    ("#:", "AL", " ", "AH L"), ("#:", "ALS", " ", "AH L Z"), ("", "ALK", "", "AO K"),
-    ("", "AL", "^", "AO L"), (" :", "ABLE", "", "EY B AH L"), ("", "ABLE", "", "AH B AH L"),
-    ("", "ANG", "+", "EY N JH"), ("", "A", "", "AE"),
-
-    (" ", "BE", "^#", "B IH"), ("", "BEING", "", "B IY IH NG"), (" ", "BOTH", " ", "B OW TH"),
-    (" ", "BUS", "#", "B IH Z"), ("", "BUIL", "", "B IH L"), ("", "B", "", "B"),
-
-    (" ", "CH", "^", "K"), ("^E", "CH", "", "K"), ("", "CH", "", "CH"), (" S", "CI", "#", "S AY"),
-    ("", "CI", "A", "SH"), ("", "CI", "O", "SH"), ("", "CI", "EN", "SH"), ("", "C", "+", "S"),
-    ("", "CK", "", "K"), ("", "COM", "%", "K AH M"), ("", "C", "", "K"),
-
-    ("#:", "DED", " ", "D IH D"), (".E", "D", " ", "D"), ("#:^E", "D", " ", "T"),
-    (" ", "DE", "^#", "D IH"), (" ", "DO", " ", "D UW"), (" ", "DOES", "", "D AH Z"),
-    (" ", "DOING", "", "D UW IH NG"), (" ", "DOW", "", "D AW"), ("", "DU", "A", "JH UW"),
-    ("", "D", "", "D"),
-
-    ("#:", "E", " ", ""), (" :", "E", " ", "IY"), ("#", "ED", " ", "D"), ("#:", "E", "D ", ""),
-    ("", "EV", "ER", "EH V"), ("", "E", "^%", "IY"), ("", "ERI", "#", "IY R IY"),
-    ("", "ERI", "", "EH R IH"), ("#:", "ER", "#", "ER"), ("", "ER", "#", "EH R"), ("", "ER", "", "ER"),
-    (" ", "EVEN", "", "IY V EH N"), ("#:", "E", "W", ""), ("@", "EW", "", "UW"),
-    ("", "EW", "", "Y UW"), ("", "E", "O", "IY"), ("#:&", "ES", " ", "IH Z"), ("#:", "E", "S ", ""),
-    ("#:", "ELY", " ", "L IY"), ("#:", "EMENT", "", "M EH N T"), ("", "EFUL", "", "F UH L"),
-    ("", "EE", "", "IY"), ("", "EARN", "", "ER N"), (" ", "EAR", "^", "ER"), ("", "EAD", "", "EH D"),
-    ("#:", "EA", " ", "IY AH"), ("", "EA", "SU", "EH"), ("", "EA", "", "IY"), ("", "EIGH", "", "EY"),
-    ("", "EI", "", "IY"), (" ", "EYE", "", "AY"), ("", "EY", "", "IY"), ("", "EU", "", "Y UW"),
-    ("", "E", "", "EH"),
-
-    ("", "FUL", "", "F UH L"), ("", "F", "", "F"),
-
-    ("", "GIV", "", "G IH V"), (" ", "G", "I^", "G"), ("", "GE", "T", "G EH"),
-    ("SU", "GGES", "", "G JH EH S"), ("", "GG", "", "G"), (" B#", "G", "", "G"), ("", "G", "+", "JH"),
-    ("", "GREAT", "", "G R EY T"), ("#", "GH", "", ""), ("", "G", "", "G"),
-
-    (" ", "HAV", "", "HH AE V"), (" ", "HERE", "", "HH IY R"), (" ", "HOUR", "", "AW ER"),
-    ("", "HOW", "", "HH AW"), ("", "H", "#", "HH"), ("", "H", "", ""),
-
-    (" ", "IN", "", "IH N"), (" ", "I", " ", "AY"), ("", "IN", "D", "AY N"), ("", "IER", "", "IY ER"),
-    ("#:R", "IED", "", "IY D"), ("", "IED", " ", "AY D"), ("", "IEN", "", "IY EH N"),
-    ("", "IE", "T", "AY EH"), (" :", "I", "%", "AY"), ("", "I", "%", "IY"), ("", "IE", "", "IY"),
-    ("", "I", "^+:#", "IH"), ("", "IR", "#", "AY R"), ("", "IZ", "%", "AY Z"), ("", "IS", "%", "AY Z"),
-    ("", "I", "D%", "AY"), ("+^", "I", "^+", "IH"), ("", "I", "T%", "AY"), ("#:^", "I", "^+", "IH"),
-    ("", "I", "^+", "AY"), ("", "IR", "", "ER"), ("", "IGH", "", "AY"), ("", "ILD", "", "AY L D"),
-    ("", "IGN", " ", "AY N"), ("", "IGN", "^", "AY N"), ("", "IGN", "%", "AY N"),
-    ("", "IQUE", "", "IY K"), ("", "I", "", "IH"),
-
-    ("", "J", "", "JH"),
-
-    (" ", "K", "N", ""), ("", "K", "", "K"),
-
-    ("", "LO", "C#", "L OW"), ("L", "L", "", ""), ("#:^", "L", "%", "AH L"), ("", "LEAD", "", "L IY D"),
-    ("", "L", "", "L"),
-
-    ("", "MOV", "", "M UW V"), ("", "M", "", "M"),
-
-    ("E", "NG", "+", "N JH"), ("", "NG", "R", "NG G"), ("", "NG", "#", "NG G"),
-    ("", "NGL", "%", "NG G AH L"), ("", "NG", "", "NG"), ("", "NK", "", "NG K"),
-    (" ", "NOW", " ", "N AW"), ("", "N", "", "N"),
-
-    ("", "OF", " ", "AH V"), ("", "OROUGH", "", "ER OW"), ("#:", "OR", " ", "ER"),
-    ("#:", "ORS", " ", "ER Z"), ("", "OR", "", "AO R"), (" ", "ONE", "", "W AH N"), ("", "OW", "", "OW"),
-    (" ", "OVER", "", "OW V ER"), ("", "OV", "", "AH V"), ("", "O", "^%", "OW"), ("", "O", "^EN", "OW"),
-    ("", "O", "^I#", "OW"), ("", "OL", "D", "OW L"), ("", "OUGHT", "", "AO T"), ("", "OUGH", "", "AH F"),
-    (" ", "OU", "", "AW"), ("H", "OU", "S#", "AW"), ("", "OUS", "", "AH S"), ("", "OUR", "", "AO R"),
-    ("", "OULD", "", "UH D"), ("^", "OU", "^L", "AH"), ("", "OUP", "", "UW P"), ("", "OU", "", "AW"),
-    ("", "OY", "", "OY"), ("", "OING", "", "OW IH NG"), ("", "OI", "", "OY"), ("", "OOR", "", "AO R"),
-    ("", "OOK", "", "UH K"), ("", "OOD", "", "UH D"), ("", "OO", "", "UW"), ("", "O", "E", "OW"),
-    ("", "O", " ", "OW"), ("", "OA", "", "OW"), (" ", "ONLY", "", "OW N L IY"),
-    (" ", "ONCE", "", "W AH N S"), ("C", "O", "N", "AA"), ("", "O", "NG", "AO"),
-    (" :^", "O", "N", "AH"), ("I", "ON", "", "AH N"), ("#:", "ON", " ", "AH N"),
-    ("#^", "ON", "", "AH N"), ("", "O", "ST ", "OW"), ("", "OF", "^", "AO F"),
-    ("", "OTHER", "", "AH DH ER"), ("", "OSS", " ", "AO S"), ("#:^", "OM", "", "AH M"),
-    ("", "O", "", "AA"),
-
-    ("", "PH", "", "F"), ("", "PEOP", "", "P IY P"), ("", "POW", "", "P AW"), ("", "PUT", " ", "P UH T"),
-    ("", "P", "", "P"),
-
-    ("", "QUAR", "", "K W AO R"), ("", "QU", "", "K W"), ("", "Q", "", "K"),
-
-    (" ", "RE", "^#", "R IY"), ("", "R", "", "R"),
-
-    ("", "SH", "", "SH"), ("#", "SION", "", "ZH AH N"), ("", "SOME", "", "S AH M"),
-    ("#", "SUR", "#", "ZH ER"), ("", "SUR", "#", "SH ER"), ("#", "SU", "#", "ZH UW"),
-    ("#", "SSU", "#", "SH UW"), ("#", "SED", " ", "Z D"), ("#", "S", "#", "Z"), ("", "SAID", "", "S EH D"),
-    ("^", "SION", "", "SH AH N"), ("", "S", "S", ""), (".", "S", " ", "Z"), ("#:.E", "S", " ", "Z"),
-    ("#:^##", "S", " ", "Z"), ("#:^#", "S", " ", "S"), ("U", "S", " ", "S"), (" :#", "S", " ", "Z"),
-    (" ", "SCH", "", "S K"), ("", "S", "C+", ""), ("#", "SM", "", "Z M"), ("", "S", "", "S"),
-
-    (" ", "THE", " ", "DH AH"), ("", "TO", " ", "T UW"), ("", "THAT", " ", "DH AE T"),
-    (" ", "THIS", " ", "DH IH S"), (" ", "THEY", "", "DH EY"), (" ", "THERE", "", "DH EH R"),
-    ("", "THER", "", "DH ER"), ("", "THEIR", "", "DH EH R"), (" ", "THAN", " ", "DH AE N"),
-    (" ", "THEM", " ", "DH EH M"), ("", "THESE", " ", "DH IY Z"), (" ", "THEN", "", "DH EH N"),
-    ("", "THROUGH", "", "TH R UW"), ("", "THOSE", "", "DH OW Z"), ("", "THOUGH", " ", "DH OW"),
-    (" ", "THUS", "", "DH AH S"), ("", "TH", "", "TH"), ("#:", "TED", " ", "T IH D"),
-    ("S", "TI", "#N", "CH"), ("", "TI", "O", "SH"), ("", "TI", "A", "SH"), ("", "TIEN", "", "SH AH N"),
-    ("", "TUR", "#", "CH ER"), ("", "TU", "A", "CH UW"), (" ", "TWO", "", "T UW"), ("", "T", "", "T"),
-
-    (" ", "UN", "I", "Y UW N"), (" ", "UN", "", "AH N"), (" ", "UPON", "", "AH P AO N"),
-    ("@", "UR", "#", "UH R"), ("", "UR", "#", "Y UH R"), ("", "UR", "", "ER"), ("", "U", "^ ", "AH"),
-    ("", "U", "^^", "AH"), ("", "UY", "", "AY"), (" G", "U", "#", ""), ("G", "U", "%", ""),
-    ("G", "U", "#", "W"), ("#N", "U", "", "Y UW"), ("@", "U", "", "UW"), ("", "U", "", "Y UW"),
-
-    ("", "VIEW", "", "V Y UW"), ("", "V", "", "V"),
-
-    (" ", "WERE", "", "W ER"), ("", "WA", "S", "W AA"), ("", "WA", "T", "W AA"),
-    ("", "WHERE", "", "W EH R"), ("", "WHAT", "", "W AA T"), ("", "WHOL", "", "HH OW L"),
-    ("", "WHO", "", "HH UW"), ("", "WH", "", "W"), ("", "WAR", "", "W AO R"), ("", "WOR", "^", "W ER"),
-    ("", "WR", "", "R"), ("", "W", "", "W"),
-
-    (" ", "X", "", "Z"), ("", "X", "", "K S"),
-
-    ("", "YOUNG", "", "Y AH NG"), (" ", "YOU", "", "Y UW"), (" ", "YES", "", "Y EH S"),
-    (" ", "Y", "", "Y"), ("#:^", "Y", " ", "IY"), ("#:^", "Y", "I", "IY"), (" :", "Y", " ", "AY"),
-    (" :", "Y", "#", "AY"), (" :", "Y", "^+:#", "IH"), (" :", "Y", "^#", "AY"), ("", "Y", "", "IH"),
-
-    ("", "Z", "", "Z"),
-]
-
-NRL_BY_LETTER = {}
-for _rule in NRL_RULES:
-    NRL_BY_LETTER.setdefault(_rule[1][0], []).append(_rule)
-
-_VOWEL_LETTERS = set("AEIOU")
-_VOICED = set("BDVGJLMNRWZ")
-
-
-def _is_cons(c):
-    return c.isalpha() and c not in _VOWEL_LETTERS
-
-
-def _match_context(word, pos, pattern, step):
-    """Match a rule context from word[pos], walking left (step -1) or right (+1)."""
-    seq = reversed(pattern) if step < 0 else pattern
-
-    def at(p):
-        return word[p] if 0 <= p < len(word) else " "
-
-    def pair(p):
-        return (at(p - 1) + at(p)) if step < 0 else (at(p) + at(p + 1))
-
-    for ch in seq:
-        c = at(pos)
-        if ch == "#":
-            if c not in _VOWEL_LETTERS:
-                return False
-            while at(pos) in _VOWEL_LETTERS:
-                pos += step
-        elif ch == ":":
-            while _is_cons(at(pos)):
-                pos += step
-        elif ch == "^":
-            if not _is_cons(c):
-                return False
-            pos += step
-        elif ch == ".":
-            if c not in _VOICED:
-                return False
-            pos += step
-        elif ch == "+":
-            if c not in "EIY":
-                return False
-            pos += step
-        elif ch in "&@":
-            if pair(pos) in (("CH", "SH") if ch == "&" else ("TH", "CH", "SH")):
-                pos += 2 * step
-            elif c in ("SCGZXJ" if ch == "&" else "TSRDLZNJ"):
-                pos += step
-            else:
-                return False
-        elif ch == "%":
-            rest = word[pos:] if pos >= 0 else ""
-            for suf in ("ING", "ELY", "ER", "ES", "ED", "E"):
-                if rest.startswith(suf):
-                    pos += len(suf)
-                    break
-            else:
-                return False
-        elif ch == " ":
-            if c.isalpha():
-                return False
-            pos += step
-        else:
-            if c != ch:
-                return False
-            pos += step
-    return True
+LTS_PATH = os.path.join(HERE, "lts_cmu.json.gz")
+_lts_trees = None
 
 
 def letter_to_sound(word):
-    w = re.sub(r"[^A-Z]", "", word.upper())
-    out = []
-    i = 0
-    while i < len(w):
-        for left, match, right, phones in NRL_BY_LETTER.get(w[i], [("", w[i], "", "")]):
-            if not w.startswith(match, i):
-                continue
-            if _match_context(w, i - 1, left, -1) and _match_context(w, i + len(match), right, 1):
-                out += phones.split()
-                i += len(match)
-                break
+    """Spelling -> [(sym, stress)], from the trees. Tidied a little: a
+    consonant isn't doubled, and only the first primary stress is kept."""
+    global _lts_trees
+    if _lts_trees is None:
+        with gzip.open(LTS_PATH, "rt", encoding="utf-8") as f:
+            _lts_trees = json.load(f)["trees"]
+
+    letters = ["#"] + list(re.sub(r"[^a-z]", "", word.lower())) + ["#"]
+
+    def at(i):
+        return letters[i] if 0 <= i < len(letters) else "0"   # '0': past the boundary
+
+    phones = []
+    for i in range(1, len(letters) - 1):
+        node = _lts_trees.get(letters[i])
+        while isinstance(node, list):
+            offset, letter, yes, no = node
+            node = yes if at(i + offset) == letter else no
+        for ph in (node or "").split():
+            if not (phones and ph == phones[-1] and ph in ARPA_CONSONANTS):
+                phones.append(ph)
+
+    syms = []
+    primary = False
+    for ph in phones:
+        sym, digit = ph.rstrip("012"), ph[len(ph.rstrip("012")):]
+        if sym in ARPA_VOWELS:
+            stress = int(digit) if digit else 0
+            if stress == 1:
+                stress = 2 if primary else 1
+                primary = True
+            syms.append((sym, stress))
         else:
-            i += 1
-    return guess_stress(out, w)
+            syms.append((sym, None))
+    if not primary:
+        return guess_stress([s for s, _ in syms], word.upper())
+    return syms
 
 
 def guess_stress(syms, spelling):
@@ -779,6 +622,66 @@ def number_words(n):
     return []
 
 
+# the names of the letters, for spelling a word out
+LETTER_NAMES = {
+    "a": "EY1", "b": "B IY1", "c": "S IY1", "d": "D IY1", "e": "IY1", "f": "EH1 F",
+    "g": "JH IY1", "h": "EY1 CH", "i": "AY1", "j": "JH EY1", "k": "K EY1", "l": "EH1 L",
+    "m": "EH1 M", "n": "EH1 N", "o": "OW1", "p": "P IY1", "q": "K Y UW1", "r": "AA1 R",
+    "s": "EH1 S", "t": "T IY1", "u": "Y UW1", "v": "V IY1", "w": "D AH1 B AH0 L Y UW0",
+    "x": "EH1 K S", "y": "W AY1", "z": "Z IY1",
+}
+
+
+def spell(word):
+    """'bbc' -> ARPAbet for "B B C", each letter stressed."""
+    return " ".join(LETTER_NAMES[c] for c in word.lower() if c in LETTER_NAMES)
+
+
+_ORDINAL = {"one": "first", "two": "second", "three": "third", "five": "fifth",
+            "eight": "eighth", "nine": "ninth", "twelve": "twelfth"}
+
+
+def ordinal_words(n):
+    """21 -> twenty first."""
+    words = number_words(n)
+    last = words[-1]
+    if last in _ORDINAL:
+        last = _ORDINAL[last]
+    elif last.endswith("y"):
+        last = last[:-1] + "ieth"
+    else:
+        last += "th"
+    return words[:-1] + [last]
+
+
+def year_words(n):
+    """1984 -> nineteen eighty four; 1905 -> nineteen oh five; 1900 -> nineteen hundred."""
+    century, rest = divmod(n, 100)
+    if rest == 0:
+        return number_words(century) + ["hundred"]
+    return number_words(century) + (["oh"] if rest < 10 else []) + number_words(rest)
+
+
+def money_words(tok):
+    """$5.50 -> five dollars and fifty cents."""
+    dollars, _, cents = tok[1:].replace(",", "").partition(".")
+    dollars, cents = int(dollars), int(cents or 0)
+    words = []
+    if dollars or not cents:
+        words += number_words(dollars) + ["dollar" if dollars == 1 else "dollars"]
+    if cents:
+        words += (["and"] if words else []) + number_words(cents) + ["cent" if cents == 1 else "cents"]
+    return words
+
+
+def time_words(tok):
+    """3:00 -> three o'clock; 3:05 -> three oh five; 3:30 -> three thirty."""
+    hours, minutes = (int(x) for x in tok.split(":"))
+    if minutes == 0:
+        return number_words(hours) + ["o'clock"]
+    return number_words(hours) + (["oh"] if minutes < 10 else []) + number_words(minutes)
+
+
 def digit_words(digits):
     return [_ONES[int(d)] for d in digits]
 
@@ -798,6 +701,9 @@ def expand_number(tok, digits=False):
         words = digit_words(whole)
     elif len(whole) > 1 and whole[0] == "0":
         words = digit_words(whole)
+    elif len(whole) == 4 and "," not in tok and not frac and 1000 <= int(whole) <= 1999 \
+            and int(whole) % 100:
+        words = year_words(int(whole))      # four figures before 2000, not a round hundred: a year
     else:
         words = number_words(int(whole))
     if frac:
@@ -812,9 +718,14 @@ def expand_number(tok, digits=False):
 # (1,000,000: exactly three digits after each comma, so "1, 2, 3" stays a
 # list), or plain, with an optional decimal part
 NUMBER_RE = r"\d+(?:\.\d+){2,}|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?"
+MONEY_RE = r"\$(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d\d)?"
+TIME_RE = r"\d{1,2}:\d\d"
+ORDINAL_RE = r"\d+(?:st|nd|rd|th)\b"
+ABBREV_RE = r"(?:[A-Za-z]\.){2,}"          # U.S.A.: spelled out
 TOKEN_RE = re.compile(
-    r"\[[^\]]*\]|\{[^}]*\}|\([^)]*\)|" + NUMBER_RE + r"|[A-Za-z]+(?:'[A-Za-z]+)*"
-    r"|\.\.\.|…|--|—|[.,;:!?\-]|\S")
+    r"\[[^\]]*\]|\{[^}]*\}|\([^)]*\)|" + "|".join((MONEY_RE, TIME_RE, ORDINAL_RE, NUMBER_RE, ABBREV_RE))
+    + r"|[A-Za-z]+(?:'[A-Za-z]+)*|\.\.\.|…|--|—|[.,;:!?\-]|\S")
+SYMBOL_WORDS = {"%": ["percent"], "&": ["and"], "+": ["plus"], "=": ["equals"], "@": ["at"]}
 PUNCTUATION_PAUSE = {
     ",": [2], ";": [2], ":": [2], ".": [3], "!": [3], "?": [3],
     "...": [2, 1], "…": [2, 1], "--": [2, 1], "—": [2, 1], "-": [],
@@ -825,6 +736,10 @@ class Segment:
     def __init__(self, label):
         self.label = label
         self.codes = []
+        self.word = False           # a word (or raw sounds), as opposed to controls
+        self.content = False        # a content word, which can carry an accent
+        self.explicit = False       # its pitch was written ([contour], [pitch])
+        self.phrase_end = None      # the punctuation ending a phrase after it
 
 
 # The vowel allophones: the nucleus of each syllable, for [contour]
@@ -853,7 +768,7 @@ def apply_contour(codes, pitches, current=None):
                 lead = len(out)
         elif c in NUCLEI:
             want = pitches[min(syllable, len(pitches) - 1)]
-            if want != current:
+            if want is not None and want != current:
                 at = len(out) if lead is None else lead
                 out[at:at] = [22, want]
                 current = want
@@ -872,9 +787,9 @@ class Converter:
         self.args = args
         self.warnings = []
 
-    def word_codes(self, word, arpa=None):
+    def word_codes(self, word, arpa=None, source="inline"):
         if arpa is not None:
-            kind, data, source = "arpa", arpa, "inline"
+            kind, data = "arpa", arpa
         else:
             kind, data, source = self.lex.lookup(word)
         if kind == "raw":
@@ -926,9 +841,19 @@ class Converter:
                 words.append(("codes", tok[1:-1], tok))
             elif tok[0] == "(":
                 words.append(("arpa", tok[1:-1], tok))
+            elif tok[0] == "$" and len(tok) > 1:
+                words += [("word", w, w) for w in money_words(tok)]
+            elif re.fullmatch(TIME_RE, tok):
+                words += [("word", w, w) for w in time_words(tok)]
+            elif re.fullmatch(ORDINAL_RE, tok):
+                words += [("word", w, w) for w in ordinal_words(int(tok[:-2]))]
+            elif re.fullmatch(ABBREV_RE, tok):
+                words.append(("arpa", spell(tok.replace(".", "")), tok))
             elif tok[0].isdigit():
                 for w in expand_number(tok, digits):
                     words.append(("word", w, w))
+            elif tok in SYMBOL_WORDS:
+                words += [("word", w, w) for w in SYMBOL_WORDS[tok]]
             elif tok[0].isalpha():
                 words.append(("word", tok, tok))
                 digits = False
@@ -937,8 +862,6 @@ class Converter:
             elif tok not in "\"'`":
                 self.warnings.append("ignored '%s'" % tok)
 
-        content_idx = [k for k, w in enumerate(words) if w[0] in ("word", "arpa")]
-        last_content = content_idx[-1] if content_idx else -1
         pitch_now = args.pitch
         contour = None          # [contour]: pitches for the next word's syllables
         word_gap = args.word_gap    # [gap]: changes it for the rest of the phrase
@@ -957,6 +880,8 @@ class Converter:
                 if segs:
                     gap = PUNCTUATION_PAUSE[payload] if payload != "-" else []
                     gap_explicit = False
+                    if payload != "-":
+                        segs[-1].phrase_end = payload
                 continue
             if kind == "codes":
                 codes = parse_codes(payload)
@@ -968,12 +893,15 @@ class Converter:
                 gap = None
                 pitch_now = self._pitch_after(codes, pitch_now)
                 if any(c >= 128 for c in codes):
+                    explicit = bool(contour) or 22 in prefix
                     if contour:
                         codes = apply_contour(codes, contour, pitch_now)
                         pitch_now = contour[-1]
                         contour = None
                     seg = Segment(label)
                     seg.codes = prefix + codes
+                    seg.word = seg.content = True
+                    seg.explicit = explicit
                     prefix = []
                     segs.append(seg)
                 else:
@@ -984,25 +912,22 @@ class Converter:
             gap = None
             if kind == "arpa":
                 codes, stressed = self.word_codes(label, parse_arpabet(payload))
+            elif payload.lower() == "the" and self._vowel_follows(words, k):
+                # "thee" before a vowel, as Festival's post-lexical rule has it
+                codes, stressed = self.word_codes(payload, parse_arpabet("DH IY0"),
+                                                  "the before a vowel")
             else:
                 codes, stressed = self.word_codes(payload)
+            explicit = bool(contour) or 22 in prefix
             if contour:
                 codes = apply_contour(codes, contour, pitch_now)
                 pitch_now = contour[-1]
                 contour = None
-            elif args.intonation is not None:
-                base = args.intonation
-                if k == last_content:
-                    want = base - 10
-                elif stressed and payload.lower() not in FUNCTION_WORDS:
-                    want = base + 8
-                else:
-                    want = base
-                if want != pitch_now:
-                    prefix += [22, want]
-                    pitch_now = want
             seg = Segment(label)
             seg.codes = prefix + codes
+            seg.word = True
+            seg.content = kind == "arpa" or payload.lower() not in FUNCTION_WORDS
+            seg.explicit = explicit
             prefix = []
             segs.append(seg)
             gap = None if word_gap is None else [word_gap]
@@ -1012,6 +937,9 @@ class Converter:
         # pause there isn't
         if gap_explicit:
             self._flush_gap(segs, gap)
+
+        if args.intonation is not None:
+            self._intonate(segs, args.intonation, args.pitch)
 
         if prefix:
             seg = Segment("")
@@ -1023,6 +951,115 @@ class Converter:
             if segs:
                 segs[-1].codes.append(31)
         return segs
+
+    @staticmethod
+    def _intonate(segs, mean, pitch):
+        """Festival's 'simple' intonation, per phrase: a baseline falling from
+        above the mean through the phrase, a peak on each content word's
+        accented syllable (the STRESSed one, or its only one), and a fall at
+        the end (a rise for a question). Pitch is set only where it moves --
+        the phrase start, each accent and the syllable after it, the end -- and
+        the library glides between. Also Klatt's phrase-final lengthening: the
+        last syllable before a pause gets SLOW instead of FAST. Words given a
+        pitch by hand are left alone."""
+        std = max(1, round(mean * 0.2))
+        phrases, current = [], []
+        for seg in segs:
+            if seg.word:
+                current.append(seg)
+            if seg.phrase_end and current:
+                phrases.append((current, seg.phrase_end))
+                current = []
+        if current:
+            phrases.append((current, "."))
+
+        for words, end in phrases:
+            # the syllables, as (seg, nucleus position in seg.codes)
+            syllables = []
+            accents = set()
+            for seg in words:
+                positions = Converter._nuclei(seg.codes)
+                stressed = [n for n in positions if Converter._stressed(seg.codes, n)]
+                if seg.content and positions:
+                    accents.add((id(seg), (stressed or positions)[0]))
+                syllables += [(seg, n) for n in positions]
+            if not syllables:
+                continue
+
+            # phrase-final lengthening: SLOW, not FAST, on the last syllable
+            last_seg, last_n = syllables[-1]
+            Converter._lengthen(last_seg, last_n)
+
+            count = len(syllables)
+            targets = {}
+            for i, (seg, n) in enumerate(syllables):
+                base = mean + 0.6 * std - std * (i / (count - 1) if count > 1 else 0)
+                if (id(seg), n) in accents:
+                    targets[i] = round(base + std)
+                    if i + 1 < count:
+                        targets.setdefault(i + 1, round(mean + 0.6 * std - std * ((i + 1) / (count - 1))))
+                elif i == 0:
+                    targets[i] = round(base)
+            targets[count - 1] = mean + std if end == "?" else mean - std
+
+            for seg in words:
+                if seg.explicit:
+                    continue
+                order = [i for i, (sg, _) in enumerate(syllables) if sg is seg]
+                pitches = [targets.get(i) for i in order]
+                if any(p is not None for p in pitches):
+                    seg.codes = apply_contour(seg.codes, pitches, pitch)
+                pitch = Converter._pitch_after(seg.codes, pitch)
+
+    @staticmethod
+    def _nuclei(codes):
+        """Positions of the syllable nuclei (vowel allophones) in codes."""
+        out, i = [], 0
+        while i < len(codes):
+            if codes[i] in ARG_NAME:
+                i += 2
+                continue
+            if codes[i] in NUCLEI:
+                out.append(i)
+            i += 1
+        return out
+
+    @staticmethod
+    def _stressed(codes, n):
+        """Whether STRESS is among the modifiers just before the nucleus at n."""
+        i = n - 1
+        while i >= 0 and codes[i] in MODIFIERS:
+            if codes[i] == 14:
+                return True
+            i -= 1
+        return False
+
+    @staticmethod
+    def _lengthen(seg, n):
+        """SLOW, and no FAST, on the nucleus at n (seg.codes changes length)."""
+        start = n
+        while start > 0 and seg.codes[start - 1] in MODIFIERS:
+            start -= 1
+        lead = [c for c in seg.codes[start:n] if c != 7]
+        if 8 not in lead:
+            lead.append(8)
+        seg.codes[start:n] = lead
+
+    def _vowel_follows(self, words, k):
+        """Whether the next word (markup between is skipped) starts with a vowel sound."""
+        for kind, payload, _ in words[k + 1:]:
+            if kind == "word":
+                kind_, data, _ = self.lex.lookup(payload)
+                if kind_ == "raw":
+                    sounds = [c for c in data if c >= 128]
+                    return bool(sounds) and sounds[0] in NUCLEI
+                return bool(data) and data[0][0] in ARPA_VOWELS
+            if kind == "arpa":
+                syms = parse_arpabet(payload)
+                return bool(syms) and syms[0][0] in ARPA_VOWELS
+            if kind == "punct":
+                return False
+        return False
 
     @staticmethod
     def _pitch_after(codes, pitch):

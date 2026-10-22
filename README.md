@@ -90,10 +90,13 @@ every function.
 as DASM `.byte` lines, a C array, decimal or raw bytes. It uses
 Magnevation's own SpeakJet spellings of over 1,400 common words and sound
 effect phrases (from its PhraseALator dictionary) and the CMU Pronouncing
-Dictionary (about 134,000 words) for the rest, and picks the right allophone
-variant for each sound from its neighbours. It adds stress, pauses for
-punctuation and spoken numbers, and takes markup for pitch, speed and raw
-codes. It needs Python 3.8 or later and nothing else.
+Dictionary (about 134,000 words) for the rest, guesses words in neither with
+letter-to-sound decision trees from the Festival speech synthesis system, and
+picks the right allophone variant for each sound from its neighbours. It adds
+stress, pauses for punctuation, numbers, years, money and times as words,
+optional Festival-style intonation (`--intonation`), and takes markup for
+pitch, per-syllable melody, speed and raw codes. It needs Python 3.8 or later
+and nothing else.
 
 ```
 python3 tools/text2speakjet/text2speakjet.py "Welcome to the AtariVox"
@@ -156,6 +159,13 @@ see [`docs/reference/README.md`](docs/reference/README.md):
   text2speakjet falls back to the CMU dictionary
 - NRL Report 7948, a US Government work in the public domain
 
+The letter-to-sound trees (`tools/text2speakjet/lts_cmu.json.gz`) are
+converted from Festival's CMU lexicon rules, copyright the Centre for Speech
+Technology Research, University of Edinburgh, under the permissive licence in
+[`tools/text2speakjet/LICENSE.festival`](tools/text2speakjet/LICENSE.festival),
+which asks that its notice be kept and modifications be marked (they are, in
+the file's header and `convert_festival_lts.py`).
+
 ## How it was made
 
 The code, tests and documentation in this repository were written by Claude,
@@ -173,10 +183,14 @@ against the manual's figures and the reference samples.
 
 Code by Claude, directed by Andrew Davie.
 
-The letter-to-sound rules text2speakjet uses for words that aren't in the
-dictionary are from Elovitz, Johnson, McHugh and Shore, *Automatic
-Translation of English Text to Phonetics by Means of Letter-to-Sound Rules*,
-NRL Report 7948 (1976).
+text2speakjet's letter-to-sound trees come from the Festival Speech
+Synthesis System (Alan W Black, Paul Taylor, Richard Caley and others, CSTR,
+University of Edinburgh), trained on the CMU Pronouncing Dictionary. Its
+intonation follows Festival's "simple" model, its phrase-final lengthening
+Klatt's duration rules, and its "the"/"thee" rule Festival's post-lexical
+rules; these are reimplemented, not copied. Earlier versions used the
+letter-to-sound rules of Elovitz, Johnson, McHugh and Shore, NRL Report 7948
+(1976).
 
 The measured formants, Speed curve and output filter corner rest on two
 independent sets of measurements of the real SpeakJet: those of the AtariVox

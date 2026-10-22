@@ -14,6 +14,26 @@ some guesses. The sound changes, so the reference samples are regenerated.
 
 `docs/design.md` describes the sources and the method.
 
+text2speakjet:
+
+- Words in no dictionary are guessed with Festival's letter-to-sound decision
+  trees (trained on the CMU dictionary) instead of the 1976 NRL rules: 43%
+  of unseen words exactly right instead of 24%.
+- Acronyms and words with no vowel are spelled out; possessives ('s) of
+  known words are handled; "the" is "thee" before a vowel.
+- Years, ordinals, money, times and %, &, +, =, @ are read as words; numbers
+  with thousands separators, dotted numbers and leading zeros are read
+  correctly; `[digits]` reads numbers digit by digit.
+- `--intonation` follows Festival's "simple" model (declining baseline,
+  accent peaks, a fall at the end or a rise for a question) with Klatt's
+  phrase-final lengthening.
+- `[contour]` sets a word's pitch per syllable; `[gap]` the pause between
+  words; an explicit pause at the end of a phrase is kept.
+- Magnevation's PhraseALator dictionary is used before the CMU dictionary
+  (converted from its own rules; see docs/reference/phrasealator/), with the
+  notice its licence asks for; `SOFT` (18) and the alias `EHLE` are accepted.
+- The intro sample says "thee AtariVox" (rendered with the measurements above).
+
 ## 1.0.0
 
 First release.

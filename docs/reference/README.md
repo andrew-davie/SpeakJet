@@ -62,10 +62,11 @@ Government work, and so in the public domain in the United States. This copy
 is the National Technical Information Service reproduction, from the
 Internet Archive (item `DTIC_ADA021929`).
 
-text2speakjet uses letter-to-sound rules based on this report to guess the
-pronunciation of words that aren't in its dictionary. The report has 329
-rules producing IPA; text2speakjet's version (`NRL_RULES` in
-`tools/text2speakjet/text2speakjet.py`) has 306, producing ARPAbet.
+Earlier versions of text2speakjet guessed the pronunciation of words in no
+dictionary with rules based on this report (306 of them, adapted to produce
+ARPAbet). They have been replaced by Festival's letter-to-sound decision
+trees, which do markedly better on unseen words (see
+`tools/text2speakjet/README.md`); the report stays here for reference.
 
 ## CMU Pronouncing Dictionary
 
