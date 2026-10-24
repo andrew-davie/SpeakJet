@@ -231,9 +231,27 @@ typedef struct part {
  * their parts as they are */
 typedef struct sound {
   bool speech;
+
+  /* how much longer the chip plays a speech sound than the manual's length,
+   * which the parts add up to */
+  double length;
+
   int nparts;
   part parts[MAX_PARTS];
 } sound;
+
+/* the chip's lengths for speech sounds, measured from a recording of a real
+ * SpeakJet playing Alex Herbert's vox_test ROM (2004), compared sound by sound
+ * with this library playing the same codes. at the default speed the steady
+ * sounds (vowels, nasals, liquids, fricatives) last about 1.5 times the
+ * manual's length (EH 2.07, IH 1.6, NGE 1.43, and SE 1.67, TH 1.42, NE 1.14
+ * when slow), diphthongs about 1.2 times (EYIY 1.0, IHWW 1.5, and OHIY 1.2,
+ * AXRR 1.3 when fast), and voiceless stops what the manual gives (TT 1.0). at
+ * speed 127 the same steady and stop lengths and the speed curve below give
+ * the recording's syllable length to within a few milliseconds */
+#define STEADY_LENGTH 1.5
+#define DIPHTHONG_LENGTH 1.2
+#define STOP_LENGTH 1.0
 
 /* formant targets. frequencies are approximate values for an adult male
  * speaker, from published measurements of English vowels and consonants,
@@ -361,6 +379,29 @@ static frame voiced_noise_frame(formants f, double v1, double n1, double n2,
   return r;
 }
 
+/* hush turns the noise oscillators (4 and 5) of a frame down by db decibels */
+static frame hush(frame f, double db) {
+  const double g = pow(10, -db / 20);
+  f.vol[3] *= g;
+  f.vol[4] *= g;
+  return f;
+}
+
+/* how much quieter the chip's noise is than the levels first chosen here.
+ * measured from the vox_test recording (see STEADY_LENGTH) by comparing each
+ * noise sound's level against the vowel beside it, on the chip and here. on
+ * the chip hiss sits 16 to 23dB under the vowels; here it was level with them.
+ * the corrections: SE 23dB, CH (the SH frame) 16.4dB, TH 11.8dB, FF 13.7dB,
+ * stop bursts 19.5dB (TT 23dB, KE 16dB) and aspiration 14.5dB (TT). sounds the
+ * recording doesn't have take the mean of the fricatives that it does */
+#define SE_DB 23.0
+#define SH_DB 16.4
+#define TH_DB 11.8
+#define FF_DB 13.7
+#define FRICATIVE_DB 17.0
+#define BURST_DB 19.5
+#define ASPIRATION_DB 14.5
+
 /* sound constructors. each adds to the sound passed to it */
 
 static void add_part(sound *s, double ms, double glide_ms, frame target) {
@@ -374,6 +415,7 @@ static void add_part(sound *s, double ms, double glide_ms, frame target) {
 
 static void steady(sound *s, double ms, frame f) {
   s->speech = true;
+  s->length = STEADY_LENGTH;
   add_part(s, ms, AUTO_GLIDE, f);
 }
 
@@ -381,6 +423,7 @@ static void steady(sound *s, double ms, frame f) {
  * holds it */
 static void diphthong(sound *s, double ms, frame a, frame b) {
   s->speech = true;
+  s->length = DIPHTHONG_LENGTH;
   add_part(s, ms * 0.3, AUTO_GLIDE, a);
   add_part(s, ms * 0.55, ms * 0.55, b);
   add_part(s, ms * 0.15, 0, b);
@@ -405,8 +448,9 @@ static void plosive(sound *s, const stop *st) {
   else
     close = silent_frame(st->locus);
 
-  frame burst = noise_frame(st->locus, st->burst_freq[0], st->burst_freq[1],
-                            st->burst_vol[0], st->burst_vol[1], 255);
+  frame burst = hush(noise_frame(st->locus, st->burst_freq[0], st->burst_freq[1],
+                                 st->burst_vol[0], st->burst_vol[1], 255),
+                     BURST_DB);
   if (st->voiced) {
     burst.vol[0] = 6;
     burst.voiced = true;
@@ -414,6 +458,7 @@ static void plosive(sound *s, const stop *st) {
   }
 
   s->speech = true;
+  s->length = STOP_LENGTH;
   add_part(s, st->closure, 6, close);
   add_part(s, st->burst, 2, burst);
 
@@ -422,8 +467,9 @@ static void plosive(sound *s, const stop *st) {
     if (rest > 0)
       add_part(s, rest, rest, voiced_frame(st->locus, 14, 6, 3));
   } else if (rest > 0) {
-    const frame asp =
-        noise_frame(st->locus, st->asp_freq[0], st->asp_freq[1], 10, 8, 230);
+    const frame asp = hush(
+        noise_frame(st->locus, st->asp_freq[0], st->asp_freq[1], 10, 8, 230),
+        ASPIRATION_DB);
     add_part(s, rest, 4, asp);
   }
 }
@@ -435,11 +481,12 @@ static void affricate(sound *s, const stop *st, frame fric, double fric_ms) {
 }
 
 /* frames for the fricatives, reused by the affricates and TS */
-static frame frSE(void) { return noise_frame(lAlveolar, 3800, 3990, 20, 16, 160); }
-static frame frSO(void) { return noise_frame(lAlveolarBak, 3500, 3900, 20, 14, 160); }
-static frame frSH(void) { return noise_frame(lPalatal, 2300, 3100, 22, 16, 200); }
+static frame frSE(void) { return hush(noise_frame(lAlveolar, 3800, 3990, 20, 16, 160), SE_DB); }
+static frame frSO(void) { return hush(noise_frame(lAlveolarBak, 3500, 3900, 20, 14, 160), SE_DB); }
+static frame frSH(void) { return hush(noise_frame(lPalatal, 2300, 3100, 22, 16, 200), SH_DB); }
 static frame frZH(void) {
-  return voiced_noise_frame(FM(260, 1800, 2500), 14, 2400, 3200, 14, 10, 200);
+  return hush(voiced_noise_frame(FM(260, 1800, 2500), 14, 2400, 3200, 14, 10, 200),
+              FRICATIVE_DB);
 }
 
 /* stop descriptions: duration, closure, burst, voiced, locus, burst
@@ -509,10 +556,10 @@ static void allophone(sound *s, int code) {
     st = STOP(30, 25, 5, true, lPalatal, 2600, 3300, 12, 8, 0, 0);
     affricate(s, &st, frZH(), 40);
     break;
-  case 166: steady(s, 70, voiced_noise_frame(FM(220, 1100, 2100), 16, 3000, 3800, 8, 5, 255)); break; /* VV */
-  case 167: steady(s, 70, voiced_noise_frame(FM(240, 1500, 2500), 14, 3700, 3950, 14, 10, 160)); break; /* ZZ */
+  case 166: steady(s, 70, hush(voiced_noise_frame(FM(220, 1100, 2100), 16, 3000, 3800, 8, 5, 255), FRICATIVE_DB)); break; /* VV */
+  case 167: steady(s, 70, hush(voiced_noise_frame(FM(240, 1500, 2500), 14, 3700, 3950, 14, 10, 160), FRICATIVE_DB)); break; /* ZZ */
   case 168: steady(s, 70, frZH()); break; /* ZH */
-  case 169: steady(s, 70, voiced_noise_frame(FM(250, 1300, 2400), 16, 3000, 3800, 7, 5, 255)); break; /* DH */
+  case 169: steady(s, 70, hush(voiced_noise_frame(FM(250, 1300, 2400), 16, 3000, 3800, 7, 5, 255), FRICATIVE_DB)); break; /* DH */
   case 170: st = STOP(45, 25, 8, true, lLabial, 700, 1200, 10, 6, 0, 0); plosive(s, &st); break; /* BE */
   case 171: st = STOP(45, 25, 8, true, lLabialBack, 600, 1000, 10, 6, 0, 0); plosive(s, &st); break; /* BO */
   case 172: st = STOP(10, 5, 5, true, lLabial, 700, 1200, 8, 5, 0, 0); plosive(s, &st); break; /* EB */
@@ -529,14 +576,14 @@ static void allophone(sound *s, int code) {
     st = STOP(30, 25, 5, false, lPalatal, 3000, 3600, 16, 12, 0, 0);
     affricate(s, &st, frSH(), 40);
     break;
-  case 183: steady(s, 70, noise_frame(FM(400, 1900, 2600), 1900, 2600, 12, 9, 255)); break; /* HE */
-  case 184: steady(s, 70, noise_frame(FM(600, 1000, 2400), 1000, 2400, 12, 8, 255)); break; /* HO */
-  case 185: steady(s, 70, noise_frame(fWW, 700, 1300, 10, 7, 255)); break; /* WH */
-  case 186: steady(s, 70, noise_frame(lLabial, 2500, 3800, 6, 9, 255)); break; /* FF */
+  case 183: steady(s, 70, hush(noise_frame(FM(400, 1900, 2600), 1900, 2600, 12, 9, 255), FRICATIVE_DB)); break; /* HE */
+  case 184: steady(s, 70, hush(noise_frame(FM(600, 1000, 2400), 1000, 2400, 12, 8, 255), FRICATIVE_DB)); break; /* HO */
+  case 185: steady(s, 70, hush(noise_frame(fWW, 700, 1300, 10, 7, 255), FRICATIVE_DB)); break; /* WH */
+  case 186: steady(s, 70, hush(noise_frame(lLabial, 2500, 3800, 6, 9, 255), FF_DB)); break; /* FF */
   case 187: steady(s, 40, frSE()); break; /* SE */
   case 188: steady(s, 40, frSO()); break; /* SO */
   case 189: steady(s, 50, frSH()); break; /* SH */
-  case 190: steady(s, 40, noise_frame(lDental, 3000, 3900, 6, 6, 255)); break; /* TH */
+  case 190: steady(s, 40, hush(noise_frame(lDental, 3000, 3900, 6, 6, 255), TH_DB)); break; /* TH */
   case 191: st = STOP(50, 30, 10, false, lAlveolar, 3500, 3950, 18, 14, 1800, 2600); plosive(s, &st); break; /* TT */
   case 192: st = STOP(70, 30, 8, false, lAlveolar, 3500, 3950, 18, 14, 1800, 2600); plosive(s, &st); break; /* TU */
   case 193: /* TS */
@@ -582,6 +629,14 @@ static frame buzz(formants f, double pitch, envelope_wave wave) {
 static frame quiet(frame f) {
   for (int i = 0; i < 5; i++)
     f.vol[i] = 0;
+  return f;
+}
+
+/* fade turns every oscillator of a frame down by db decibels */
+static frame fade(frame f, double db) {
+  const double g = pow(10, -db / 20);
+  for (int i = 0; i < 5; i++)
+    f.vol[i] *= g;
   return f;
 }
 
@@ -671,10 +726,29 @@ static void effect(sound *s, int code) {
     sweep(s, 262, 1200, 500);
     hold(s, 3, 3, quiet(tone(500, 0)));
     break;
-  case 215: /* A5 */
-    hold(s, 490, 10, buzz(FM(700, 1200, 2400), 160, ENV_SAW));
-    hold(s, 10, 10, quiet(buzz(FM(700, 1200, 2400), 160, ENV_SAW)));
+  case 215: { /* A5 */
+    /* measured from the vox_test recording (see STEADY_LENGTH): two steady
+     * tones, the second 12dB under the first (set louder here, as the output
+     * filter takes 4dB off it), that glide down together by
+     * about 295Hz over 240ms and back up again. the ROM sets Bend 1 before
+     * it, and the recording has the tones at 486Hz and 2525Hz, gliding to
+     * 190Hz and 2232Hz and back to 478Hz and 2522Hz. the frequencies here are
+     * those divided by Bend 1's factor (see msa_bend_factor()), so that Bend
+     * 1 plays the recording. whether the chip bends its sound effects at all
+     * isn't known */
+    frame f = tone(612, 3181);
+    f.vol[0] = 28;
+    f.vol[1] = 12;
+    hold(s, 3, 3, f);
+    f.freq[0] = 239;
+    f.freq[1] = 2812;
+    hold(s, 237, 237, f);
+    f.freq[0] = 602;
+    f.freq[1] = 3178;
+    hold(s, 250, 250, f);
+    hold(s, 10, 10, quiet(f));
     break;
+  }
   case 216: /* A6 */
     sweep(s, 132, 2000, 400);
     hold(s, 3, 3, quiet(tone(400, 0)));
@@ -769,7 +843,20 @@ static void effect(sound *s, int code) {
   case 251: dtmf(s, 941, 1477); break; /* D11 */
 
   case 252: decay(s, 125, tone(1250, 0)); break; /* M0 */
-  case 253: decay(s, 250, noise_frame(lGlottal, 600, 1800, 31, 26, 255)); break; /* M1 */
+  case 253: { /* M1 */
+    /* measured from the vox_test recording (see STEADY_LENGTH): 30ms of
+     * noise with most of its energy under 2kHz, then noise around 1 to 2kHz
+     * that dies away by 30dB, fastest at the start and the end */
+    const frame bang = noise_frame(lGlottal, 500, 1400, 31, 26, 255);
+    const frame hiss = noise_frame(lGlottal, 1000, 1700, 31, 26, 160);
+    hold(s, 30, 2, bang);
+    hold(s, 20, 20, fade(hiss, 5));
+    hold(s, 50, 50, fade(hiss, 12));
+    hold(s, 100, 100, fade(hiss, 15.5));
+    hold(s, 25, 25, fade(hiss, 19.5));
+    hold(s, 25, 25, quiet(hiss));
+    break;
+  }
   case 254: /* M2 */
     hold(s, 80, 15, buzz(fWW, 100, ENV_SAW));
     hold(s, 200, 200, buzz(fAH, 150, ENV_SAW));
@@ -926,9 +1013,13 @@ static void msa_expand(msa *m, const sound *s) {
   double f1 = 1.0, f2 = 1.0;
 
   if (s->speech) {
-    scale = msa_speed_factor(m);
+    scale = msa_speed_factor(m) * s->length;
+
+    /* fast and slow, measured from the vox_test recording (see
+     * STEADY_LENGTH): fast plays a sound at 0.53 to 0.67 of its length (NE,
+     * JH, AXRR), and slow at 1.14 to 1.67 times (SE, NE, TH, IY) */
     if (m->fast)
-      scale *= 0.5;
+      scale *= 0.6;
     if (m->slow)
       scale *= 1.5;
 

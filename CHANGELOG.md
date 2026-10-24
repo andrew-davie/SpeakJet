@@ -14,7 +14,26 @@ some guesses. The sound changes, so the reference samples are regenerated.
 
 `docs/design.md` describes the sources and the method.
 
+A recording of a real SpeakJet playing Alex Herbert's vox_test ROM, compared
+sound by sound with the library, corrects timing, noise levels and two
+effects. The reference samples are regenerated again.
+
+- Lengths: the chip plays steady sounds (vowels, nasals, liquids,
+  fricatives) 1.5 times the manual's length, diphthongs 1.2 times, and stops
+  as given. The tables keep the manual's lengths; the factor is applied as a
+  sound plays. The test phrases went from 7 to 25% short of the recording to
+  within 9%.
+- Fast plays a sound at 0.6 of its length instead of 0.5.
+- Noise: fricatives, stop bursts and aspiration are 12 to 23 dB quieter, so
+  they sit under the vowels as on the chip (SE 23 dB under the vowel beside
+  it, as recorded, where it was level with it).
+- A5 is two tones 12 dB apart gliding together 486 > 190 > 478 Hz and
+  2525 > 2232 > 2522 Hz, as recorded (at Bend 1), instead of a 160 Hz buzz.
+- M1 is a short low burst then 1 to 2 kHz noise dying away by 30 dB.
+
 text2speakjet:
+
+- Its length estimate uses the library's Speed curve, lengths and Fast.
 
 - Words in no dictionary are guessed with Festival's letter-to-sound decision
   trees (trained on the CMU dictionary) instead of the 1976 NRL rules: 43%

@@ -13,6 +13,11 @@ set the output filter's corner, the Speed curve and some formants of nine
 allophones; see [Measurements of the real chip](#measurements-of-the-real-chip).
 No code or tables were taken from either.
 
+A recording of a real SpeakJet playing a known sequence of codes, compared
+sound by sound with this library, sets how long the chip plays each kind of
+sound, Fast, how loud its noise is against its vowels, and the A5 and M1
+sound effects; see [A recording of the chip](#a-recording-of-the-chip).
+
 The manual documents the chip's synthesizer in some detail, but not the MSA
 "sound component database" that drives it: what oscillator settings make each
 allophone, and how one sound joins the next. So the library has three parts,
@@ -88,7 +93,16 @@ what joins one sound smoothly to the next.
   and then aspiration or voicing.
 - **Sound effects.** Apart from DTMF (standard tone pairs), the manual gives
   only names and lengths, so the effects are approximations built from the
-  same oscillators. Their lengths match the manual.
+  same oscillators, except A5 and M1, which are measured (see
+  [A recording of the chip](#a-recording-of-the-chip)). Their lengths match
+  the manual.
+- **Lengths.** The chip plays speech sounds longer than the manual's
+  lengths: steady sounds (vowels, nasals, liquids, fricatives) 1.5 times,
+  diphthongs 1.2 times, stops and affricates as given. **Fast** plays a sound
+  at 0.6 of its length rather than the manual's half. Both are measured (see
+  [A recording of the chip](#a-recording-of-the-chip)).
+- **Noise.** Fricatives, stop bursts and aspiration sit 14 to 23 dB under
+  the vowels, measured likewise.
 - **Speed.** Each step of Speed changes a sound's length by about 2%:
   exp(−0.02 (Speed − 114)), measured between Speeds 60 and 114 and
   extrapolated outside them (see
@@ -254,6 +268,47 @@ this one; Stella's measurement, made independently, is 1700 Hz. Both put the
 real voice's top end far below what the earlier 3400 Hz let through. Of the
 two, openFPGA's value is used because its model matches this library's.
 
+### A recording of the chip
+
+A recording of a real SpeakJet playing Alex Herbert's AtariVox test ROM
+(`vox_test`, 2004) was compared with this library playing the same codes. The
+ROM's five phrases are: M1; "testing, testing, one two three"; A5 then
+"danger", three times (Pitch 110, Bend 1); a phrase at Speed 116, Bend 4,
+Pitch 55; and BE IY DE IY five times at Speed 127. Each sound's start and end
+were read from the recording's band energies, and levels compared against the
+vowel beside each noise sound.
+
+What agreed already: Pitch (88 and 110 Hz exactly), the 200 ms pause, and the
+formants of the steady vowels EH and IH (within 5%).
+
+What changed:
+
+| | Recording | Was | Now |
+|---|---|---|---|
+| Steady sounds, against the manual's length | EH 2.07, IH 1.6, NGE 1.43; slow SE 1.67, TH 1.42, NE 1.14 | 1.0 | 1.5 |
+| Diphthongs | EYIY 1.0, IHWW 1.5; fast OHIY 1.2, AXRR 1.3 | 1.0 | 1.2 |
+| Voiceless stops | TT 1.0 | 1.0 | 1.0 |
+| Fast | 0.53 to 0.67 (NE, JH, AXRR) | 0.5 | 0.6 |
+| SE under the vowel beside it | 23 dB | 0 dB | 23 dB |
+| CH, TH, FF; stop bursts; aspiration | 16, 20, 21; 16 to 23; 19 dB | 0 to 7 dB | measured |
+| A5 | two tones 12 dB apart, gliding together 486 → 190 → 478 Hz and 2525 → 2232 → 2522 Hz | a 160 Hz buzz | the recording |
+| M1 | 30 ms of noise mostly under 2 kHz, then noise around 1 to 2 kHz dying away by 30 dB | noise around 600 and 1800 Hz fading linearly | the recording |
+
+With the new lengths and the existing Speed curve, the four speech phrases
+come within 9% of the recording's length (they were 7 to 25% short), and at
+Speed 127 a BE IY syllable is 115 ms against the recording's 115.
+
+The ROM sets Bend 1 before A5, so A5's frequencies are those of the
+recording divided by Bend 1's factor; whether the chip bends its effects isn't
+known. Fricatives the recording doesn't have (SO, SH, HE, HO, WH, and the
+noise of the voiced fricatives) take the mean of those it has. M1 is 3 dB
+quieter against the vowels than the recording, as its noise oscillators are
+already at full volume.
+
+The recording also suggests, but on too few examples to change, that pause 6
+is about 55 ms rather than 90, and that Bend moves F1 and F2 by about 3% a
+step and F3 barely at all.
+
 ### Not used
 
 Bend, how fast formants move from one sound to the next, oscillator volumes,
@@ -269,7 +324,7 @@ The manual doesn't say, so these are guesses (described above):
 | | What the library does |
 |---|---|
 | The oscillator settings behind each allophone | Built from published formant measurements of English speech; only the formants that two sets of measurements of the chip agree on are from the chip, and no volumes are |
-| The sound effects, apart from DTMF | Approximations, with the manual's lengths |
+| The sound effects, apart from DTMF, A5 and M1 | Approximations, with the manual's lengths |
 | How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties |
 | The Speed curve below 60 and above 114 | The curve measured between them, extrapolated |
 | How much Stress and Relax change a sound | Pitch × 1.12 or × 0.9, with the first two formants shifted (the manual says only "a small amount") |
@@ -279,7 +334,10 @@ The manual doesn't say, so these are guesses (described above):
 | Whether 135 is OH and 136 AW | The manual's order is followed; PhraseALator has them swapped (see above) |
 
 Apart from the measured values above, none of this has been compared with a
-real SpeakJet. Recordings from one would settle most of it.
+real SpeakJet. One recording has been (see
+[A recording of the chip](#a-recording-of-the-chip)); recordings of every
+allophone and effect on their own, and of Speed and Bend sweeps, would settle
+most of the rest.
 
 ### Not emulated
 

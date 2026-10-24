@@ -93,7 +93,8 @@ static void test_phrase_length(void) {
     n++;
 
   const double got = (double)n * 1000 / SJ_SAMPLE_RATE;
-  const double want = 70.0 + 70 + 99 + AUTO_SILENCE_MS;
+  const double want =
+      (70.0 + 70) * STEADY_LENGTH + 99 * STOP_LENGTH + AUTO_SILENCE_MS;
   if (fabs(got - want) > 1)
     FAIL("phrase played for %.0fms, expected about %.0fms", got, want);
   sj_free(sj);

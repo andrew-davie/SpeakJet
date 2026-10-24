@@ -56,6 +56,7 @@ optional) or SpeakJet codes in braces, used exactly as written:
 import argparse
 import gzip
 import json
+import math
 import os
 import re
 import sys
@@ -210,6 +211,17 @@ def describe(codes):
     return ", ".join(groups)
 
 
+def chip_length(code):
+    """How much longer the chip plays an allophone than the manual's length,
+    as the library has it (STEADY_LENGTH etc. in speakjet.c): 1.5 for steady
+    sounds, 1.2 for diphthongs, 1.0 for stops and affricates."""
+    if 149 <= code <= 164:
+        return 1.2
+    if code == 165 or 170 <= code <= 182 or code >= 191:
+        return 1.0
+    return 1.5
+
+
 def estimate_ms(codes):
     speed = DEFAULT_SPEED
     total = 0.0
@@ -219,19 +231,22 @@ def estimate_ms(codes):
         c = codes[i]
         if c in ARG_NAME:
             if c == 21 and i + 1 < len(codes):
-                speed = max(codes[i + 1], 1)
+                speed = codes[i + 1]
             i += 2
             continue
         if c <= 6:
             total += PAUSE_MS[c]
         elif c == 7:
-            scale = 0.5
+            scale = 0.6
         elif c == 8:
             scale = 1.5
         elif c == 31:
             speed = DEFAULT_SPEED
         elif c in DURATION:
-            total += DURATION[c] * scale * (DEFAULT_SPEED / speed if c < 200 else 1.0)
+            if c < 200:
+                total += DURATION[c] * scale * chip_length(c) * math.exp(-0.02 * (speed - DEFAULT_SPEED))
+            else:
+                total += DURATION[c]
             scale = 1.0
         i += 1
     return total
