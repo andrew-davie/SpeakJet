@@ -325,8 +325,13 @@ driver, that plays a fixed sequence: every allophone and every sound effect
 on its own, each followed by 400 ms of silence; sweeps of Pitch, Speed, Bend
 and Volume; the pauses and delays between two AWs; Fast, Slow, Stress and
 Relax on six sounds; Repeat; Soft (18); and some consonant-vowel-consonant
-syllables. A real AtariVox playing it was recorded at 48 kHz and compared
-with this library playing the same bytes.
+syllables. A real AtariVox playing it was recorded at 48 kHz, twice, and
+compared with this library playing the same bytes.
+
+The two takes agree closely: allophone lengths to 2.5 ms on average (12 ms at
+most, SE), the fricatives' spectra to 2 to 4 dB, the Speed sweep to 15 ms, the
+effects' traces to within a semitone (except the noisy C8). The lengths and
+fricatives are fitted to the mean of the two.
 
 The recording is overdriven: the vowels are clipped (about 15% of their
 samples), so their levels, their formants and the Volume control can't be
@@ -341,11 +346,12 @@ What changed:
 |---|---|---|
 | Speed | length falls in a straight line: 2115 ms at Speed 0, 1825 at 20, 1560 at 40, 1225 at 60, 955 at 80, for TT AW EYIY SE; (146 − Speed) / 32 of the default length | exp(−0.02 (Speed − 114)), 9.8 times at Speed 0 |
 | Pauses and Speed | two pause 2s after each group last 1845 ms at Speed 0, 1540 at 20, 815 at 80: the same factor as the sounds | not scaled |
-| Pauses 3, 5, 6 | 654, 27 and 59 ms of silence between two AWs | 705, 53 and 81 ms here |
+| Pauses 3, 5, 6 | shorter than the manual's 700, 60 and 90 ms: about 650, 45 and 70 (measured against the two delays, whose length is exact; the takes differ by up to 35 ms on a pause) | the manual's |
 | Allophone lengths | audible lengths from 18 ms (OK) to 268 ms (OWIY): vowels IH to OH about 140 ms, back vowels 120, nasals and liquids 90 to 110, HE HO WH FF about 75, SE 86, SO 100 | 1.5 times for every steady sound and 1.2 for diphthongs, which made the nasals, liquids, voiced fricatives and HE to FF 30 to 40 ms too long and the front vowels 20 ms too short |
 | Fricative hiss | in third octaves from 250 Hz to 4 kHz: SE and SO peak at 3.2 to 4 kHz, SH at 2 to 3 kHz, HE and HO at 1 to 1.5 kHz, WH at 0.6 to 0.9 kHz | broad noise, mostly under 2.2 kHz |
 | DTMF | 152 to 154 ms | 95 ms |
 | Other sound effects | swept, stepped and pulsed tones and buzzes, many of different lengths from the manual's (A1 and A2 about 975 ms, M0 1.2 s) | guesses from the names |
+| Bend on sound effects | adds to the frequencies rather than multiplying them: D1's tones move together by −198, −154, 0, +220 and +439 Hz at Bends 0, 1, 5, 10 and 15, keeping their 512 Hz spacing, and A5 the same at 0 and 1 | multiplied, like speech |
 
 The lengths were fitted by playing each allophone on its own here, measuring
 its audible length the same way as on the recording (from where it rises out
@@ -366,21 +372,25 @@ both delays (within the recording's 10 ms), Fast (0.65 to 0.75 of the plain
 length, as audible lengths, which include the fade), Slow (1.3 to 1.5),
 Repeat, and that Soft (18) changes nothing audible in BE and BO.
 
+Bend on the effects is 44 Hz a step from 5 up and from 1 down, with 22 Hz
+missing somewhere between 1 and 5; here the shortfall is taken at 5. It is
+applied to oscillators 1 to 3, the tones.
+
 What it shows but doesn't settle:
 
-- **Bend and the effects.** Bend changes the effects, but not by the factor
-  it applies to speech: D1's two tones move together and keep their 512 Hz
-  spacing (501 and 1012 Hz at Bend 0, 697 and 1209 at 5, 629 and 1138 at
-  15). Here Bend still scales the effects as it does speech.
 - **Bend and the vowels.** AW's spectrum moves up by roughly 6 to 9% a step
-  (the clipping makes this rough); SE's doesn't move at all.
+  in the first take (the clipping makes this rough), and the second can't
+  tell a shift from a stretch; SE's doesn't move at all. Speech still uses a
+  semitone a step. Whether Bend moves the effects' noise isn't known.
 - **135 and 136.** The clipped vowels can't say which is "hot".
 - **The 2200 Hz output filter.** The fricatives have energy up to 4 kHz,
   which the filter takes 10 dB or more off; their frames are fitted through
   it, but the vowels' top end can't be checked.
-- An unexplained sound (a blip, then 0.6 s of three stepped tones) between
-  the Speed 80 and Speed 100 groups, which no code in the sequence accounts
-  for; perhaps a serial byte arrived corrupted.
+- **An extra sound** between the Speed 80 and Speed 100 groups, in both takes
+  alike: an 85 ms burst, then three 180 ms tones at 746, 501 and 746 Hz. No
+  code in the sequence accounts for it, the driver sends the bytes plainly,
+  and it matches none of the 55 effects. The bytes there are
+  `2 2 21 100 191 136 154 187`.
 
 ### Not used
 

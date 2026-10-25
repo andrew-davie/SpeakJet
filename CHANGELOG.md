@@ -58,6 +58,16 @@ regenerated again.
   manual's lengths. A5 is traced at the default Bend and no longer assumes
   that Bend scales it.
 
+A second take of the VoxRecord recording agrees with the first (allophone
+lengths to 2.5 ms on average, spectra to 2 to 4 dB, the Speed sweep to 15
+ms). The reference samples are regenerated again.
+
+- Lengths and fricatives are refitted to the mean of the two takes.
+- Pause 5 is 45 ms (was 35), measured against the delays in both takes.
+- Bend on a sound effect adds to its tones' frequencies (44 Hz a step)
+  instead of multiplying them, as both takes show for D1 and A5; speech is
+  bent as before.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths

@@ -485,14 +485,15 @@ static void affricate(sound *s, const stop *st, frame fric, double fric_ms) {
  * the noise of the voiceless fricatives (here and HE, HO, WH, FF and TH
  * below) is shaped to the VoxRecord recording (see msa_speed_factor()): their
  * spectra on the chip, which the recording has unclipped, were measured in
- * third octaves from 250Hz to 4kHz, and each frame's two noise oscillators
+ * third octaves from 250Hz to 4kHz in two takes (which agree to 2 to 4dB),
+ * averaged, and each frame's two noise oscillators
  * fitted to that shape through the output filter here. the chip's hiss is
  * peaked where these are broad: SE and SO at 3.2 to 4kHz, SH at 2 to 3kHz,
  * HE and HO around 1 to 1.5kHz, WH at 0.6 to 0.9kHz. each keeps the overall
  * level the vox_test recording gave it (see FRICATIVE_DB) */
-static frame frSE(void) { return noise_frame(lAlveolar, 3721, 3280, 14.8, 7.5, 9); }
-static frame frSO(void) { return noise_frame(lAlveolarBak, 3663, 2903, 19.5, 2.6, 5); }
-static frame frSH(void) { return noise_frame(lPalatal, 2120, 3155, 2.2, 10.2, 31); }
+static frame frSE(void) { return noise_frame(lAlveolar, 3494, 3032, 15.2, 0.6, 9); }
+static frame frSO(void) { return noise_frame(lAlveolarBak, 3471, 3049, 9.8, 3.2, 10); }
+static frame frSH(void) { return noise_frame(lPalatal, 3275, 2532, 7.4, 4.6, 35); }
 static frame frZH(void) {
   return hush(voiced_noise_frame(FM(260, 1800, 2500), 14, 2400, 3200, 14, 10, 200),
               FRICATIVE_DB);
@@ -524,7 +525,8 @@ static const char *const allophone_names[] = {
 /* LENGTH-TABLE-BEGIN */
 /* how much longer the chip plays each allophone than the manual's length, at
  * the default speed. 0 keeps the class's length (see STEADY_LENGTH). fitted
- * to the VoxRecord recording (see msa_speed_factor()): each allophone was
+ * to the mean of two takes of the VoxRecord recording (see
+ * msa_speed_factor()), which agree to 2.5ms on average: each allophone was
  * played on its own and its audible length on the chip, from where it rises
  * out of silence to where it falls back, was matched here measured the same
  * way. the chip plays the vowels IH to OH for about 140ms, the back vowels and
@@ -533,13 +535,13 @@ static const char *const allophone_names[] = {
  * their class's length: where a stop's sound starts and ends on a recording
  * says nothing about its silent closure */
 static const double allophone_length[] = {
-    1.44, 1.64, 1.81, 1.82, 1.90, 1.84, 1.84, 1.79, 1.56,
-    1.47, 1.44, 1.36, 1.18, 0.92, 1.01, 0.84, 0.90, 1.04,
-    1.19, 1.16, 1.53, 1.12, 1.19, 1.22, 1.14, 1.14, 1.17,
-    1.12, 1.06, 1.17, 1.21, 1.17, 1.06, 1.12, 1.26, 1.16,
-    1.34, 0.00, 0.80, 1.17, 0.87, 1.01, 0.00, 0.00, 0.00,
+    1.47, 1.62, 1.81, 1.77, 1.88, 1.80, 1.82, 1.79, 1.56,
+    1.45, 1.42, 1.34, 1.14, 0.96, 1.03, 0.84, 0.92, 1.09,
+    1.19, 1.10, 1.53, 1.12, 1.16, 1.21, 1.14, 1.14, 1.17,
+    1.12, 1.06, 1.17, 1.20, 1.17, 1.06, 1.12, 1.26, 1.16,
+    1.34, 0.00, 0.80, 1.11, 0.86, 1.04, 0.00, 0.00, 0.00,
     0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
-    0.00, 0.98, 0.98, 0.95, 1.02, 2.05, 2.35, 1.10, 0.90,
+    0.00, 1.00, 1.00, 0.99, 1.02, 2.14, 2.40, 1.12, 0.96,
     0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
 };
 /* LENGTH-TABLE-END */
@@ -608,14 +610,14 @@ static void allophone(sound *s, int code) {
     st = STOP(30, 25, 5, false, lPalatal, 3000, 3600, 16, 12, 0, 0);
     affricate(s, &st, frSH(), 40);
     break;
-  case 183: steady(s, 70, noise_frame(FM(400, 1900, 2600), 3756, 1365, 1.8, 1.4, 110)); break; /* HE */
-  case 184: steady(s, 70, noise_frame(FM(600, 1000, 2400), 3510, 1263, 1.4, 1.6, 144)); break; /* HO */
-  case 185: steady(s, 70, noise_frame(fWW, 3485, 782, 0.4, 1.6, 156)); break; /* WH */
-  case 186: steady(s, 70, noise_frame(lLabial, 3612, 1478, 9.0, 0.7, 39)); break; /* FF */
+  case 183: steady(s, 70, noise_frame(FM(400, 1900, 2600), 1446, 3706, 1.3, 1.7, 141)); break; /* HE */
+  case 184: steady(s, 70, noise_frame(FM(600, 1000, 2400), 1265, 3569, 1.6, 1.5, 155)); break; /* HO */
+  case 185: steady(s, 70, noise_frame(fWW, 3026, 780, 0.4, 1.6, 163)); break; /* WH */
+  case 186: steady(s, 70, noise_frame(lLabial, 3847, 3741, 8.9, 15.6, 21)); break; /* FF */
   case 187: steady(s, 40, frSE()); break; /* SE */
   case 188: steady(s, 40, frSO()); break; /* SO */
   case 189: steady(s, 50, frSH()); break; /* SH */
-  case 190: steady(s, 40, noise_frame(lDental, 3306, 1740, 4.4, 0.8, 75)); break; /* TH */
+  case 190: steady(s, 40, noise_frame(lDental, 3218, 1576, 3.8, 1.0, 77)); break; /* TH */
   case 191: st = STOP(50, 30, 10, false, lAlveolar, 3500, 3950, 18, 14, 1800, 2600); plosive(s, &st); break; /* TT */
   case 192: st = STOP(70, 30, 8, false, lAlveolar, 3500, 3950, 18, 14, 1800, 2600); plosive(s, &st); break; /* TU */
   case 193: /* TS */
@@ -1115,11 +1117,12 @@ const char *sj_sound_name(uint8_t code) {
 /* ======================================================================== */
 
 /* pause lengths in milliseconds for codes 0 to 6. the manual gives 0, 100,
- * 200, 700, 30, 60 and 90; the VoxRecord recording (see msa_speed_factor())
- * has the silence between two AWs at 654ms for pause 3, 27ms for pause 5 and
- * 59ms for pause 6, which these lengths give here. the others match the
- * manual to within the recording's 10ms or so */
-static const double pause_ms[] = {0, 100, 200, 650, 30, 35, 70};
+ * 200, 700, 30, 60 and 90. two takes of the VoxRecord recording (see
+ * msa_speed_factor()) measure the silence between two AWs, against the two
+ * delays (whose length is exact) as a reference: pauses 3, 5 and 6 are
+ * shorter than the manual says, about 650, 45 and 70ms. the takes differ by
+ * up to 35ms on a pause, so the others, within 10ms of the manual, keep it */
+static const double pause_ms[] = {0, 100, 200, 650, 30, 45, 70};
 
 /* how quickly the volume ramps down at the start of a pause, and at auto
  * silence when the input buffer has emptied. not given by the manual */
@@ -1160,6 +1163,10 @@ typedef struct msa {
   bool jump_next_freq;
   bool auto_silenced;
 
+  /* the sound playing is speech rather than a sound effect: Bend works
+   * differently on the two (see msa_effect_bend_hz()) */
+  bool speech;
+
   segment segs[MAX_PARTS];
   int nsegs;  /* segments in one copy */
   int seg;    /* the segment playing; busy while seg < nsegs */
@@ -1186,14 +1193,34 @@ static void msa_init(msa *m) {
    * first sound fades in rather than sweeping up from 0Hz */
   m->current = silent_frame(fAX);
   m->current.pitch = SJ_DEFAULT_PITCH;
+  m->speech = true;
 }
 
 /* bend_factor is the multiplier the Bend control applies to oscillator
- * frequencies. the manual only says that bend goes from a "deep-hollow" to a
- * "High-metallic" sounding voice, so the curve is a guess: a semitone per
- * step either side of the default */
+ * frequencies in speech. the manual only says that bend goes from a
+ * "deep-hollow" to a "High-metallic" sounding voice, so the curve is a guess:
+ * a semitone per step either side of the default. the recording's clipped
+ * vowels can't confirm it. sound effects are bent by msa_effect_bend_hz()
+ * instead */
 static double msa_bend_factor(const msa *m) {
+  if (!m->speech)
+    return 1.0;
   return pow(2, (double)(m->bend - SJ_DEFAULT_BEND) / 12);
+}
+
+/* on a sound effect Bend doesn't multiply the frequencies but adds to them.
+ * measured from two takes of the VoxRecord recording (see
+ * msa_speed_factor()), which plays D1 and A5 at Bends 0, 1, 5, 10 and 15:
+ * D1's two tones move together and keep their 512Hz spacing, by -198, -154,
+ * 0, +220 and +439Hz, and A5 by the same at Bends 0 and 1. that is 44Hz a step
+ * from 5 up, and from 1 down; between 1 and 5 it is 22Hz short, which these
+ * five Bends can't place, so the shortfall is taken up at 5. the offset is
+ * applied to oscillators 1 to 3, the tones; whether it moves the noise
+ * oscillators isn't known */
+static double msa_effect_bend_hz(const msa *m) {
+  if (m->bend >= SJ_DEFAULT_BEND)
+    return 44.0 * (m->bend - SJ_DEFAULT_BEND);
+  return 44.0 * m->bend - 198.0;
 }
 
 /* the duration multiplier from the Speed control. the manual gives the range
@@ -1262,6 +1289,9 @@ static void msa_expand(msa *m, const sound *s) {
     }
   }
 
+  m->speech = s->speech;
+  const double bend_hz = s->speech ? 0 : msa_effect_bend_hz(m);
+
   m->nsegs = 0;
   for (int i = 0; i < s->nparts; i++) {
     const part *p = &s->parts[i];
@@ -1276,6 +1306,10 @@ static void msa_expand(msa *m, const sound *s) {
       t.pitch = pitch;
       t.freq[0] *= f1;
       t.freq[1] *= f2;
+    } else {
+      for (int j = 0; j < 3; j++)
+        if (t.freq[j] > 0)
+          t.freq[j] = fmax2(t.freq[j] + bend_hz, 0);
     }
     segment *sg = &m->segs[m->nsegs++];
     sg->samples = to_samples(ms);
