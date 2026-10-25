@@ -56,7 +56,6 @@ optional) or SpeakJet codes in braces, used exactly as written:
 import argparse
 import gzip
 import json
-import math
 import os
 import re
 import sys
@@ -211,15 +210,38 @@ def describe(codes):
     return ", ".join(groups)
 
 
+# How long the chip plays each sound, as the library has it (speakjet.c,
+# measured from recordings of the real chip): CHIP_LENGTH is how much longer
+# than the manual's length each allophone lasts at the default speed
+# (allophone_length, or the class's length where that is 0), CHIP_EFFECT_MS
+# the length of each sound effect (codes 200 to 254) and CHIP_PAUSE_MS of
+# pauses 0 to 6 (pause_ms). Keep these in step with speakjet.c.
+CHIP_LENGTH = [
+    1.44, 1.64, 1.81, 1.82, 1.90, 1.84, 1.84, 1.79, 1.56, 1.47, 1.44, 1.36,
+    1.18, 0.92, 1.01, 0.84, 0.90, 1.04, 1.19, 1.16, 1.53, 1.12, 1.19, 1.22,
+    1.14, 1.14, 1.17, 1.12, 1.06, 1.17, 1.21, 1.17, 1.06, 1.12, 1.26, 1.16,
+    1.34, 1.00, 0.80, 1.17, 0.87, 1.01, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00,
+    1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 0.98, 0.98, 0.95, 1.02, 2.05,
+    2.35, 1.10, 0.90, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00,
+]
+CHIP_EFFECT_MS = [
+    108, 103, 108, 103, 103, 103, 103, 103, 103, 108, 368, 978, 978, 543, 263,
+    563, 203, 598, 278, 323, 183, 403, 413, 318, 388, 173, 178, 178, 328, 303,
+    218, 298, 213, 238, 238, 348, 268, 383, 118, 98, 153, 153, 153, 153, 153,
+    153, 153, 153, 153, 153, 153, 153, 1203, 250, 528,
+]
+CHIP_PAUSE_MS = [0, 100, 200, 650, 30, 35, 70]
+
+
 def chip_length(code):
-    """How much longer the chip plays an allophone than the manual's length,
-    as the library has it (STEADY_LENGTH etc. in speakjet.c): 1.5 for steady
-    sounds, 1.2 for diphthongs, 1.0 for stops and affricates."""
-    if 149 <= code <= 164:
-        return 1.2
-    if code == 165 or 170 <= code <= 182 or code >= 191:
-        return 1.0
-    return 1.5
+    """How much longer the chip plays an allophone than the manual's length."""
+    return CHIP_LENGTH[code - 128]
+
+
+def speed_factor(speed):
+    """The library's Speed curve: lengths fall in a straight line with speed,
+    reaching zero at 146 (msa_speed_factor() in speakjet.c)."""
+    return (146.0 - speed) / (146.0 - DEFAULT_SPEED)
 
 
 def estimate_ms(codes):
@@ -235,7 +257,7 @@ def estimate_ms(codes):
             i += 2
             continue
         if c <= 6:
-            total += PAUSE_MS[c]
+            total += CHIP_PAUSE_MS[c] * speed_factor(speed)
         elif c == 7:
             scale = 0.6
         elif c == 8:
@@ -244,9 +266,9 @@ def estimate_ms(codes):
             speed = DEFAULT_SPEED
         elif c in DURATION:
             if c < 200:
-                total += DURATION[c] * scale * chip_length(c) * math.exp(-0.02 * (speed - DEFAULT_SPEED))
+                total += DURATION[c] * scale * chip_length(c) * speed_factor(speed)
             else:
-                total += DURATION[c]
+                total += CHIP_EFFECT_MS[c - 200]
             scale = 1.0
         i += 1
     return total

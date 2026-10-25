@@ -31,9 +31,37 @@ effects. The reference samples are regenerated again.
   2525 > 2232 > 2522 Hz, as recorded (at Bend 1), instead of a 160 Hz buzz.
 - M1 is a short low burst then 1 to 2 kHz noise dying away by 30 dB.
 
+A second recording, of a real AtariVox playing the VoxRecord ROM (every
+allophone and effect on its own, and sweeps of each control), corrects
+timing, the fricatives and the sound effects. The reference samples are
+regenerated again.
+
+- Speed: a sound's length falls in a straight line with Speed,
+  (146 - Speed) / 32 of its length at the default, instead of
+  exp(-0.02 (Speed - 114)): 4.6 times at Speed 0 instead of 9.8, 0.59 at 127
+  instead of 0.77.
+- Pauses are lengthened and shortened by Speed as sounds are; they weren't.
+- Pause 3 is 650 ms (was 700), pause 5 35 ms (was 60), pause 6 70 ms (was
+  90), which give the silences the recording has.
+- Lengths: each allophone other than the stops and affricates has its own
+  length, fitted to its length on the chip, instead of 1.5 times the manual's
+  for every steady sound and 1.2 for diphthongs. Nasals, liquids, voiced
+  fricatives and HE, HO, WH, FF were 30 to 40 ms too long; the front vowels
+  20 ms too short.
+- Fricatives: the voiceless fricatives' hiss is shaped to the chip's spectra
+  (SE and SO peak at 3.2 to 4 kHz, SH at 2 to 3 kHz, HE and HO around 1 to
+  1.5 kHz) at the same overall levels.
+- DTMF tones last 153 ms instead of the manual's 95.
+- Sound effects: all but DTMF and M1 are traced from the recording, gliding
+  between measured points as a tone, noise or a buzz, with the chip's
+  lengths (A1 and A2 nearly a second, M0 1.2 s) instead of guesses with the
+  manual's lengths. A5 is traced at the default Bend and no longer assumes
+  that Bend scales it.
+
 text2speakjet:
 
-- Its length estimate uses the library's Speed curve, lengths and Fast.
+- Its length estimate uses the library's Speed curve, lengths, pause lengths
+  and effect lengths, and lengthens pauses with Speed.
 
 - Words in no dictionary are guessed with Festival's letter-to-sound decision
   trees (trained on the CMU dictionary) instead of the 1976 NRL rules: 43%

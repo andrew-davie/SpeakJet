@@ -210,8 +210,8 @@ static double synth_sample(synth *s, const frame *f, double bend, double master)
 /* tables.go                                                                */
 /* ======================================================================== */
 
-/* the most parts any sound has (A7) */
-#define MAX_PARTS 8
+/* the most parts any sound has (a traced effect: see fx_points) */
+#define MAX_PARTS 41
 
 /* part is one stage of a sound: the synthesizer glides from wherever it is to
  * the target frame over glide_ms and then holds it for the rest of ms */
@@ -248,7 +248,9 @@ typedef struct sound {
  * when slow), diphthongs about 1.2 times (EYIY 1.0, IHWW 1.5, and OHIY 1.2,
  * AXRR 1.3 when fast), and voiceless stops what the manual gives (TT 1.0). at
  * speed 127 the same steady and stop lengths and the speed curve below give
- * the recording's syllable length to within a few milliseconds */
+ * the recording's syllable length to within a few milliseconds. the stops and
+ * affricates still use these; the other allophones now have their own lengths
+ * from a later recording (see allophone_length) */
 #define STEADY_LENGTH 1.5
 #define DIPHTHONG_LENGTH 1.2
 #define STOP_LENGTH 1.0
@@ -388,16 +390,14 @@ static frame hush(frame f, double db) {
 }
 
 /* how much quieter the chip's noise is than the levels first chosen here.
- * measured from the vox_test recording (see STEADY_LENGTH) by comparing each
+ * measured from the vox_test recording (see sound.length) by comparing each
  * noise sound's level against the vowel beside it, on the chip and here. on
  * the chip hiss sits 16 to 23dB under the vowels; here it was level with them.
  * the corrections: SE 23dB, CH (the SH frame) 16.4dB, TH 11.8dB, FF 13.7dB,
  * stop bursts 19.5dB (TT 23dB, KE 16dB) and aspiration 14.5dB (TT). sounds the
- * recording doesn't have take the mean of the fricatives that it does */
-#define SE_DB 23.0
-#define SH_DB 16.4
-#define TH_DB 11.8
-#define FF_DB 13.7
+ * recording doesn't have take the mean of the fricatives that it does. the
+ * voiceless fricatives now have these levels built into their frames (see
+ * frSE()) */
 #define FRICATIVE_DB 17.0
 #define BURST_DB 19.5
 #define ASPIRATION_DB 14.5
@@ -480,10 +480,19 @@ static void affricate(sound *s, const stop *st, frame fric, double fric_ms) {
   add_part(s, fric_ms, 5, fric);
 }
 
-/* frames for the fricatives, reused by the affricates and TS */
-static frame frSE(void) { return hush(noise_frame(lAlveolar, 3800, 3990, 20, 16, 160), SE_DB); }
-static frame frSO(void) { return hush(noise_frame(lAlveolarBak, 3500, 3900, 20, 14, 160), SE_DB); }
-static frame frSH(void) { return hush(noise_frame(lPalatal, 2300, 3100, 22, 16, 200), SH_DB); }
+/* frames for the fricatives, reused by the affricates and TS.
+ *
+ * the noise of the voiceless fricatives (here and HE, HO, WH, FF and TH
+ * below) is shaped to the VoxRecord recording (see msa_speed_factor()): their
+ * spectra on the chip, which the recording has unclipped, were measured in
+ * third octaves from 250Hz to 4kHz, and each frame's two noise oscillators
+ * fitted to that shape through the output filter here. the chip's hiss is
+ * peaked where these are broad: SE and SO at 3.2 to 4kHz, SH at 2 to 3kHz,
+ * HE and HO around 1 to 1.5kHz, WH at 0.6 to 0.9kHz. each keeps the overall
+ * level the vox_test recording gave it (see FRICATIVE_DB) */
+static frame frSE(void) { return noise_frame(lAlveolar, 3721, 3280, 14.8, 7.5, 9); }
+static frame frSO(void) { return noise_frame(lAlveolarBak, 3663, 2903, 19.5, 2.6, 5); }
+static frame frSH(void) { return noise_frame(lPalatal, 2120, 3155, 2.2, 10.2, 31); }
 static frame frZH(void) {
   return hush(voiced_noise_frame(FM(260, 1800, 2500), 14, 2400, 3200, 14, 10, 200),
               FRICATIVE_DB);
@@ -511,6 +520,29 @@ static const char *const allophone_names[] = {
 
 #define NUM_ALLOPHONES                                                         \
   ((int)(sizeof(allophone_names) / sizeof(allophone_names[0])))
+
+/* LENGTH-TABLE-BEGIN */
+/* how much longer the chip plays each allophone than the manual's length, at
+ * the default speed. 0 keeps the class's length (see STEADY_LENGTH). fitted
+ * to the VoxRecord recording (see msa_speed_factor()): each allophone was
+ * played on its own and its audible length on the chip, from where it rises
+ * out of silence to where it falls back, was matched here measured the same
+ * way. the chip plays the vowels IH to OH for about 140ms, the back vowels and
+ * RR 120 to 125ms, the nasals and liquids 90 to 110ms, the voiced fricatives
+ * 90 to 110ms and HE, HO, WH and FF about 75ms. the stops and affricates keep
+ * their class's length: where a stop's sound starts and ends on a recording
+ * says nothing about its silent closure */
+static const double allophone_length[] = {
+    1.44, 1.64, 1.81, 1.82, 1.90, 1.84, 1.84, 1.79, 1.56,
+    1.47, 1.44, 1.36, 1.18, 0.92, 1.01, 0.84, 0.90, 1.04,
+    1.19, 1.16, 1.53, 1.12, 1.19, 1.22, 1.14, 1.14, 1.17,
+    1.12, 1.06, 1.17, 1.21, 1.17, 1.06, 1.12, 1.26, 1.16,
+    1.34, 0.00, 0.80, 1.17, 0.87, 1.01, 0.00, 0.00, 0.00,
+    0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
+    0.00, 0.98, 0.98, 0.95, 1.02, 2.05, 2.35, 1.10, 0.90,
+    0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
+};
+/* LENGTH-TABLE-END */
 
 static void allophone(sound *s, int code) {
   stop st;
@@ -576,14 +608,14 @@ static void allophone(sound *s, int code) {
     st = STOP(30, 25, 5, false, lPalatal, 3000, 3600, 16, 12, 0, 0);
     affricate(s, &st, frSH(), 40);
     break;
-  case 183: steady(s, 70, hush(noise_frame(FM(400, 1900, 2600), 1900, 2600, 12, 9, 255), FRICATIVE_DB)); break; /* HE */
-  case 184: steady(s, 70, hush(noise_frame(FM(600, 1000, 2400), 1000, 2400, 12, 8, 255), FRICATIVE_DB)); break; /* HO */
-  case 185: steady(s, 70, hush(noise_frame(fWW, 700, 1300, 10, 7, 255), FRICATIVE_DB)); break; /* WH */
-  case 186: steady(s, 70, hush(noise_frame(lLabial, 2500, 3800, 6, 9, 255), FF_DB)); break; /* FF */
+  case 183: steady(s, 70, noise_frame(FM(400, 1900, 2600), 3756, 1365, 1.8, 1.4, 110)); break; /* HE */
+  case 184: steady(s, 70, noise_frame(FM(600, 1000, 2400), 3510, 1263, 1.4, 1.6, 144)); break; /* HO */
+  case 185: steady(s, 70, noise_frame(fWW, 3485, 782, 0.4, 1.6, 156)); break; /* WH */
+  case 186: steady(s, 70, noise_frame(lLabial, 3612, 1478, 9.0, 0.7, 39)); break; /* FF */
   case 187: steady(s, 40, frSE()); break; /* SE */
   case 188: steady(s, 40, frSO()); break; /* SO */
   case 189: steady(s, 50, frSH()); break; /* SH */
-  case 190: steady(s, 40, hush(noise_frame(lDental, 3000, 3900, 6, 6, 255), TH_DB)); break; /* TH */
+  case 190: steady(s, 40, noise_frame(lDental, 3306, 1740, 4.4, 0.8, 75)); break; /* TH */
   case 191: st = STOP(50, 30, 10, false, lAlveolar, 3500, 3950, 18, 14, 1800, 2600); plosive(s, &st); break; /* TT */
   case 192: st = STOP(70, 30, 8, false, lAlveolar, 3500, 3950, 18, 14, 1800, 2600); plosive(s, &st); break; /* TU */
   case 193: /* TS */
@@ -598,11 +630,11 @@ static void allophone(sound *s, int code) {
   case 199: st = STOP(99, 50, 9, false, lLabialBack, 500, 1200, 12, 9, 1000, 2300); plosive(s, &st); break; /* PO */
   default: break;
   }
+  if (allophone_length[code - 128] > 0)
+    s->length = allophone_length[code - 128];
 }
 
-/* effect constructors. none of the sound effects except DTMF are described
- * by the manual beyond their name and length, so these are approximations
- * built from the same oscillators */
+/* effect constructors */
 
 /* tone is a plain sine on oscillator 1 (and optionally 2) with no envelope */
 static frame tone(double f1, double f2) {
@@ -616,14 +648,6 @@ static frame tone(double f1, double f2) {
     t.vol[1] = 24;
   }
   return t;
-}
-
-/* buzz is an enveloped (voiced) sound at a fixed pitch */
-static frame buzz(formants f, double pitch, envelope_wave wave) {
-  frame b = voiced_frame(f, 26, 18, 10);
-  b.pitch = pitch;
-  b.wave = wave;
-  return b;
 }
 
 static frame quiet(frame f) {
@@ -640,53 +664,383 @@ static frame fade(frame f, double db) {
   return f;
 }
 
-/* a tone with its own envelope pitch and wave */
-static frame pulsed_tone(double f1, double f2, double pitch, envelope_wave wave) {
-  frame f = tone(f1, f2);
-  f.pitch = pitch;
-  f.wave = wave;
-  f.voiced = true;
-  return f;
-}
-
-/* beeps plays a sequence of tones of the given frequencies, on for on ms and
- * off for off ms each */
-static void beeps(sound *s, double on, double off, int n, const double *freqs) {
-  for (int i = 0; i < n; i++) {
-    add_part(s, on, 3, tone(freqs[i], 0));
-    add_part(s, off, 3, quiet(tone(freqs[i], 0)));
-  }
-}
-
-/* sweep glides a tone from one frequency to another */
-static void sweep(sound *s, double ms, double from, double to) {
-  add_part(s, 3, 3, tone(from, 0));
-  add_part(s, ms - 3, ms - 3, tone(to, 0));
-}
-
 static void hold(sound *s, double ms, double glide, frame f) {
   add_part(s, ms, glide, f);
 }
 
-/* decay starts f and fades it to silence over ms */
-static void decay(sound *s, double ms, frame f) {
-  add_part(s, 2, 2, f);
-  add_part(s, ms - 2, ms - 2, quiet(f));
-}
-
+/* the manual gives the DTMF tones 95ms, but on the VoxRecord recording (see
+ * msa_speed_factor()) all twelve sound for 152 to 154ms */
 static void dtmf(sound *s, double low, double high) {
-  hold(s, 92, 3, tone(low, high));
+  hold(s, 150, 3, tone(low, high));
   hold(s, 3, 3, quiet(tone(low, high)));
 }
 
-static void robot(sound *s, double n) {
-  const frame f = buzz(FM(300 + 60 * n, 900 + 120 * n, 2000 + 50 * n),
-                       60 + 15 * n, ENV_SQUARE);
-  hold(s, 70, 8, f);
-  hold(s, 10, 8, quiet(f));
+/* the manual describes the sound effects only by name and length. the others
+ * here are traced from the VoxRecord recording (see msa_speed_factor()), which
+ * plays each on its own: every 5ms the strongest frequency between 150Hz and
+ * 4kHz and the level were measured, and the trace reduced to the points
+ * below, between which the sound glides in a straight line. each point is
+ * where it is reached (in ms from the start of the sound), the frequency
+ * there, its level in dB (-60 is silence), what kind of sound it is, and for
+ * a buzz its pitch. a tone is played as a sine. noise (a flat spectrum) is
+ * played as noise around the frequency. a buzz (a pitch, found by
+ * autocorrelation, at a third of the strongest frequency or lower) is played
+ * voiced at that pitch with oscillator 1 at the frequency: A1, A2, A3 and M2
+ * buzz at 86 to 88Hz, the default speech pitch. the recording is clipped,
+ * which flattens the levels and hides the waveforms, and a sound with more
+ * than one tone at once keeps only its strongest. many are
+ * nothing like their names suggest, and many differ in length from the
+ * manual: A1 and A2 last nearly a second, and M0 is a 1.2 second tone around
+ * 1.8kHz that dies away */
+enum { FX_TONE, FX_NOISE, FX_BUZZ };
+
+typedef struct fx_point {
+  short ms, freq, db, kind, pitch;
+} fx_point;
+
+static const fx_point fx_points[] = {
+    /* R0 */
+    {5, 783, -13, 0, 0}, {10, 788, -6, 0, 0}, {25, 799, -1, 0, 0},
+    {75, 798, -1, 0, 0}, {80, 401, -2, 0, 0}, {95, 401, -10, 0, 0},
+    {105, 262, -18, 0, 0},
+    /* R1 */
+    {5, 1086, -13, 0, 0}, {25, 1101, -1, 0, 0}, {85, 1094, -4, 0, 0},
+    {90, 787, -8, 0, 0}, {95, 1086, -13, 0, 0}, {100, 1086, -24, 0, 0},
+    /* R2 */
+    {5, 483, -13, 0, 0}, {10, 1279, -6, 0, 0}, {25, 1299, -1, 0, 0},
+    {80, 1298, -3, 0, 0}, {85, 1114, -4, 0, 0}, {100, 1100, -16, 0, 0},
+    {105, 238, -24, 0, 0},
+    /* R3 */
+    {5, 372, -12, 0, 0}, {10, 1599, -6, 0, 0}, {25, 1599, -1, 0, 0},
+    {80, 1598, -3, 0, 0}, {85, 690, -6, 0, 0}, {90, 1592, -10, 0, 0},
+    {95, 681, -14, 0, 0}, {100, 210, -23, 0, 0},
+    /* R4 */
+    {5, 251, -16, 0, 0}, {10, 1891, -7, 0, 0}, {20, 1897, -2, 0, 0},
+    {80, 1898, -3, 0, 0}, {85, 727, -5, 0, 0}, {90, 700, -8, 0, 0},
+    {95, 382, -11, 0, 0}, {100, 255, -22, 0, 0},
+    /* R5 */
+    {5, 268, -13, 0, 0}, {10, 2184, -7, 0, 0}, {25, 2198, -1, 0, 0},
+    {80, 2197, -3, 0, 0}, {85, 477, -5, 0, 0}, {100, 462, -15, 0, 0},
+    /* R6 */
+    {5, 357, -18, 0, 0}, {10, 375, -8, 0, 0}, {15, 2498, -5, 0, 0},
+    {80, 2498, -4, 0, 0}, {85, 725, -6, 0, 0}, {90, 716, -9, 0, 0},
+    {95, 343, -14, 0, 0}, {100, 271, -17, 0, 0},
+    /* R7 */
+    {5, 779, -14, 0, 0}, {10, 828, -8, 0, 0}, {15, 2794, -5, 0, 0},
+    {75, 2797, -3, 0, 0}, {80, 673, -5, 0, 0}, {90, 653, -9, 0, 0},
+    {95, 359, -14, 0, 0}, {100, 252, -16, 0, 0},
+    /* R8 */
+    {5, 620, -17, 0, 0}, {10, 596, -8, 0, 0}, {20, 665, -4, 0, 0},
+    {25, 665, -2, 0, 0}, {75, 593, -2, 0, 0}, {100, 589, -13, 0, 0},
+    /* R9 */
+    {5, 247, -21, 0, 0}, {10, 624, -13, 0, 0}, {20, 646, -5, 0, 0},
+    {40, 664, -2, 0, 0}, {75, 599, -2, 0, 0}, {80, 663, -3, 0, 0},
+    {85, 572, -4, 0, 0}, {105, 564, -15, 0, 0},
+    /* A0 */
+    {5, 1647, -21, 2, 1647}, {15, 1647, -10, 2, 1647},
+    {35, 1647, -8, 2, 1647}, {40, 1737, -7, 0, 0}, {75, 1938, -7, 0, 0},
+    {80, 1956, -7, 1, 0}, {120, 2121, -8, 1, 0}, {125, 237, -8, 1, 0},
+    {160, 264, -5, 1, 0}, {165, 264, -4, 0, 0}, {285, 373, -1, 0, 0},
+    {310, 369, -2, 0, 0}, {325, 395, -3, 0, 0}, {335, 381, -3, 0, 0},
+    {340, 401, -4, 0, 0}, {345, 368, -5, 0, 0}, {360, 368, -14, 0, 0},
+    {365, 210, -21, 0, 0},
+    /* A1 */
+    {5, 679, -10, 0, 0}, {30, 698, -7, 0, 0}, {35, 698, -8, 1, 0},
+    {40, 694, -9, 1, 0}, {45, 444, -10, 2, 88}, {70, 436, -14, 2, 88},
+    {75, 284, -11, 2, 88}, {110, 278, -7, 2, 88}, {115, 349, -7, 2, 88},
+    {145, 359, -6, 2, 88}, {155, 437, -6, 2, 88}, {170, 463, -6, 2, 88},
+    {175, 518, -8, 2, 88}, {205, 542, -9, 2, 88}, {210, 612, -8, 2, 88},
+    {240, 626, -7, 2, 87}, {245, 702, -6, 2, 87}, {260, 712, -6, 2, 87},
+    {265, 788, -7, 2, 87}, {325, 888, -7, 2, 87}, {340, 1038, -6, 2, 87},
+    {375, 1059, -5, 2, 87}, {385, 1134, -5, 2, 87}, {525, 1229, -9, 2, 87},
+    {535, 1316, -8, 2, 87}, {660, 1405, -10, 2, 87}, {665, 1743, -11, 2, 87},
+    {680, 1751, -10, 2, 87}, {690, 1741, -10, 2, 87}, {695, 1486, -11, 2, 87},
+    {770, 1479, -11, 2, 87}, {775, 525, -11, 2, 87}, {905, 511, -13, 2, 87},
+    {910, 527, -12, 2, 87}, {915, 1654, -12, 2, 87}, {935, 1655, -12, 2, 87},
+    {940, 1655, -13, 1, 0}, {965, 1624, -17, 1, 0}, {970, 260, -17, 0, 0},
+    {975, 1592, -24, 0, 0},
+    /* A2 */
+    {5, 235, -21, 0, 0}, {10, 260, -15, 1, 0}, {25, 265, -12, 1, 0},
+    {30, 1648, -12, 1, 0}, {35, 1648, -11, 2, 87}, {40, 1648, -12, 2, 87},
+    {45, 521, -12, 2, 87}, {205, 526, -11, 2, 87}, {210, 1470, -12, 2, 87},
+    {260, 1481, -10, 2, 87}, {265, 1801, -10, 2, 87}, {295, 1730, -10, 2, 87},
+    {300, 1407, -11, 2, 87}, {530, 1215, -8, 2, 87}, {615, 1032, -7, 2, 87},
+    {635, 862, -8, 2, 87}, {695, 780, -6, 2, 87}, {700, 694, -6, 2, 87},
+    {745, 588, -7, 2, 86}, {755, 516, -8, 2, 86}, {785, 509, -7, 2, 86},
+    {815, 338, -6, 2, 86}, {860, 327, -8, 2, 86}, {865, 770, -10, 2, 86},
+    {870, 332, -9, 2, 86}, {875, 332, -10, 2, 86}, {880, 437, -11, 2, 86},
+    {915, 442, -9, 2, 87}, {920, 689, -9, 2, 87}, {935, 690, -7, 2, 87},
+    {940, 690, -7, 2, 346}, {945, 346, -8, 1, 0}, {950, 697, -8, 0, 0},
+    {965, 675, -13, 0, 0}, {975, 518, -24, 0, 0},
+    /* A3 */
+    {5, 478, -15, 2, 478}, {15, 478, -7, 2, 478}, {20, 526, -4, 2, 88},
+    {35, 526, -4, 2, 88}, {45, 550, -4, 2, 88}, {50, 598, -5, 2, 88},
+    {65, 616, -5, 2, 88}, {95, 626, -5, 2, 88}, {100, 691, -4, 2, 88},
+    {145, 713, -5, 2, 87}, {155, 787, -5, 2, 87}, {190, 788, -5, 2, 87},
+    {205, 873, -4, 2, 87}, {240, 891, -4, 2, 87}, {245, 906, -5, 2, 853},
+    {250, 959, -4, 2, 87}, {255, 962, -5, 2, 885}, {260, 901, -5, 2, 901},
+    {285, 955, -4, 2, 955}, {290, 979, -5, 2, 87}, {295, 1043, -4, 2, 87},
+    {370, 1151, -5, 2, 87}, {375, 1217, -4, 2, 87}, {490, 1402, -5, 2, 87},
+    {495, 1410, -5, 2, 468}, {500, 1470, -5, 0, 0}, {525, 1464, -8, 0, 0},
+    {530, 1399, -11, 0, 0}, {535, 304, -18, 0, 0}, {540, 258, -19, 0, 0},
+    /* A4 */
+    {5, 266, -24, 0, 0}, {10, 270, -14, 0, 0}, {35, 267, -4, 0, 0},
+    {95, 504, -1, 0, 0}, {130, 955, -1, 0, 0}, {145, 1097, -1, 0, 0},
+    {155, 1400, -2, 0, 0}, {160, 1803, -2, 0, 0}, {170, 1975, -3, 0, 0},
+    {175, 2382, -3, 0, 0}, {185, 2695, -4, 0, 0}, {190, 2720, -5, 0, 0},
+    {195, 1327, -5, 0, 0}, {200, 1327, -5, 0, 0}, {205, 3897, -5, 0, 0},
+    {235, 3901, -10, 0, 0}, {255, 3900, -20, 0, 0}, {260, 489, -24, 0, 0},
+    /* A5 */
+    {5, 637, -8, 2, 637}, {55, 584, -6, 2, 646}, {60, 193, -6, 2, 193},
+    {115, 260, -4, 2, 260}, {120, 504, -3, 2, 165}, {125, 496, -2, 2, 165},
+    {130, 165, -3, 2, 165}, {135, 451, -4, 2, 451}, {150, 451, -5, 2, 451},
+    {155, 220, -5, 2, 220}, {210, 387, -3, 2, 132}, {215, 132, -2, 2, 132},
+    {220, 329, -2, 2, 329}, {225, 380, -2, 0, 0}, {275, 334, -1, 0, 0},
+    {280, 329, -2, 2, 329}, {285, 334, -2, 2, 329}, {290, 132, -2, 2, 132},
+    {300, 132, -3, 2, 132}, {305, 397, -3, 2, 132}, {350, 220, -5, 2, 220},
+    {355, 451, -4, 2, 451}, {390, 473, -10, 2, 473}, {395, 501, -6, 2, 260},
+    {400, 257, -6, 2, 257}, {415, 260, -5, 2, 260}, {430, 547, -6, 2, 278},
+    {435, 553, -6, 0, 0}, {440, 559, -5, 0, 0}, {445, 189, -5, 0, 0},
+    {450, 570, -5, 0, 0}, {455, 576, -5, 0, 0}, {460, 583, -6, 2, 194},
+    {465, 589, -5, 2, 646}, {555, 629, -10, 2, 629}, {560, 629, -18, 0, 0},
+    /* A6 */
+    {5, 255, -11, 0, 0}, {10, 273, -8, 0, 0}, {20, 278, -3, 0, 0},
+    {30, 375, -2, 0, 0}, {45, 532, -1, 0, 0}, {70, 786, -1, 0, 0},
+    {175, 801, -2, 0, 0}, {190, 796, -8, 0, 0}, {200, 796, -24, 0, 0},
+    /* A7 */
+    {5, 1165, -13, 0, 0}, {20, 1155, -2, 0, 0}, {55, 1231, -1, 0, 0},
+    {60, 419, -1, 2, 419}, {65, 419, -1, 2, 419}, {70, 1264, -1, 2, 419},
+    {85, 1297, -2, 2, 430}, {90, 1306, -2, 2, 434}, {95, 438, -2, 2, 438},
+    {215, 531, -1, 2, 531}, {220, 499, -1, 2, 531}, {225, 537, -1, 2, 537},
+    {230, 506, -1, 0, 0}, {240, 511, -1, 0, 0}, {245, 555, -1, 0, 0},
+    {250, 516, -1, 0, 0}, {280, 561, -1, 0, 0}, {285, 605, -1, 0, 0},
+    {290, 576, -1, 0, 0}, {295, 584, -1, 2, 612}, {300, 620, -1, 2, 620},
+    {380, 735, -1, 2, 735}, {550, 937, -2, 2, 937}, {570, 937, -5, 2, 937},
+    {590, 937, -18, 2, 937}, {595, 1857, -23, 0, 0},
+    /* A8 */
+    {5, 266, -21, 0, 0}, {15, 285, -9, 0, 0}, {20, 312, -7, 0, 0},
+    {30, 312, -4, 0, 0}, {35, 346, -3, 0, 0}, {45, 346, -2, 0, 0},
+    {55, 421, -2, 0, 0}, {60, 492, -1, 2, 492}, {110, 498, -3, 2, 498},
+    {115, 417, -3, 0, 0}, {120, 417, -5, 0, 0}, {130, 302, -11, 0, 0},
+    {135, 293, -17, 0, 0}, {140, 293, -60, 0, 0}, {145, 286, -24, 0, 0},
+    {150, 286, -15, 0, 0}, {155, 360, -11, 0, 0}, {160, 410, -8, 0, 0},
+    {170, 410, -6, 0, 0}, {175, 302, -5, 0, 0}, {185, 302, -2, 0, 0},
+    {205, 456, -1, 0, 0}, {215, 497, -1, 0, 0}, {255, 499, -2, 0, 0},
+    {270, 491, -9, 0, 0}, {275, 369, -17, 0, 0},
+    /* A9 */
+    {5, 1291, -10, 0, 0}, {20, 1296, -2, 0, 0}, {60, 1288, -1, 0, 0},
+    {80, 1194, -1, 0, 0}, {115, 951, -1, 0, 0}, {175, 580, -1, 0, 0},
+    {205, 387, -1, 0, 0}, {220, 293, -2, 0, 0}, {225, 293, -4, 0, 0},
+    {230, 314, -6, 1, 0}, {235, 609, -7, 1, 0}, {245, 609, -9, 1, 0},
+    {250, 326, -10, 1, 0}, {260, 297, -12, 1, 0}, {265, 100, -12, 2, 100},
+    {280, 100, -13, 2, 100}, {285, 300, -13, 2, 100}, {290, 100, -14, 2, 100},
+    {295, 300, -15, 0, 0}, {315, 277, -23, 0, 0}, {320, 231, -24, 0, 0},
+    /* B0 */
+    {5, 2570, -8, 0, 0}, {20, 2593, -2, 0, 0}, {130, 2593, -2, 0, 0},
+    {155, 2593, -6, 0, 0}, {175, 2588, -19, 0, 0}, {180, 345, -24, 0, 0},
+    /* B1 */
+    {5, 1493, -14, 0, 0}, {10, 1393, -6, 0, 0}, {20, 1487, -2, 0, 0},
+    {55, 2087, -1, 0, 0}, {105, 2949, -2, 0, 0}, {150, 3722, -6, 0, 0},
+    {165, 3754, -6, 0, 0}, {230, 2376, -1, 0, 0}, {275, 1429, -1, 0, 0},
+    {370, 1400, -2, 0, 0}, {395, 1393, -14, 0, 0}, {400, 507, -23, 0, 0},
+    /* B2 */
+    {5, 1405, -22, 0, 0}, {10, 1397, -6, 0, 0}, {25, 1406, -1, 0, 0},
+    {130, 1417, -1, 0, 0}, {150, 2477, -1, 0, 0}, {160, 2496, -1, 0, 0},
+    {165, 838, -1, 0, 0}, {180, 838, -1, 0, 0}, {185, 1699, -1, 0, 0},
+    {375, 1701, -2, 0, 0}, {395, 1700, -7, 0, 0}, {410, 1706, -24, 0, 0},
+    /* B3 */
+    {5, 620, -8, 0, 0}, {20, 594, -2, 0, 0}, {110, 594, -2, 0, 0},
+    {115, 629, -1, 2, 629}, {120, 703, -1, 2, 703}, {135, 703, -1, 2, 703},
+    {140, 1397, -1, 0, 0}, {280, 1397, -1, 0, 0}, {300, 1397, -6, 0, 0},
+    {310, 1396, -14, 0, 0}, {315, 242, -23, 0, 0},
+    /* B4 */
+    {5, 1771, -8, 0, 0}, {20, 1818, -1, 0, 0}, {65, 1824, -1, 0, 0},
+    {70, 612, -1, 2, 612}, {80, 612, -1, 2, 612}, {85, 919, -1, 2, 919},
+    {115, 901, -1, 2, 901}, {120, 732, -1, 0, 0}, {140, 498, -1, 0, 0},
+    {150, 380, -1, 0, 0}, {160, 380, -1, 0, 0}, {165, 404, -1, 0, 0},
+    {180, 586, -1, 0, 0}, {195, 751, -1, 0, 0}, {200, 901, -1, 2, 901},
+    {230, 937, -1, 2, 937}, {235, 612, -1, 2, 612}, {245, 612, -1, 2, 612},
+    {250, 1824, -1, 0, 0}, {355, 1824, -3, 0, 0}, {370, 1825, -8, 0, 0},
+    {385, 1837, -24, 0, 0},
+    /* B5 */
+    {5, 947, -7, 0, 0}, {15, 947, -2, 0, 0}, {35, 764, -1, 0, 0},
+    {60, 520, -1, 0, 0}, {80, 327, -2, 0, 0}, {90, 327, -5, 0, 0},
+    {95, 290, -8, 1, 0}, {105, 309, -13, 1, 0}, {125, 312, -16, 1, 0},
+    {130, 313, -16, 0, 0}, {145, 313, -19, 0, 0}, {150, 3498, -20, 0, 0},
+    {160, 3498, -22, 0, 0}, {165, 488, -24, 0, 0}, {170, 240, -24, 0, 0},
+    /* B6 */
+    {5, 275, -13, 0, 0}, {10, 3487, -8, 0, 0}, {15, 1165, -6, 2, 1165},
+    {25, 1165, -3, 2, 1165}, {30, 1769, -3, 2, 1769}, {70, 1769, -2, 2, 1769},
+    {75, 885, -2, 2, 885}, {85, 885, -1, 2, 885}, {90, 1769, -2, 2, 1769},
+    {100, 1769, -2, 2, 1769}, {105, 1797, -1, 0, 0}, {150, 1796, -3, 0, 0},
+    {175, 1776, -21, 0, 0},
+    /* B7 */
+    {5, 251, -14, 0, 0}, {10, 2900, -7, 0, 0}, {25, 2900, -2, 0, 0},
+    {55, 2896, -5, 0, 0}, {60, 1405, -9, 0, 0}, {65, 1405, -16, 0, 0},
+    {70, 1405, -9, 0, 0}, {75, 3897, -7, 0, 0}, {125, 3897, -6, 0, 0},
+    {165, 3896, -18, 0, 0}, {170, 394, -22, 0, 0}, {175, 368, -24, 0, 0},
+    /* B8 */
+    {5, 2054, -10, 0, 0}, {25, 2030, -1, 0, 0}, {100, 1592, -1, 0, 0},
+    {105, 1599, -1, 2, 1592}, {235, 1291, -1, 2, 1291}, {240, 1298, -1, 0, 0},
+    {285, 1299, -2, 0, 0}, {290, 1291, -2, 2, 1291}, {310, 1291, -5, 2, 1291},
+    {325, 1291, -18, 2, 1291},
+    /* B9 */
+    {5, 901, -14, 2, 901}, {25, 901, -2, 2, 901}, {70, 901, -4, 2, 901},
+    {75, 882, -4, 0, 0}, {80, 775, -6, 0, 0}, {90, 759, -4, 0, 0},
+    {95, 680, -5, 0, 0}, {100, 664, -4, 0, 0}, {110, 561, -3, 0, 0},
+    {115, 561, -3, 0, 0}, {120, 522, -3, 0, 0}, {145, 523, -2, 0, 0},
+    {150, 620, -3, 0, 0}, {155, 530, -3, 0, 0}, {160, 547, -3, 0, 0},
+    {175, 703, -4, 0, 0}, {180, 712, -3, 0, 0}, {185, 797, -4, 0, 0},
+    {190, 818, -4, 0, 0}, {195, 885, -3, 2, 885}, {270, 901, -2, 2, 901},
+    {275, 1769, -3, 2, 1769}, {290, 1769, -10, 2, 1769},
+    {300, 1769, -21, 2, 1769},
+    /* C0 */
+    {5, 211, -23, 0, 0}, {10, 1657, -23, 0, 0}, {15, 1691, -9, 0, 0},
+    {20, 2201, -7, 0, 0}, {30, 2201, -4, 0, 0}, {35, 1965, -5, 0, 0},
+    {40, 1953, -4, 0, 0}, {45, 1697, -4, 0, 0}, {50, 1692, -4, 0, 0},
+    {55, 1433, -3, 0, 0}, {65, 1426, -3, 0, 0}, {70, 1168, -4, 0, 0},
+    {75, 1162, -3, 0, 0}, {80, 911, -4, 0, 0}, {85, 905, -4, 0, 0},
+    {90, 802, -3, 0, 0}, {100, 715, -3, 0, 0}, {105, 612, -4, 0, 0},
+    {110, 589, -4, 0, 0}, {115, 439, -3, 0, 0}, {125, 412, -4, 0, 0},
+    {130, 310, -6, 0, 0}, {140, 310, -8, 0, 0}, {145, 345, -14, 0, 0},
+    {155, 363, -17, 0, 0}, {160, 345, -21, 0, 0}, {165, 286, -19, 0, 0},
+    {185, 276, -21, 0, 0}, {195, 332, -21, 0, 0}, {200, 569, -23, 0, 0},
+    {210, 569, -24, 0, 0}, {215, 317, -24, 0, 0},
+    /* C1 */
+    {5, 749, -7, 0, 0}, {15, 912, -3, 0, 0}, {20, 1366, -2, 0, 0},
+    {35, 1393, -1, 0, 0}, {40, 1005, -1, 0, 0}, {45, 964, -1, 0, 0},
+    {50, 690, -1, 1, 0}, {60, 690, -1, 1, 0}, {65, 760, -1, 1, 0},
+    {70, 713, -1, 1, 0}, {75, 713, -1, 0, 0}, {85, 703, -2, 0, 0},
+    {90, 1342, -2, 0, 0}, {95, 1995, -1, 0, 0}, {110, 1978, -1, 0, 0},
+    {120, 1763, -1, 0, 0}, {125, 1837, -1, 0, 0}, {130, 1707, -1, 0, 0},
+    {160, 1936, -1, 0, 0}, {165, 1896, -1, 0, 0}, {170, 1837, -1, 0, 0},
+    {175, 1352, -2, 0, 0}, {195, 1190, -2, 0, 0}, {220, 1140, -3, 0, 0},
+    {235, 979, -4, 0, 0}, {240, 853, -5, 2, 853}, {260, 853, -9, 2, 853},
+    {265, 2776, -10, 0, 0}, {290, 2785, -19, 0, 0}, {295, 343, -21, 0, 0},
+    /* C2 */
+    {5, 464, -9, 2, 464}, {25, 464, -6, 2, 464}, {70, 586, -5, 2, 569},
+    {125, 569, -9, 2, 569}, {130, 569, -11, 2, 569}, {135, 569, -23, 2, 569},
+    {140, 569, -22, 2, 569}, {145, 3336, -20, 0, 0}, {175, 3338, -8, 0, 0},
+    {180, 1647, -9, 2, 1647}, {205, 1687, -12, 2, 1647},
+    {210, 1647, -24, 0, 0},
+    /* C3 */
+    {5, 368, -24, 0, 0}, {10, 3158, -21, 0, 0}, {25, 3176, -12, 0, 0},
+    {55, 3161, -7, 0, 0}, {160, 3771, -10, 0, 0}, {215, 3778, -14, 0, 0},
+    {220, 392, -17, 0, 0}, {225, 392, -24, 0, 0}, {235, 382, -24, 0, 0},
+    /* C4 */
+    {5, 254, -22, 0, 0}, {10, 939, -21, 0, 0}, {20, 949, -7, 0, 0},
+    {35, 961, -4, 0, 0}, {100, 957, -4, 0, 0}, {105, 955, -4, 2, 955},
+    {125, 955, -4, 2, 955}, {130, 1914, -5, 2, 1911},
+    {145, 1915, -5, 2, 1911}, {150, 975, -5, 2, 975}, {170, 995, -6, 2, 995},
+    {175, 2957, -7, 0, 0}, {205, 2973, -7, 0, 0}, {230, 2963, -18, 0, 0},
+    {235, 526, -20, 0, 0},
+    /* C5 */
+    {5, 885, -20, 2, 885}, {10, 885, -10, 2, 885}, {15, 2696, -7, 2, 885},
+    {55, 2692, -3, 2, 885}, {60, 759, -3, 2, 869}, {65, 733, -2, 0, 0},
+    {75, 694, -1, 0, 0}, {80, 713, -1, 0, 0}, {85, 647, -1, 2, 713},
+    {90, 308, -1, 2, 308}, {150, 291, -2, 2, 291}, {155, 485, -2, 0, 0},
+    {190, 371, -2, 0, 0}, {195, 312, -2, 0, 0}, {200, 303, -2, 0, 0},
+    {215, 297, -2, 0, 0}, {230, 314, -5, 0, 0}, {235, 302, -6, 0, 0},
+    {240, 518, -11, 2, 3981}, {245, 518, -13, 2, 3981},
+    {250, 521, -13, 2, 87}, {325, 510, -14, 2, 87}, {330, 282, -14, 2, 87},
+    {335, 276, -16, 0, 0}, {345, 237, -24, 0, 0},
+    /* C6 */
+    {5, 2039, -13, 0, 0}, {65, 1933, -4, 0, 0}, {70, 1553, -4, 0, 0},
+    {75, 1524, -4, 0, 0}, {80, 1281, -3, 0, 0}, {85, 1212, -3, 0, 0},
+    {90, 991, -2, 0, 0}, {95, 983, -2, 0, 0}, {100, 903, -1, 0, 0},
+    {110, 903, -2, 0, 0}, {115, 995, -2, 2, 995}, {150, 995, -3, 2, 995},
+    {155, 905, -2, 0, 0}, {165, 912, -2, 0, 0}, {175, 1250, -2, 0, 0},
+    {180, 1253, -2, 0, 0}, {185, 1480, -3, 0, 0}, {190, 1508, -3, 0, 0},
+    {195, 1822, -4, 0, 0}, {210, 2040, -6, 0, 0}, {235, 2037, -6, 0, 0},
+    {265, 2033, -15, 0, 0},
+    /* C7 */
+    {5, 519, -10, 0, 0}, {15, 501, -7, 0, 0}, {55, 549, -4, 0, 0},
+    {60, 555, -3, 2, 555}, {80, 569, -4, 2, 569}, {85, 2277, -4, 0, 0},
+    {100, 2299, -5, 0, 0}, {105, 2114, -3, 0, 0}, {110, 1231, -4, 0, 0},
+    {125, 1231, -3, 0, 0}, {130, 1677, -2, 0, 0}, {145, 1681, -2, 0, 0},
+    {150, 1427, -2, 0, 0}, {155, 893, -1, 0, 0}, {165, 893, -1, 0, 0},
+    {170, 1223, -1, 0, 0}, {175, 1271, -1, 0, 0}, {185, 1652, -1, 0, 0},
+    {195, 1652, -1, 0, 0}, {200, 797, -1, 0, 0}, {215, 819, -1, 0, 0},
+    {225, 1276, -1, 0, 0}, {240, 1299, -1, 0, 0}, {245, 568, -1, 0, 0},
+    {250, 568, -1, 0, 0}, {255, 242, -1, 2, 242}, {265, 241, -1, 2, 241},
+    {270, 960, -1, 2, 241}, {285, 965, -1, 2, 241}, {290, 462, -1, 0, 0},
+    {315, 435, -1, 0, 0}, {320, 478, -1, 0, 0}, {325, 478, -1, 0, 0},
+    {330, 483, -1, 2, 483}, {340, 496, -2, 2, 483}, {345, 483, -2, 0, 0},
+    {355, 479, -3, 0, 0}, {360, 504, -4, 0, 0}, {380, 491, -13, 0, 0},
+    /* C8 */
+    {5, 218, -15, 0, 0}, {10, 932, -7, 0, 0}, {15, 1295, -4, 0, 0},
+    {20, 1727, -2, 1, 0}, {40, 1702, -1, 1, 0}, {45, 1191, -1, 1, 0},
+    {55, 2470, -1, 1, 0}, {60, 1702, -1, 1, 0}, {65, 1378, -1, 1, 0},
+    {70, 2619, -1, 1, 0}, {75, 2469, -1, 1, 0}, {80, 1378, -1, 1, 0},
+    {85, 1182, -1, 1, 0}, {90, 1863, -1, 1, 0}, {105, 1863, -8, 1, 0},
+    {110, 1863, -21, 0, 0}, {115, 479, -24, 0, 0},
+    /* C9 */
+    {5, 927, -8, 0, 0}, {10, 944, -5, 0, 0}, {15, 1725, -3, 1, 0},
+    {25, 1725, -1, 1, 0}, {30, 2311, -1, 1, 0}, {35, 2290, -1, 1, 0},
+    {40, 1164, -1, 1, 0}, {45, 1151, -1, 1, 0}, {50, 1898, -1, 1, 0},
+    {55, 1582, -1, 1, 0}, {60, 1037, -1, 1, 0}, {65, 983, -1, 1, 0},
+    {70, 1396, -1, 1, 0}, {80, 1396, -5, 1, 0}, {85, 1396, -9, 0, 0},
+    {90, 1396, -19, 0, 0}, {95, 332, -24, 0, 0},
+    /* M0 */
+    {5, 1769, -9, 0, 0}, {25, 1789, -1, 0, 0}, {545, 1789, -2, 0, 0},
+    {1200, 1764, -24, 0, 0},
+    /* M2 */
+    {5, 292, -12, 0, 0}, {10, 531, -12, 0, 0}, {15, 457, -7, 0, 0},
+    {25, 510, -5, 0, 0}, {35, 530, -5, 0, 0}, {60, 537, -4, 0, 0},
+    {65, 595, -3, 0, 0}, {70, 615, -4, 0, 0}, {100, 617, -4, 0, 0},
+    {105, 682, -5, 0, 0}, {110, 699, -4, 0, 0}, {140, 715, -4, 0, 0},
+    {150, 790, -5, 0, 0}, {155, 758, -4, 0, 0}, {175, 824, -4, 0, 0},
+    {180, 793, -4, 0, 0}, {190, 869, -4, 0, 0}, {220, 887, -5, 0, 0},
+    {230, 965, -5, 0, 0}, {300, 940, -5, 0, 0}, {310, 862, -5, 0, 0},
+    {340, 858, -4, 0, 0}, {345, 816, -5, 0, 0}, {350, 810, -4, 2, 810},
+    {355, 777, -5, 2, 87}, {380, 772, -5, 2, 87}, {385, 766, -3, 0, 0},
+    {395, 693, -3, 0, 0}, {420, 683, -4, 0, 0}, {430, 611, -3, 0, 0},
+    {460, 592, -4, 0, 0}, {470, 512, -5, 0, 0}, {510, 499, -4, 0, 0},
+    {525, 491, -10, 0, 0},
+};
+
+/* where each effect's points start in fx_points, and how many there are,
+ * for codes 200 to 254. effects without points are built in effect() */
+static const struct {
+  short first, count;
+} fx_index[] = {
+    {0, 7}, {7, 6}, {13, 7}, {20, 8}, {28, 8}, {36, 6}, {42, 8}, {50, 8},
+    {58, 6}, {64, 8}, {72, 18}, {90, 40}, {130, 35}, {165, 30}, {195, 18},
+    {213, 36}, {249, 9}, {258, 26}, {284, 26}, {310, 21}, {331, 6}, {337, 12},
+    {349, 12}, {361, 11}, {372, 22}, {394, 15}, {409, 13}, {422, 12},
+    {434, 10}, {444, 24}, {468, 32}, {500, 30}, {530, 12}, {542, 9},
+    {551, 15}, {566, 25}, {591, 22}, {613, 39}, {652, 17}, {669, 17}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {686, 4}, {0, 0}, {690, 34},
+};
+
+static frame fx_frame(const fx_point *p) {
+  const double g = pow(10, p->db / 20.0);
+  if (p->db <= -60)
+    return quiet(tone(p->freq, 0));
+  if (p->kind == FX_NOISE)
+    return noise_frame(lGlottal, p->freq * 0.85, p->freq * 1.15, 24 * g, 18 * g, 200);
+  frame f = tone(p->freq, 0);
+  f.vol[0] *= g;
+  if (p->kind == FX_BUZZ) {
+    f.pitch = p->pitch;
+    f.voiced = true;
+  }
+  return f;
 }
 
-/* sound effects, codes 200 to 254. lengths are from the manual */
+/* contour plays a traced effect: a quick start on the first point, then a
+ * glide to each of the others in turn, then 3ms to silence */
+static void contour(sound *s, const fx_point *p, int n) {
+  hold(s, p[0].ms, 2, fx_frame(&p[0]));
+  for (int i = 1; i < n; i++) {
+    const double ms = p[i].ms - p[i - 1].ms;
+    hold(s, ms, ms, fx_frame(&p[i]));
+  }
+  hold(s, 3, 3, quiet(fx_frame(&p[n - 1])));
+}
+
+/* sound effects, codes 200 to 254 */
 static const char *const effect_names[] = {
     "R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "A0",
     "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "B0", "B1",
@@ -698,137 +1052,11 @@ static const char *const effect_names[] = {
 #define NUM_EFFECTS ((int)(sizeof(effect_names) / sizeof(effect_names[0])))
 
 static void effect(sound *s, int code) {
+  if (fx_index[code - 200].count > 0) {
+    contour(s, &fx_points[fx_index[code - 200].first], fx_index[code - 200].count);
+    return;
+  }
   switch (code) {
-  case 200: case 201: case 202: case 203: case 204:
-  case 205: case 206: case 207: case 208: case 209:
-    robot(s, code - 200); /* R0 to R9 */
-    break;
-
-  case 210: /* A0 */
-    sweep(s, 297, 600, 1400);
-    hold(s, 3, 3, quiet(tone(1400, 0)));
-    break;
-  case 211: /* A1 */
-    hold(s, 50, 3, tone(1000, 0));
-    hold(s, 48, 1, tone(700, 0));
-    hold(s, 3, 3, quiet(tone(700, 0)));
-    break;
-  case 212: /* A2 */
-    sweep(s, 99, 1400, 700);
-    hold(s, 3, 3, quiet(tone(700, 0)));
-    break;
-  case 213: /* A3 */
-    hold(s, 537, 5, pulsed_tone(900, 1100, 10, ENV_SQUARE));
-    hold(s, 3, 3, quiet(tone(900, 1100)));
-    break;
-  case 214: /* A4 */
-    sweep(s, 265, 500, 1200);
-    sweep(s, 262, 1200, 500);
-    hold(s, 3, 3, quiet(tone(500, 0)));
-    break;
-  case 215: { /* A5 */
-    /* measured from the vox_test recording (see STEADY_LENGTH): two steady
-     * tones, the second 12dB under the first (set louder here, as the output
-     * filter takes 4dB off it), that glide down together by
-     * about 295Hz over 240ms and back up again. the ROM sets Bend 1 before
-     * it, and the recording has the tones at 486Hz and 2525Hz, gliding to
-     * 190Hz and 2232Hz and back to 478Hz and 2522Hz. the frequencies here are
-     * those divided by Bend 1's factor (see msa_bend_factor()), so that Bend
-     * 1 plays the recording. whether the chip bends its sound effects at all
-     * isn't known */
-    frame f = tone(612, 3181);
-    f.vol[0] = 28;
-    f.vol[1] = 12;
-    hold(s, 3, 3, f);
-    f.freq[0] = 239;
-    f.freq[1] = 2812;
-    hold(s, 237, 237, f);
-    f.freq[0] = 602;
-    f.freq[1] = 3178;
-    hold(s, 250, 250, f);
-    hold(s, 10, 10, quiet(f));
-    break;
-  }
-  case 216: /* A6 */
-    sweep(s, 132, 2000, 400);
-    hold(s, 3, 3, quiet(tone(400, 0)));
-    break;
-  case 217: /* A7 */
-    sweep(s, 200, 400, 1600);
-    sweep(s, 200, 400, 1600);
-    sweep(s, 197, 400, 1600);
-    hold(s, 3, 3, quiet(tone(1600, 0)));
-    break;
-  case 218: { /* A8 */
-    static const double f[] = {1600, 1600};
-    beeps(s, 100, 50, 2, f);
-    break;
-  }
-  case 219: /* A9 */
-    hold(s, 245, 5, pulsed_tone(400, 800, 60, ENV_SQUARE));
-    hold(s, 5, 5, quiet(tone(400, 800)));
-    break;
-
-  case 220: { static const double f[] = {1000}; beeps(s, 150, 50, 1, f); break; } /* B0 */
-  case 221: { static const double f[] = {1200, 1200, 1200}; beeps(s, 60, 30, 3, f); break; } /* B1 */
-  case 222: { static const double f[] = {800, 1000, 1200}; beeps(s, 70, 70.0 / 3, 3, f); break; } /* B2 */
-  case 223: { static const double f[] = {1200, 1000, 800}; beeps(s, 70, 50.0 / 3, 3, f); break; } /* B3 */
-  case 224: { static const double f[] = {2000}; beeps(s, 290, 10, 1, f); break; } /* B4 */
-  case 225: { static const double f[] = {880}; beeps(s, 90, 10, 1, f); break; } /* B5 */
-  case 226: { static const double f[] = {1320}; beeps(s, 94, 10, 1, f); break; } /* B6 */
-  case 227: { static const double f[] = {660}; beeps(s, 90, 10, 1, f); break; } /* B7 */
-  case 228: { static const double f[] = {1500, 1000}; beeps(s, 120, 15, 2, f); break; } /* B8 */
-  case 229: /* B9 */
-    sweep(s, 259, 500, 2500);
-    hold(s, 3, 3, quiet(tone(2500, 0)));
-    break;
-
-  case 230: /* C0 */
-    sweep(s, 78, 2000, 3500);
-    sweep(s, 79, 2000, 3500);
-    hold(s, 3, 3, quiet(tone(3500, 0)));
-    break;
-  case 231: /* C1 */
-    hold(s, 290, 15, buzz(FM(400, 900, 2000), 30, ENV_SAW));
-    hold(s, 10, 10, quiet(buzz(FM(400, 900, 2000), 30, ENV_SAW)));
-    break;
-  case 232: /* C2 */
-    hold(s, 172, 15, buzz(FM(300, 700, 1800), 25, ENV_SAW));
-    hold(s, 10, 10, quiet(buzz(FM(300, 700, 1800), 25, ENV_SAW)));
-    break;
-  case 233: /* C3 */
-    sweep(s, 117, 3000, 2200);
-    hold(s, 3, 3, quiet(tone(2200, 0)));
-    break;
-  case 234: /* C4 */
-    hold(s, 170, 5, pulsed_tone(2200, 0, 20, ENV_SINE));
-    hold(s, 5, 5, quiet(tone(2200, 0)));
-    break;
-  case 235: { /* C5 */
-    frame f = buzz(FM(500, 1000, 2300), 45, ENV_SAW);
-    f.freq[3] = 800;
-    f.freq[4] = 1600;
-    f.vol[3] = 10;
-    f.vol[4] = 8;
-    f.distortion = 255;
-    f.half_env = true;
-    hold(s, 340, 20, f);
-    hold(s, 10, 10, quiet(buzz(FM(500, 1000, 2300), 45, ENV_SAW)));
-    break;
-  }
-  case 236: /* C6 */
-    hold(s, 155, 5, pulsed_tone(3600, 0, 40, ENV_SQUARE));
-    hold(s, 5, 5, quiet(tone(3600, 0)));
-    break;
-  case 237: /* C7 */
-    hold(s, 90, 20, buzz(fIY, 300, ENV_SAW));
-    hold(s, 90, 90, buzz(fAY, 500, ENV_SAW));
-    hold(s, 70, 70, buzz(fOW, 250, ENV_SAW));
-    hold(s, 10, 10, quiet(buzz(fOW, 250, ENV_SAW)));
-    break;
-  case 238: decay(s, 95, noise_frame(lGlottal, 2000, 3000, 24, 16, 255)); break; /* C8 */
-  case 239: decay(s, 75, noise_frame(lGlottal, 800, 1400, 28, 20, 255)); break; /* C9 */
-
   case 240: dtmf(s, 941, 1336); break; /* D0 */
   case 241: dtmf(s, 697, 1209); break; /* D1 */
   case 242: dtmf(s, 697, 1336); break; /* D2 */
@@ -842,7 +1070,6 @@ static void effect(sound *s, int code) {
   case 250: dtmf(s, 941, 1209); break; /* D10 */
   case 251: dtmf(s, 941, 1477); break; /* D11 */
 
-  case 252: decay(s, 125, tone(1250, 0)); break; /* M0 */
   case 253: { /* M1 */
     /* measured from the vox_test recording (see STEADY_LENGTH): 30ms of
      * noise with most of its energy under 2kHz, then noise around 1 to 2kHz
@@ -857,12 +1084,6 @@ static void effect(sound *s, int code) {
     hold(s, 25, 25, quiet(hiss));
     break;
   }
-  case 254: /* M2 */
-    hold(s, 80, 15, buzz(fWW, 100, ENV_SAW));
-    hold(s, 200, 200, buzz(fAH, 150, ENV_SAW));
-    hold(s, 230, 230, buzz(fUW, 90, ENV_SAW));
-    hold(s, 20, 20, quiet(buzz(fUW, 90, ENV_SAW)));
-    break;
   default: break;
   }
 }
@@ -893,8 +1114,12 @@ const char *sj_sound_name(uint8_t code) {
 /* msa.go                                                                   */
 /* ======================================================================== */
 
-/* pause lengths in milliseconds for codes 0 to 6, from the manual */
-static const double pause_ms[] = {0, 100, 200, 700, 30, 60, 90};
+/* pause lengths in milliseconds for codes 0 to 6. the manual gives 0, 100,
+ * 200, 700, 30, 60 and 90; the VoxRecord recording (see msa_speed_factor())
+ * has the silence between two AWs at 654ms for pause 3, 27ms for pause 5 and
+ * 59ms for pause 6, which these lengths give here. the others match the
+ * manual to within the recording's 10ms or so */
+static const double pause_ms[] = {0, 100, 200, 650, 30, 35, 70};
 
 /* how quickly the volume ramps down at the start of a pause, and at auto
  * silence when the input buffer has emptied. not given by the manual */
@@ -972,16 +1197,16 @@ static double msa_bend_factor(const msa *m) {
 }
 
 /* the duration multiplier from the Speed control. the manual gives the range
- * and default but not the curve. each step of speed changes the length by
- * about 2%: exp(-0.02 (speed - 114)), the curve the openFPGA-7800 AtariVox
- * engine fitted to recordings of games speaking at speeds 80 to 127 (MIT
- * licence). measurements of the chip behind Stella's SpeakJet engine agree
- * with it to within 8% from 60 to 114. above 114 and below 60 the two
- * disagree with each other, though both make sounds shorter than an inverse
- * law would at the top and longer at speed 40, so the curve is used for every
- * speed */
+ * and default but not the curve. measured from a recording of a real
+ * AtariVox playing the VoxRecord ROM (TT AW EYIY SE at speeds 0 to 127): the
+ * length falls in a straight line with speed, 2115ms at speed 0 and 955ms at
+ * 80, and the line predicts speeds 20, 40 and 60 to within 2%. it reaches
+ * zero at about 146, so relative to the default speed the multiplier is
+ * (146 - speed) / 32: 4.6 at speed 0, 0.59 at 127. pauses are lengthened by
+ * it too (see execute()) */
+#define SPEED_ZERO 146.0
 static double msa_speed_factor(const msa *m) {
-  return exp(-0.02 * (double)(m->speed - SJ_DEFAULT_SPEED));
+  return (SPEED_ZERO - (double)m->speed) / (SPEED_ZERO - SJ_DEFAULT_SPEED);
 }
 
 /* first frame of a sound after the controls in effect now. used to glide the
@@ -1285,7 +1510,9 @@ static bool execute(sj_chip *sj, uint8_t code, uint8_t data) {
     } else if (code >= 4) {
       m->jump_next_freq = true;
     }
-    msa_silence(m, pause_ms[code], towards);
+    /* on the chip a pause stretches with the Speed control just as the
+     * sounds do: at speed 0 two pause 2s are 1845ms of silence */
+    msa_silence(m, pause_ms[code] * msa_speed_factor(m), towards);
   } else {
     switch (code) {
     case 7: m->fast = true; return true;

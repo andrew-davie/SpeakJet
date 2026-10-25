@@ -49,6 +49,10 @@ static void test_durations(void) {
   if (sizeof(manual_ms) / sizeof(manual_ms[0]) != 127)
     FAIL("table has %d entries", (int)(sizeof(manual_ms) / sizeof(manual_ms[0])));
 
+  /* the allophones' parts add up to the manual's length (the chip's longer
+   * lengths come from sound.length). most of the sound effects are traced
+   * from a recording of the chip and have its lengths instead, so for them
+   * only check that they exist */
   for (int code = 128; code <= 254; code++) {
     sound s;
     if (!lookup((uint8_t)code, &s)) {
@@ -59,6 +63,11 @@ static void test_durations(void) {
     for (int i = 0; i < s.nparts; i++)
       ms += s.parts[i].ms;
     const double want = manual_ms[code - 128];
+    if (code >= 200) {
+      if (ms <= 0)
+        FAIL("code %d (%s): no length", code, sj_sound_name((uint8_t)code));
+      continue;
+    }
     if (fabs(ms - want) > 0.01)
       FAIL("code %d (%s): %.2fms, manual says %.0fms", code,
            sj_sound_name((uint8_t)code), ms, want);
@@ -94,7 +103,8 @@ static void test_phrase_length(void) {
 
   const double got = (double)n * 1000 / SJ_SAMPLE_RATE;
   const double want =
-      (70.0 + 70) * STEADY_LENGTH + 99 * STOP_LENGTH + AUTO_SILENCE_MS;
+      70.0 * allophone_length[183 - 128] + 70.0 * allophone_length[135 - 128] +
+      99 * STOP_LENGTH + AUTO_SILENCE_MS;
   if (fabs(got - want) > 1)
     FAIL("phrase played for %.0fms, expected about %.0fms", got, want);
   sj_free(sj);
