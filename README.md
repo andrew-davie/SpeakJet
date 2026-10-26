@@ -121,10 +121,10 @@ User's Manual and what is a choice made here: the manual documents the
 synthesizer and the timings, but not the oscillator settings behind each
 allophone, so those are derived from published formant measurements of
 English speech. Where two independent sets of measurements of the real chip
-agree, they replace guesses: some formants of nine allophones and the output
-filter's corner. Recordings of a real AtariVox set the lengths of the sounds,
-the Speed curve, the pauses, the shape of the fricatives' hiss and the sound
-effects. `docs/design.md` explains how each was measured and lists every
+agree, they replace guesses: some formants of nine allophones. Recordings of
+a real AtariVox set the lengths and levels of the sounds, the output filter,
+five vowels' formants, the Speed curve, the pauses, Bend, Stress, the pitch,
+the shape of the fricatives' hiss and the sound effects. `docs/design.md` explains how each was measured and lists every
 measured value.
 
 ## Layout
@@ -195,7 +195,7 @@ rules; these are reimplemented, not copied. Earlier versions used the
 letter-to-sound rules of Elovitz, Johnson, McHugh and Shore, NRL Report 7948
 (1976).
 
-The measured formants and output filter corner rest on two
+The formants of nine allophones rest on two
 independent sets of measurements of the real SpeakJet: those of the AtariVox
 engine in [openFPGA-7800](https://github.com/Miasmark/openFPGA-7800) (MIT
 licence), taken from recordings of games speaking, and those behind Stella's

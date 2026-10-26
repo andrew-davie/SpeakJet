@@ -68,6 +68,35 @@ ms). The reference samples are regenerated again.
   instead of multiplying them, as both takes show for D1 and A5; speech is
   bent as before.
 
+A third take of the VoxRecord recording, at a lower level, is barely
+clipped, and measures what the first two couldn't. The reference samples are
+regenerated again.
+
+- Output filter: an 11-tap FIR with the chip's response, solved from the
+  effects that sweep one pure tone (flat to 1.5 kHz, -5.7 dB at 2.4 kHz,
+  -15.8 dB at 3.6 kHz), instead of a 2-pole Butterworth at 2200 Hz.
+- Formants: AW F1 590 to 695 Hz, UW 300/870 to 380/1065, AY 660/1720 to
+  710/1660, OH 730/1090 to 690/1150, WW 300/650 to 495/765. AX, UX, EH, EY,
+  IH, OW, UH, LO and RR are confirmed to within about 5%.
+- 135 is OH ("hot") and 136 AW, as the manual has them, confirmed.
+- Bend adds to the frequencies of oscillators 1 to 3 for speech too (44 Hz a
+  step), instead of a semitone a step; the synthesizer no longer multiplies.
+- Stress raises F2 and F3 by 80 Hz and leaves the pitch alone, instead of
+  pitch x 1.12 and formants +-6%; Relax does nothing, instead of pitch x 0.9.
+- Pitch: each voicing period is one sample longer than the setting asks for
+  (Pitch 250 sounds at 242.6 Hz), as the chip does.
+- Levels: a gain for each allophone (allophone_gain_db) matches its level
+  against AW to the chip's: nasals 4 dB, liquids 2.5 dB and the hiss 4 to
+  12 dB quieter, JH 13 dB and VV 8 dB quieter, BE/BO 7 dB and PE/PO 9 dB
+  louder.
+- Fricative spectra refitted through the new filter to the mean of the three
+  takes; lengths refitted to the third take (vowels and diphthongs 10 to 14 ms
+  shorter: the clipping of the first two made them read long).
+- Sound effects retraced: tones as up to three sines (R0-R9 are three tones),
+  noise, or a buzz through three formants (A1, A2, A3 and M2 buzz at 87 Hz;
+  M2 is a vowel glide), with the filter's loss added back and each effect's
+  level fitted. DTMF is 2.4 dB quieter. MAX_PARTS is 64.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths

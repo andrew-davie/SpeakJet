@@ -9,8 +9,9 @@ Where two independent sets of measurements of the real chip agree, they
 replace guesses: the [openFPGA-7800](https://github.com/Miasmark/openFPGA-7800)
 AtariVox engine's, read from recordings of games speaking (MIT licence), and
 those behind Stella's SpeakJet engine (its `feature/speakjet` branch). They
-set the output filter's corner, the Speed curve and some formants of nine
-allophones; see [Measurements of the real chip](#measurements-of-the-real-chip).
+set some formants of nine allophones (and, until measured directly, the
+output filter and the Speed curve); see
+[Measurements of the real chip](#measurements-of-the-real-chip).
 No code or tables were taken from either.
 
 A recording of a real SpeakJet playing a known sequence of codes, compared
@@ -20,7 +21,10 @@ sound effects; see [A recording of the chip](#a-recording-of-the-chip). A
 second recording, of every allophone and effect on its own and of sweeps of
 each control, sets the Speed curve, how pauses follow Speed, three pause
 lengths, each allophone's length, the shape of the fricatives' hiss, and the
-sound effects; see [The VoxRecord recording](#the-voxrecord-recording).
+sound effects; see [The VoxRecord recording](#the-voxrecord-recording). Its
+third, clean take sets the output filter, five vowels' formants, each
+allophone's level, Bend, Stress and Relax, the pitch, and the effects'
+timbre; see [The third take](#the-third-take).
 
 The manual documents the chip's synthesizer in some detail, but not the MSA
 "sound component database" that drives it: what oscillator settings make each
@@ -106,19 +110,23 @@ what joins one sound smoothly to the next.
   and affricates play as given. **Fast** plays a sound at 0.6 of its length
   rather than the manual's half (see
   [A recording of the chip](#a-recording-of-the-chip)).
-- **Noise.** Fricatives, stop bursts and aspiration sit 14 to 23 dB under
-  the vowels, measured likewise. The voiceless fricatives' hiss is shaped to
-  the chip's spectra.
+- **Levels.** Each allophone's level against AW is the chip's, measured from
+  the VoxRecord recording's third take (see
+  [The third take](#the-third-take)). The voiceless fricatives' hiss is
+  shaped to the chip's spectra.
 - **Speed.** A sound's length falls in a straight line with Speed:
   (146 − Speed) / 32 times its length at the default, 4.6 times at Speed 0
   and 0.59 at 127. Pauses follow Speed too.
-- **Stress** raises the pitch by 12% and tenses the vowel (F1 × 0.94,
-  F2 × 1.06). **Relax** does the opposite (pitch × 0.9, F1 × 1.06,
-  F2 × 0.94). The manual says only that "with STRESS, IH sounds more like (but
-  not quite) the IY sound".
-- **Bend** is a semitone per step either side of the default of 5. The manual
-  says only that it runs from a "deep-hollow" to a "High-metallic" sounding
-  voice.
+- **Stress** raises F2 and F3 by 80 Hz and leaves the pitch alone; **Relax**
+  does nothing, as measured on the chip (see [The third take](#the-third-take)).
+  The manual says only that "with STRESS, IH sounds more like (but not quite)
+  the IY sound".
+- **Bend** adds to the frequencies of oscillators 1 to 3, in speech and
+  effects alike: 44 Hz a step from 5 up, and 44 × Bend − 198 Hz below 5. The
+  manual says only that it runs from a "deep-hollow" to a "High-metallic"
+  sounding voice.
+- **Pitch** sets the voicing period one sample longer than the setting asks
+  for, as the chip does: Pitch 250 sounds at 242.6 Hz.
 - **Transitions.** Speech sounds glide into their target over 35% of their
   length, kept between 20 and 50 ms.
 - **Ramps.** A pause ramps the volume down over 10 ms. When the buffer runs
@@ -171,8 +179,8 @@ It also disagrees with the manual about two codes: it calls 135 AW and 136
 OH, where both editions of the manual have 135 OH ("Hot, Clock, Fox") and 136
 AW ("Father, Fall"). Its dictionary's spellings use the manual's names, so
 PhraseALator sent the two vowels swapped. The library and text2speakjet
-follow the manual. A real SpeakJet would settle it: send 183 135 191 and
-183 136 191 and listen for which says "hot".
+follow the manual, and a recording of a real SpeakJet confirms its order:
+135 is the more open vowel of "hot" (see [The third take](#the-third-take)).
 
 ## Synthesizer
 
@@ -196,9 +204,9 @@ follow the manual. A real SpeakJet would settle it: send 183 135 191 and
   envelope frequency is the voicing pitch.
 - Distortion is applied as random frequency modulation of oscillators 4 and
   5, from a xorshift noise source.
-- The output filter is a Butterworth low pass at 2200 Hz, after a DC blocker.
-  The corner is measured (see
-  [Measurements of the real chip](#measurements-of-the-real-chip)).
+- The output filter, after a DC blocker, is an 11-tap FIR with the chip's
+  measured response: flat to 1.5 kHz, −5.7 dB at 2.4 kHz, −15.8 dB at
+  3.6 kHz (see [The third take](#the-third-take)).
 
 ## Measurements of the real chip
 
@@ -270,11 +278,10 @@ and replaced it (see [The VoxRecord recording](#the-voxrecord-recording)).
 
 ### Output filter
 
-A Butterworth low pass at 2200 Hz, after a DC blocker. openFPGA fitted 2200 Hz
-to the long-term spectrum of the alphabet recording, using a synthesizer like
-this one; Stella's measurement, made independently, is 1700 Hz. Both put the
-real voice's top end far below what the earlier 3400 Hz let through. Of the
-two, openFPGA's value is used because its model matches this library's.
+openFPGA fitted a 2-pole low pass at 2200 Hz to the long-term spectrum of the
+alphabet recording; Stella's measurement, made independently, is 1700 Hz.
+That was used until the VoxRecord recording's third take measured the
+response directly (see [The third take](#the-third-take)).
 
 ### A recording of the chip
 
@@ -378,19 +385,56 @@ applied to oscillators 1 to 3, the tones.
 
 What it shows but doesn't settle:
 
-- **Bend and the vowels.** AW's spectrum moves up by roughly 6 to 9% a step
-  in the first take (the clipping makes this rough), and the second can't
-  tell a shift from a stretch; SE's doesn't move at all. Speech still uses a
-  semitone a step. Whether Bend moves the effects' noise isn't known.
-- **135 and 136.** The clipped vowels can't say which is "hot".
-- **The 2200 Hz output filter.** The fricatives have energy up to 4 kHz,
-  which the filter takes 10 dB or more off; their frames are fitted through
-  it, but the vowels' top end can't be checked.
-- **An extra sound** between the Speed 80 and Speed 100 groups, in both takes
-  alike: an 85 ms burst, then three 180 ms tones at 746, 501 and 746 Hz. No
-  code in the sequence accounts for it, the driver sends the bytes plainly,
-  and it matches none of the 55 effects. The bytes there are
+- **An extra sound** between the Speed 80 and Speed 100 groups, in all three
+  takes alike: an 85 ms burst, then three 180 ms tones at 746, 501 and
+  746 Hz. No code in the sequence accounts for it, the driver sends the bytes
+  plainly, and it matches none of the 55 effects. The bytes there are
   `2 2 21 100 191 136 154 187`.
+
+### The third take
+
+A third take, recorded at a lower level, is barely clipped (0.25% of samples;
+the vowels peak at full scale and clip at most 1.7% of theirs), with the
+noise floor 18 dB further down. It repeats the first two (Speed, pauses,
+pitch, the extra sound, the fricatives' spectra to 1 to 2 dB) and measures
+what they couldn't. Everything below was refitted to it, in this order, each
+measured the same way on the recording and on this library:
+
+| | The chip | Was |
+|---|---|---|
+| Output filter | the effects that sweep one pure tone lose level with frequency alone: solving for a response common to ten of them gives flat to 1.5 kHz, −2.2 dB at 1.9 kHz, −5.7 at 2.4, −10.8 at 2.9, −15.8 at 3.6, −17.2 at 3.9 (the shape of a third-order Butterworth at 2 kHz); an 11-tap FIR matches it to 0.9 dB | 2-pole Butterworth at 2200 Hz |
+| Vowel formants (linear prediction) | AX, UX, EH, EY, IH, OW, UH, LO and RR within about 5% (several of these were set from the two independent measurements, so they are confirmed); AW F1 695, UW 380 / 1065, AY 710 / 1660, OH 690 / 1150, WW 495 / 765 Hz | AW F1 590, UW 300 / 870, AY 660 / 1720, OH 730 / 1090, WW 300 / 650 |
+| 135 and 136 | the same F1 (672 Hz), but 135's F2 is 1178 Hz and 136's 1035, alone and in HE _ TT: 135 is the more open "hot", 136 the rounder "fall", as the manual has them | unknown |
+| Bend on speech | adds, like the effects: AW's F1, F2 and F3 all move by about 40 Hz a step (F3 2480 to 2912 Hz at Bend 15) | a semitone a step |
+| Stress | F2 and F3 up 65 to 100 Hz (AW, EYIY, NE), pitch and F1 unchanged | pitch × 1.12, F1 × 0.94, F2 × 1.06 |
+| Relax | no measurable change | pitch × 0.9, F1 × 1.06, F2 × 0.94 |
+| Pitch | each period one sample long: 87.1 Hz for 88, 156.9 for 160, 195.2 for 200, 242.6 for 250 | exact |
+| Levels against AW | vowels within 1.5 dB; nasals 4 dB and liquids 2.5 dB quieter than here; the hiss 4 to 12 dB quieter (FF 12, HE and HO 7, SE 6), JH 13 and VV 8; BE and BO 7 dB louder, PE and PO 9 | the vox_test recording's levels, itself probably clipped |
+| Allophone lengths | vowels and diphthongs 10 to 14 ms shorter than the first two takes had them (their clipping made loud sounds read long) | the mean of the first two |
+| Volume | linear in amplitude, to 1.5 dB | linear |
+| Sound effects | the tones are pure sines (harmonics 45 dB and more down; the stacks in the first two takes were clipping); R0 to R9 are three tones each; A1, A2, A3 and M2 buzz at 87 Hz with three formants (M2, "WOW", is a vowel glide) | the strongest frequency only |
+
+How each was fitted:
+
+- **Output filter.** Frames of single steady tones from the ten effects that
+  sweep one, solved by least squares for one response in 250 Hz bands plus a
+  level for each effect. A recursive filter at 8192 Hz can't hold the
+  response so close to 4096 Hz, hence the FIR.
+- **Vowels.** With the measured filter the vowels' third-octave spectra are
+  4.0 dB RMS from the chip's (5.0 before), with their original formant
+  volumes; the 3.2 to 4 kHz band, 10 dB short before, is 3 dB short.
+- **Fricatives** were refitted through the new filter to the mean of the
+  three takes' spectra, then their levels set with the others.
+- **Levels** are a gain for each allophone (`allophone_gain_db`), fitted so
+  that each one's level against AW matches the chip's to 0.1 dB.
+- **Lengths** were refitted after that: within 2 ms, 0.2 on average.
+- **Effects** were retraced: tones as up to three sines, noise, or for an
+  effect that buzzes for a quarter or more of its length, a buzz throughout,
+  its three formants followed from frame to frame. The traced levels have
+  the output filter's loss added back, and each effect's overall level was
+  fitted against AW (0.2 dB on average). DTMF is 2.4 dB quieter than before.
+  A1 and A2 are the roughest: the chip has a steady low formant under two
+  rising ones, which the trace only partly keeps.
 
 ### Not used
 
@@ -407,20 +451,17 @@ The manual doesn't say, so these are guesses (described above):
 | | What the library does |
 |---|---|
 | The oscillator settings behind each allophone | Built from published formant measurements of English speech; only the formants that two sets of measurements of the chip agree on are from the chip, and no volumes are |
-| The sound effects' waveforms | Traced from a clipped recording: the strongest frequency only, as a sine, noise or a buzz |
+| The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants |
 | How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties |
-| How much Stress and Relax change a sound | Pitch × 1.12 or × 0.9, with the first two formants shifted (the manual says only "a small amount") |
-| The Bend curve | A semitone per step either side of 5, for speech and effects alike (see [The VoxRecord recording](#the-voxrecord-recording)) |
+| Bend between 1 and 5 | Where the 22 Hz shortfall falls isn't measured; it is taken at 5 |
 | The synthesizer's details | Formant oscillators restarting each voicing period, distortion as random frequency modulation |
 | What Soft (18) does | Ignored; it is a real command (see PhraseALator above), but nothing describes its effect |
-| Whether 135 is OH and 136 AW | The manual's order is followed; PhraseALator has them swapped (see above) |
 
 Apart from the measured values above, none of this has been compared with a
 real SpeakJet. Two recordings have been (see
 [A recording of the chip](#a-recording-of-the-chip) and
-[The VoxRecord recording](#the-voxrecord-recording)); the second played every
-allophone and effect on its own, but is clipped. A take at a lower level would
-settle the vowels' formants and levels, the Volume curve, and 135 and 136.
+[The VoxRecord recording](#the-voxrecord-recording)), the second in three
+takes, the last of them clean.
 
 ### Not emulated
 
