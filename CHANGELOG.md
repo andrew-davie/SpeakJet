@@ -159,6 +159,19 @@ A recording of the VoxProbe ROM, built to test the engine, changes it
 - Voiced stops, VV and JH refitted with the new voicing; TT's and SE's
   lengths refitted to the connected groups; levels refitted.
 
+A second VoxProbe recording, of every Pitch and of single voicing pulses
+(see docs/design.md):
+
+- Pitch: each voicing period is a whole number of ticks of a 7986 Hz clock,
+  8000 / Pitch + 1 (12 settings, among them the default, one more), instead
+  of Pitch / (1 + Pitch / 8192). Within 0.12% of the chip from pitch 40 to
+  254, where it was up to 2.6% off.
+- The oscillators run on the chip's 4.3845 Hz frequency grid; DTMF tones are
+  the chip's (a few hertz off the standard ones), Bend is 10 steps a step.
+- Formants of 16 vowels, liquids and MM measured from single voicing pulses.
+  The first VoxProbe recording's sustained sounds go from 4.5 to 3.7 dB; LE
+  improves by 7 dB.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths

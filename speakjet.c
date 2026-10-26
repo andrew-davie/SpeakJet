@@ -40,6 +40,14 @@ static int imin(int a, int b) { return a < b ? a : b; }
  * control register */
 typedef enum { ENV_SAW, ENV_SINE, ENV_TRIANGLE, ENV_SQUARE, ENV_VOICE } envelope_wave;
 
+/* the chip's oscillators run on a grid of frequencies FREQ_STEP_HZ apart:
+ * on the second VoxProbe recording all seven DTMF frequencies are whole
+ * multiples of it (697.17Hz is 159 steps, 1468.75Hz 335, each within 0.12Hz),
+ * a step of Bend is 10 of them and the short step between Bends 4 and 5 is 5.
+ * that is the step of a phase accumulator. on_grid() puts a frequency on it */
+#define FREQ_STEP_HZ 4.3845
+static double on_grid(double hz) { return floor(hz / FREQ_STEP_HZ + 0.5) * FREQ_STEP_HZ; }
+
 /* how long the voicing ramp lasts (see ENV_VOICE in synth_sample()) */
 #ifndef VOICE_ENV_MS
 #define VOICE_ENV_MS 8.0
@@ -105,6 +113,9 @@ typedef struct synth {
   double phase[5];
   double env_phase;
 
+  /* samples since the last voicing pulse */
+  long env_age;
+
   /* noise source for distortion (xorshift) */
   uint32_t noise;
 
@@ -117,6 +128,7 @@ typedef struct synth {
 static void synth_init(synth *s) {
   memset(s, 0, sizeof(*s));
   s->noise = 0x2545f491u;
+  s->env_age = 1L << 30;
 }
 
 static double synth_random(synth *s) {
@@ -129,33 +141,39 @@ static double synth_random(synth *s) {
 /* sample produces the next output sample, in the range -1 to 1. master is
  * the master volume (0 to 127) */
 static double synth_sample(synth *s, const frame *f, double master) {
-  /* envelope oscillator */
+  /* envelope oscillator: a voicing pulse at the end of each period */
   double env = 1.0;
+  bool pulse = false;
   if (f->pitch > 0) {
     s->env_phase += f->pitch / SJ_SAMPLE_RATE;
     if (s->env_phase >= 1) {
       s->env_phase -= floor(s->env_phase);
-
-      /* restart the formant oscillators with each envelope period */
-      if (f->voiced) {
-        s->phase[0] = 0;
-        s->phase[1] = 0;
-        s->phase[2] = 0;
-      }
+      pulse = true;
     }
+  }
+  if (pulse) {
+    s->env_age = 0;
+    /* restart the formant oscillators with each pulse */
+    if (f->voiced) {
+      s->phase[0] = 0;
+      s->phase[1] = 0;
+      s->phase[2] = 0;
+    }
+  }
+  if (f->wave == ENV_VOICE) {
+    /* the chip's voicing: each pulse restarts the formant oscillators at full
+     * level and they fall away in a straight line to nothing in a fixed time,
+     * whatever the pitch or volume. below 125Hz the rest of the period is
+     * silent; above it the next pulse cuts the ramp short. measured from the
+     * VoxProbe recordings, where at pitch 40 to 70 each pulse stands alone */
+    env = fmax2(1 - (double)s->env_age / (SJ_SAMPLE_RATE * VOICE_ENV_MS / 1000), 0);
+  } else if (f->pitch > 0) {
     const double p = s->env_phase;
     switch (f->wave) {
     case ENV_SAW:
       env = 1 - p;
       break;
     case ENV_VOICE:
-      /* the chip's voicing: each pulse restarts the formant oscillators at
-       * full level and they fall away in a straight line to nothing in a
-       * fixed time, whatever the pitch. below 125Hz the rest of the
-       * period is silent; above it the next pulse cuts the ramp short.
-       * measured from the VoxProbe recording, where at pitch 40 to 70 each
-       * pulse stands alone */
-      env = fmax2(1 - p / (f->pitch * VOICE_ENV_MS / 1000), 0);
       break;
     case ENV_SINE:
       env = 0.5 + 0.5 * cos(2 * SJ_PI * p);
@@ -169,14 +187,16 @@ static double synth_sample(synth *s, const frame *f, double master) {
       break;
     }
   } else if (f->voiced) {
-    /* a pitch of zero does not vocalise */
+    /* a pitch of zero gives no periodic envelope */
     env = 0;
   }
+  if (s->env_age < (1L << 30))
+    s->env_age++;
 
   /* mixer 1: oscillators 1 to 3 */
   double mix1 = 0, total = 0;
   for (int i = 0; i < 3; i++) {
-    const double fr = fmin2(f->freq[i], MAX_FREQUENCY);
+    const double fr = fmin2(on_grid(f->freq[i]), MAX_FREQUENCY);
     s->phase[i] += fr / SJ_SAMPLE_RATE;
     s->phase[i] -= floor(s->phase[i]);
     const double v = fmin2(f->vol[i], MAX_OSC_VOLUME);
@@ -193,7 +213,7 @@ static double synth_sample(synth *s, const frame *f, double master) {
   double mix2 = 0;
   const double spread = f->distortion / 255 * 1.5;
   for (int i = 3; i < 5; i++) {
-    const double fr = fmin2(f->freq[i], MAX_FREQUENCY);
+    const double fr = fmin2(on_grid(f->freq[i]), MAX_FREQUENCY);
     s->phase[i] += fr * (1 + spread * synth_random(s)) / SJ_SAMPLE_RATE;
     s->phase[i] -= floor(s->phase[i]);
     mix2 += fmin2(f->vol[i], MAX_OSC_VOLUME) * sin(2 * SJ_PI * s->phase[i]);
@@ -295,31 +315,41 @@ typedef struct sound {
  * 870 to 1065), AY F1 and F2 (660 to 710, 1720 to 1660), OH F1 and F2 (730
  * to 690, 1090 to 1150) and WW F1 and F2 (300 to 495, 650 to 765). IY
  * can't be read this way. the nasals (MM among them) are fitted to its
- * spectra instead (see allophone()) */
+ * spectra instead (see allophone()).
+ *
+ * the second VoxProbe recording then measured the oscillators directly: at
+ * pitch 40 each voicing pulse stands alone, a few milliseconds of the three
+ * formant sines starting together, so their frequencies can be fitted to the
+ * waveform itself. IY, IH, EY, EH, AY (but its weak F3), AX, UX, OH, AW, OW,
+ * UH, UW, LE, WW, RR and MM take those frequencies (NE and NO were worse with
+ * them on both recordings, and keep theirs). the biggest changes: IY F3 3010
+ * to 2539Hz, LE F2 1300 to 970, WW F1 495 to 385, MM F1 396 to 257. with them
+ * the sustained sounds of the first VoxProbe recording (not used to measure
+ * them) go from 4.5 to 3.7dB of the chip's spectra */
 typedef struct formants {
   double f[3];
 } formants;
 
 #define FM(a, b, c) ((formants){{(a), (b), (c)}})
 
-static const formants fIY = {{270, 2290, 3010}};
-static const formants fIH = {{322, 1774, 2490}};
-static const formants fEY = {{508, 1820, 2425}};
-static const formants fEH = {{600, 1666, 2480}};
-static const formants fAY = {{710, 1660, 2410}};
-static const formants fAX = {{521, 1510, 2395}};
-static const formants fUX = {{613, 1328, 2390}};
-static const formants fOH = {{690, 1150, 2440}};
-static const formants fAW = {{695, 998, 2540}};
-static const formants fOW = {{512, 891, 2350}};
-static const formants fUH = {{440, 1020, 2240}};
-static const formants fUW = {{380, 1065, 2240}};
+static const formants fIY = {{255, 2186, 2539}};
+static const formants fIH = {{345, 1753, 2457}};
+static const formants fEY = {{515, 1760, 2353}};
+static const formants fEH = {{606, 1658, 2365}};
+static const formants fAY = {{686, 1629, 2410}};
+static const formants fAX = {{494, 1503, 2357}};
+static const formants fUX = {{579, 1344, 2374}};
+static const formants fOH = {{656, 1173, 2369}};
+static const formants fAW = {{646, 1005, 2483}};
+static const formants fOW = {{474, 890, 2406}};
+static const formants fUH = {{424, 1057, 2286}};
+static const formants fUW = {{333, 1058, 2131}};
 static const formants fAH = {{700, 1220, 2600}};
 static const formants fER = {{480, 1350, 1650}};
-static const formants fRR = {{439, 1318, 1720}};
-static const formants fLE = {{360, 1300, 2700}};
+static const formants fRR = {{408, 1315, 1743}};
+static const formants fLE = {{426, 970, 2612}};
 static const formants fLO = {{400, 900, 2500}};
-static const formants fWW = {{495, 765, 2200}};
+static const formants fWW = {{385, 801, 2162}};
 
 /* the start of AWRR, OWRR and OWIY keeps the earlier OH and AW: the third
  * take's corrections to OH and AW (see above) put those three 1 to 3dB
@@ -660,14 +690,14 @@ static const double allophone_length[] = {
  * recording, which made the vowels read quiet) and BE, BO, PE and PO too
  * quiet */
 static const double allophone_gain_db[] = {
-    0.8, 1.4, 1.4, 0.6, 1.2, 1.1, 0.7, 0.7, 0.0,
-    -0.9, -1.4, -1.4, -3.8, -4.3, -4.2, -4.2, -4.4, -2.8,
-    -2.8, -1.9, 0.6, 0.4, 0.8, 0.6, -0.1, -0.7, 0.9,
-    0.4, -0.7, 0.6, 0.5, -1.0, -0.7, 0.2, -1.2, -0.8,
-    -2.2, -11.8, -1.7, 2.4, -1.6, -2.6, 6.5, 6.9, -2.7,
-    2.5, 3.6, 3.6, -4.5, -8.5, 0.2, 0.1, 2.2, 2.7,
-    -15.4, -32.0, -31.1, -29.7, -26.0, -14.8, -19.9, -20.9, -26.7,
-    -2.0, -3.2, -26.2, 1.6, -2.9, 2.6, -3.7, 6.5, 6.0,
+    0.6, 1.3, 1.3, 0.5, 1.2, 1.0, 0.6, 0.7, 0.0,
+    -0.9, -1.4, -1.4, -3.7, -4.3, -4.3, -4.2, -4.4, -2.9,
+    -2.8, -1.9, 0.5, 0.2, 0.6, 0.5, -0.2, -0.8, 0.6,
+    0.2, -0.8, 0.5, 0.3, -1.2, -0.9, -0.0, -1.4, -0.9,
+    -2.4, -11.5, -1.8, 2.1, -2.0, -3.0, 6.2, 6.5, -2.4,
+    3.0, 3.2, 3.2, -4.4, -8.5, -0.1, -0.3, 1.8, 2.4,
+    -15.3, -32.1, -30.9, -29.6, -26.1, -14.7, -20.0, -21.0, -26.6,
+    -2.0, -3.1, -26.2, 1.7, -2.8, 2.7, -3.6, 6.6, 6.1,
 };
 
 static void allophone(sound *s, int code) {
@@ -689,7 +719,7 @@ static void allophone(sound *s, int code) {
    * third take (the middle of each, in sixth octaves from 200Hz to 3.9kHz):
    * besides the low murmur the chip's nasals have strong resonances near 1.4
    * to 1.6kHz and 2.2 to 2.6kHz that the published values here lacked */
-  case 140: steady(s, 70, voiced_frame(FM(396, 1388, 2199), 22.0, 8.6, 1.8)); break; /* MM */
+  case 140: steady(s, 70, voiced_frame(FM(257, 1421, 2201), 22.0, 8.6, 1.8)); break; /* MM */
   case 141: steady(s, 70, voiced_frame(FM(310, 1564, 2570), 22.0, 7.0, 11.6)); break; /* NE */
   case 142: steady(s, 70, voiced_frame(FM(310, 1097, 2568), 22.0, 6.0, 12.0)); break; /* NO */
   case 143: steady(s, 70, voiced_frame(FM(396, 2100, 2700), 22.0, 7.0, 4.0)); break; /* NGE */
@@ -812,8 +842,11 @@ static void hold(sound *s, double ms, double glide, frame f) {
 /* the manual gives the DTMF tones 95ms, but on the VoxRecord recording (see
  * msa_speed_factor()) all twelve sound for 152 to 154ms, 2.4dB quieter
  * against AW than tone() plays them */
-static void dtmf(sound *s, double low, double high) {
-  const frame t = fade(tone(low, high), 2.4);
+/* a DTMF tone, its two frequencies in FREQ_STEP_HZ steps: the chip's,
+ * measured on the second VoxProbe recording, which are a few hertz from the
+ * standard ones (1477Hz is 1468.75) */
+static void dtmf(sound *s, int low, int high) {
+  const frame t = fade(tone(low * FREQ_STEP_HZ, high * FREQ_STEP_HZ), 2.4);
   hold(s, 150, 3, t);
   hold(s, 3, 3, quiet(t));
 }
@@ -2064,18 +2097,18 @@ static void effect(sound *s, int code) {
     return;
   }
   switch (code) {
-  case 240: dtmf(s, 941, 1336); break; /* D0 */
-  case 241: dtmf(s, 697, 1209); break; /* D1 */
-  case 242: dtmf(s, 697, 1336); break; /* D2 */
-  case 243: dtmf(s, 697, 1477); break; /* D3 */
-  case 244: dtmf(s, 770, 1209); break; /* D4 */
-  case 245: dtmf(s, 770, 1336); break; /* D5 */
-  case 246: dtmf(s, 770, 1477); break; /* D6 */
-  case 247: dtmf(s, 852, 1209); break; /* D7 */
-  case 248: dtmf(s, 852, 1336); break; /* D8 */
-  case 249: dtmf(s, 852, 1477); break; /* D9 */
-  case 250: dtmf(s, 941, 1209); break; /* D10 */
-  case 251: dtmf(s, 941, 1477); break; /* D11 */
+  case 240: dtmf(s, 215, 304); break; /* D0 */
+  case 241: dtmf(s, 159, 275); break; /* D1 */
+  case 242: dtmf(s, 159, 304); break; /* D2 */
+  case 243: dtmf(s, 159, 335); break; /* D3 */
+  case 244: dtmf(s, 175, 275); break; /* D4 */
+  case 245: dtmf(s, 175, 304); break; /* D5 */
+  case 246: dtmf(s, 175, 335); break; /* D6 */
+  case 247: dtmf(s, 194, 275); break; /* D7 */
+  case 248: dtmf(s, 194, 304); break; /* D8 */
+  case 249: dtmf(s, 194, 335); break; /* D9 */
+  case 250: dtmf(s, 215, 275); break; /* D10 */
+  case 251: dtmf(s, 215, 335); break; /* D11 */
 
   case 253: { /* M1 */
     /* measured from the vox_test recording (see STEADY_LENGTH): 30ms of
@@ -2221,20 +2254,42 @@ static void msa_init(msa *m) {
  * near 4400). that is 44Hz a step from 5 up, and from 1 down; between 1 and 5
  * it is 22Hz short, which these Bends can't place, so the shortfall is taken
  * up at 5. it moves oscillators 1 to 3, the formants and tones; SE's hiss
- * (oscillators 4 and 5) doesn't move at all */
+ * (oscillators 4 and 5) doesn't move at all. in the chip's frequency steps
+ * (FREQ_STEP_HZ) a Bend is 10 steps, and the short step from 4 to 5 is 5 */
 static double msa_bend_hz(const msa *m) {
   if (m->bend >= SJ_DEFAULT_BEND)
-    return 44.0 * (m->bend - SJ_DEFAULT_BEND);
-  return 44.0 * m->bend - 198.0;
+    return 10 * FREQ_STEP_HZ * (m->bend - SJ_DEFAULT_BEND);
+  return FREQ_STEP_HZ * (10 * m->bend - 45);
 }
 
-/* the envelope (voicing) frequency for a Pitch setting. the chip's voice is
- * slightly flat, more so the higher the pitch: three takes of the VoxRecord
- * recording give 87.1Hz for Pitch 88, 156.9 for 160, 195.2 for 200 and 242.6
- * for 250, which is each period one sample (at 8192Hz) longer than Pitch
- * asks for */
+/* the voicing frequency for a Pitch setting. the chip counts each voicing
+ * period in whole ticks of a VOICE_TICK_HZ clock: 8000 / Pitch ticks
+ * (dividing in whole numbers) and one more. on the second VoxProbe recording,
+ * which plays every Pitch from 0 to 254, the frequency holds flat over runs
+ * of Pitch settings and steps exactly where that count changes (201 to 205
+ * all give 199.7Hz), and at 12 settings the count is one more again, measured
+ * consistently on both halves of each test; no simple arithmetic gives those,
+ * so they are listed.
+ *
+ * not emulated: at very low pitch the chip also starts each sound (and each
+ * copy of a repeated one) with a pulse, so pitch 0 gives a pulse a sound; but
+ * at pitch 33 and 38 the pulses run on evenly across a repeat, and what
+ * decides it isn't known. here pitch 0 is silent */
+#define VOICE_TICK_HZ 7986.0
 static double voice_hz(double pitch) {
-  return pitch / (1 + pitch / SJ_SAMPLE_RATE);
+  const int p = (int)pitch;
+  if (p <= 0)
+    return 0;
+  int ticks = 8000 / p + 1;
+  switch (p) {
+  case 44: case 51: case 53: case 56: case 63: case 77:
+  case 87: case 88: case 92: case 104: case 127: case 151:
+    ticks++;
+    break;
+  default:
+    break;
+  }
+  return VOICE_TICK_HZ / ticks;
 }
 
 /* the duration multiplier from the Speed control. the manual gives the range
@@ -2289,8 +2344,9 @@ static void msa_start(msa *m) {
 
 /* expand converts a sound into segments, applying the controls and
  * modifiers */
-/* how far Stress raises F2 and F3 (see msa_expand()) */
-#define STRESS_HZ 80.0
+/* how far Stress raises F2 and F3 (see msa_expand()): about 85Hz on the chip,
+ * which is 19 of its frequency steps */
+#define STRESS_HZ (19 * FREQ_STEP_HZ)
 
 static void msa_expand(msa *m, const sound *s) {
   /* Speed stretches every sound, the effects too: on the chip (the VoxProbe

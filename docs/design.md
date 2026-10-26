@@ -593,6 +593,49 @@ Not changed:
   and after 0.8 s of silence it plays DTMF 0, 1, 0 at Bend 0 and carries on
   at 136 Hz and 5.5 dB louder. It looks like a reset and isn't emulated.
 
+### The second VoxProbe recording
+
+VoxProbe 2 plays every Pitch from 0 to 254, the voicing fade at pitch 40 on
+18 sounds and at other Volumes and Bends, the robot effects at other
+Pitches, Bends and Speed, all twelve DTMF tones, and variants of the long
+Speed sweep. The recorder runs 0.72% slow (its 2600 line-rate whine reads
+15814 Hz against 15699.8), and the frequencies here are corrected for it.
+
+| | On the chip | Before | Now |
+|---|---|---|---|
+| Voicing frequency | each period is a whole number of ticks of a 7986 Hz clock: 8000 / Pitch (whole numbers) and one more; above pitch 200 the frequency holds flat across runs of settings and steps exactly where the count changes; 12 settings (among them the default, 88) take one tick more, the same on both halves of each test | Pitch / (1 + Pitch / 8192), up to 2.6% off | the count, with the 12 listed; within 0.12% RMS (0.27% at worst) of the chip from pitch 40 to 254 |
+| Frequencies | all seven DTMF frequencies are whole multiples of 4.3845 Hz (697.17 Hz is 159, 1468.75 Hz 335, each within 0.12 Hz); a step of Bend is 10 of them, Bend 4 to 5 is 5, Stress about 19 | the standard DTMF frequencies, Bend in 44 Hz steps, Stress 80 Hz | oscillators on that grid (`FREQ_STEP_HZ`), the chip's DTMF steps, Bend and Stress in steps |
+| Formants | at pitch 40 each pulse is a few milliseconds of the three formant sines alone, fitted directly | published values and spectrum fits | measured for 16 vowels, liquids and MM (NE and NO were worse with them on both recordings, and keep theirs) |
+| The voicing fade | the same at Volume 32 to 127 and Bend 0 to 15; over 4.5 to 6.9 ms across 18 sounds | | unchanged (8 ms) |
+
+The measured formants took the first VoxProbe recording's sustained sounds,
+which weren't used to measure them, from 4.5 to 3.7 dB of the chip's
+spectra, and LE, long the worst allophone, by 7 dB. Against the third take,
+the vowels, nasals, liquids and diphthongs go from 3.81 to 3.58 dB and from
+81.6% to 84.1% spectrogram match; no sound is more than 1 dB worse.
+
+Tried and not kept:
+
+- A voicing pulse at the start of each sound. At very low pitch the chip
+  starts each sound, and each copy of a repeated one, with a pulse (AW said
+  twice at pitch 0 to 6 is two pulses), so pitch 0 isn't silent; but at
+  pitch 33 and 38 the pulses run on evenly across a repeat. A pulse at every
+  start made the sustained sounds 0.4 dB worse, so pitch 0 stays silent here.
+- The robots' lower part. R7, R8 and R9 have a component (about 640 Hz in R8
+  and R9) that follows Pitch but not Bend, unlike their main tones, which
+  follow Bend but not Pitch. Putting it on a noise oscillator enveloped by
+  the voicing brought their spectra closer on this recording at every Pitch
+  and Bend, but cost the third take 6 to 16 points of spectrogram match.
+- The formants' relative strengths from the same fits, which made both
+  recordings worse.
+
+The extra sound: the chip's DTMF 0, 1, 0 and change of state happened in
+three of five variants of the long sweep (the original; without its speed 0
+group, one group later; the slow groups then one AW, two groups earlier) and
+not in two (one speed 0 group then speed 100; the same bytes all at speed
+60), nor anywhere else in the recording. It is neither a fixed position in
+the stream nor a fixed time; it needs a long run of slow sounds.
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown
@@ -604,7 +647,7 @@ The manual doesn't say, so these are guesses (described above):
 | The oscillator settings behind each allophone | Built from published formant measurements of English speech; only the formants that two sets of measurements of the chip agree on are from the chip, and no volumes are |
 | The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants; seven are gated at a fitted voicing rate |
 | How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties |
-| The synthesizer's details | Distortion as random frequency modulation; how the chip turns a Pitch setting into a frequency (see the VoxProbe recording) |
+| The synthesizer's details | Distortion as random frequency modulation; the arithmetic behind the chip's voicing count at the 12 settings that differ from 8000 / Pitch + 1; whether a pulse starts each sound |
 | What Soft (18) does | Ignored; it is a real command (see PhraseALator above), but nothing describes its effect |
 
 Apart from the measured values above, none of this has been compared with a
