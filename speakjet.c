@@ -533,25 +533,28 @@ static const char *const allophone_names[] = {
 
 /* LENGTH-TABLE-BEGIN */
 /* how much longer the chip plays each allophone than the manual's length, at
- * the default speed. 0 keeps the class's length (see STEADY_LENGTH). fitted
- * to the third take of the VoxRecord recording (see msa_speed_factor()),
- * whose vowels aren't clipped (the clipping of the first two made loud sounds
- * read 10 to 14ms long): each allophone was played on its own and its audible length on the chip, from where it rises
- * out of silence to where it falls back, was matched here measured the same
- * way. the chip plays the vowels IH to OH for about 140ms, the back vowels and
- * RR 120 to 125ms, the nasals and liquids 90 to 110ms, the voiced fricatives
- * 90 to 110ms and HE, HO, WH and FF about 75ms. the stops and affricates keep
- * their class's length: where a stop's sound starts and ends on a recording
- * says nothing about its silent closure */
+ * the default speed, fitted to the VoxRecord recording's third take in two
+ * steps. first each allophone was played on its own and its audible length on
+ * the chip, from where it rises out of silence to where it falls back, was
+ * matched here measured the same way. but strung together the chip gives
+ * sounds longer slots than that (MM IY MM: 320ms on the chip, 235 here), so
+ * then one multiplier for each class was fitted to 30 connected groups (AW
+ * MM at eight pitches, AW SE at eight bends, TT AW EYIY SE at five speeds,
+ * and nine syllables such as HE OH TT and MM IY MM): vowels 0.92, nasals
+ * 1.32, diphthongs 1.10, voiceless fricatives 1.14, stops and affricates 1.40
+ * (on the class length). that takes the groups from 6% short to within 1%
+ * (16ms on average; 22ms when each is left out of the fit), at the cost of
+ * sounds played alone running 13ms long on average. the liquids and voiced
+ * fricatives, which no group has, keep their first-step lengths */
 static const double allophone_length[] = {
-    1.29, 1.46, 1.76, 1.77, 1.83, 1.62, 1.78, 1.75, 1.61,
-    1.40, 1.37, 1.35, 0.91, 0.87, 0.91, 0.87, 0.87, 1.04,
-    1.14, 1.26, 1.51, 1.05, 1.16, 1.23, 1.11, 1.14, 1.10,
-    1.07, 1.05, 1.10, 1.19, 1.12, 1.06, 1.14, 1.27, 1.11,
-    1.34, 0.00, 0.84, 0.99, 0.88, 0.88, 0.00, 0.00, 0.00,
-    0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
-    0.00, 1.03, 1.01, 0.97, 0.96, 2.26, 2.28, 1.12, 0.96,
-    0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
+    1.19, 1.34, 1.62, 1.63, 1.68, 1.49, 1.64, 1.61, 1.48,
+    1.29, 1.26, 1.24, 1.20, 1.15, 1.20, 1.15, 1.15, 1.04,
+    1.14, 1.26, 1.51, 1.16, 1.28, 1.35, 1.22, 1.25, 1.21,
+    1.18, 1.16, 1.21, 1.31, 1.23, 1.17, 1.25, 1.40, 1.22,
+    1.47, 1.40, 0.84, 0.99, 0.88, 0.88, 1.40, 1.40, 1.40,
+    1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40,
+    1.40, 1.17, 1.15, 1.11, 1.09, 2.58, 2.60, 1.28, 1.09,
+    1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40,
 };
 /* LENGTH-TABLE-END */
 

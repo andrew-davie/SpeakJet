@@ -105,10 +105,11 @@ what joins one sound smoothly to the next.
   [The VoxRecord recording](#the-voxrecord-recording)). Their lengths are
   the chip's, not the manual's; DTMF tones last 153 ms, not 95.
 - **Lengths.** The chip plays speech sounds longer than the manual's
-  lengths. Each allophone other than the stops and affricates has its own
-  measured length, from 0.8 (VV) to 2.35 (SO) times the manual's; the stops
-  and affricates play as given. **Fast** plays a sound at 0.6 of its length
-  rather than the manual's half (see
+  lengths. Each allophone has its own measured length, from 0.84 (VV) to 2.6
+  (SO) times the manual's, fitted to sounds played alone and then, by class,
+  to sounds strung together (see [The third take](#the-third-take)).
+  **Fast** plays a sound at 0.6 of its length rather than the manual's half
+  (see
   [A recording of the chip](#a-recording-of-the-chip)).
 - **Levels.** Each allophone's level against AW is the chip's, measured from
   the VoxRecord recording's third take (see
@@ -427,7 +428,19 @@ How each was fitted:
   three takes' spectra, then their levels set with the others.
 - **Levels** are a gain for each allophone (`allophone_gain_db`), fitted so
   that each one's level against AW matches the chip's to 0.1 dB.
-- **Lengths** were refitted after that: within 2 ms, 0.2 on average.
+- **Lengths** were refitted after that, in two steps. Played alone, each
+  allophone's audible length was matched to the chip's (0.2 ms on average).
+  But strung together the chip gives sounds longer slots than their audible
+  length alone suggests: held-out syllables such as MM IY MM came out 12%
+  short (320 ms on the chip, 235 here). So one multiplier for each class was
+  then fitted to 30 connected groups (AW MM at eight pitches, AW SE at eight
+  Bends, TT AW EYIY SE at Speeds 0 to 80, and the nine syllables of sections
+  12 and 13): vowels 0.92, nasals 1.32, diphthongs 1.10, voiceless
+  fricatives 1.14, stops and affricates 1.40. The groups go from 6% short
+  (38 ms) to within 1% (16 ms; 22 ms with each group left out of its own
+  fit), and the syllables from 12% to 2% short, at the cost of sounds played
+  alone running 13 ms long on average. The liquids and voiced fricatives,
+  which no group contains, keep their first-step lengths.
 - **Effects** were retraced: tones as up to three sines, noise, or for an
   effect that buzzes for a quarter or more of its length, a buzz throughout,
   its three formants followed from frame to frame. The traced levels have

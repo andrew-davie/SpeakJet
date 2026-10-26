@@ -213,16 +213,16 @@ def describe(codes):
 # How long the chip plays each sound, as the library has it (speakjet.c,
 # measured from recordings of the real chip): CHIP_LENGTH is how much longer
 # than the manual's length each allophone lasts at the default speed
-# (allophone_length, or the class's length where that is 0), CHIP_EFFECT_MS
+# (allophone_length), CHIP_EFFECT_MS
 # the length of each sound effect (codes 200 to 254) and CHIP_PAUSE_MS of
 # pauses 0 to 6 (pause_ms). Keep these in step with speakjet.c.
 CHIP_LENGTH = [
-    1.29, 1.46, 1.76, 1.77, 1.83, 1.62, 1.78, 1.75, 1.61, 1.40, 1.37, 1.35,
-    0.91, 0.87, 0.91, 0.87, 0.87, 1.04, 1.14, 1.26, 1.51, 1.05, 1.16, 1.23,
-    1.11, 1.14, 1.10, 1.07, 1.05, 1.10, 1.19, 1.12, 1.06, 1.14, 1.27, 1.11,
-    1.34, 1.00, 0.84, 0.99, 0.88, 0.88, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00,
-    1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.03, 1.01, 0.97, 0.96, 2.26,
-    2.28, 1.12, 0.96, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00,
+    1.19, 1.34, 1.62, 1.63, 1.68, 1.49, 1.64, 1.61, 1.48, 1.29, 1.26, 1.24,
+    1.20, 1.15, 1.20, 1.15, 1.15, 1.04, 1.14, 1.26, 1.51, 1.16, 1.28, 1.35,
+    1.22, 1.25, 1.21, 1.18, 1.16, 1.21, 1.31, 1.23, 1.17, 1.25, 1.40, 1.22,
+    1.47, 1.40, 0.84, 0.99, 0.88, 0.88, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40,
+    1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.17, 1.15, 1.11, 1.09, 2.58,
+    2.60, 1.28, 1.09, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40,
 ]
 CHIP_EFFECT_MS = [
     138, 133, 138, 133, 133, 133, 128, 128, 133, 133, 398, 1008, 1003, 573,

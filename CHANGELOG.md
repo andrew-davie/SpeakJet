@@ -97,6 +97,15 @@ regenerated again.
   M2 is a vowel glide), with the filter's loss added back and each effect's
   level fitted. DTMF is 2.4 dB quieter. MAX_PARTS is 64.
 
+Lengths in connected speech. Fitting each allophone's length to its
+audible length when played alone left syllables 12% short of the chip's
+(MM IY MM 235 ms against 320). One multiplier per class (vowels 0.92, nasals
+1.32, diphthongs 1.10, voiceless fricatives 1.14, stops and affricates 1.40)
+is now fitted to 30 connected groups from the third take: they go from 6%
+short to within 1% (22 ms average error with each group left out of its own
+fit, 38 before). Sounds played alone now run 13 ms long on average. Stops and
+affricates now have their own entries in allophone_length.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths
