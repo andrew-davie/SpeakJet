@@ -583,9 +583,9 @@ static void affricate(sound *s, const stop *st, frame fric, double fric_ms) {
  * peaked where these were broad: SE and SO at 3 to 4kHz, SH at 2.5 to  3.2kHz,
  * HE and HO around 1 to 1.5kHz, WH at 0.6 to 0.9kHz. their levels are set by
  * allophone_gain_db */
-static frame frSE(void) { return noise_frame(lAlveolar, 3222, 3786, 5.4, 10.3, 23); }
-static frame frSO(void) { return noise_frame(lAlveolarBak, 3088, 3412, 2.7, 5.3, 24); }
-static frame frSH(void) { return noise_frame(lPalatal, 3128, 2558, 28.4, 23.7, 61); }
+static frame frSE(void) { return noise_frame(lAlveolar, 3557, 2703, 28.98, 6.08, 27); }
+static frame frSO(void) { return noise_frame(lAlveolarBak, 3140, 3652, 20.91, 27.91, 20); }
+static frame frSH(void) { return noise_frame(lPalatal, 3606, 2505, 15.54, 16.7, 43); }
 static frame frZH(void) {
   return hush(voiced_noise_frame(FM(260, 1800, 2500), 14, 2400, 3200, 14, 10, 200),
               FRICATIVE_DB);
@@ -676,7 +676,7 @@ static const double allophone_length[] = {
     0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
     0.00, 0.82, 0.84, 0.99, 0.88, 0.88, 1.63, 1.40, 2.67,
     3.27, 1.40, 1.40, 3.74, 3.16, 1.40, 1.40, 1.40, 1.40,
-    2.46, 1.17, 1.15, 1.11, 1.49, 2.92, 3.14, 1.78, 1.77,
+    2.46, 1.17, 1.15, 1.11, 1.49, 2.80, 2.23, 1.17, 1.77,
     2.07, 2.78, 1.37, 2.44, 1.40, 2.40, 2.46, 1.40, 1.40,
 };
 /* LENGTH-TABLE-END */
@@ -690,31 +690,37 @@ static const double allophone_length[] = {
  * recording, which made the vowels read quiet) and BE, BO, PE and PO too
  * quiet */
 static const double allophone_gain_db[] = {
-    0.6, 1.3, 1.3, 0.5, 1.2, 1.0, 0.6, 0.7, 0.0,
-    -0.9, -1.4, -1.4, -3.7, -4.3, -4.3, -4.2, -4.4, -2.9,
-    -2.8, -1.9, 0.5, 0.2, 0.6, 0.5, -0.2, -0.8, 0.6,
-    0.2, -0.8, 0.5, 0.3, -1.2, -0.9, -0.0, -1.4, -0.9,
-    -2.4, -11.5, -1.8, 2.1, -2.0, -3.0, 6.2, 6.5, -2.4,
-    3.0, 3.2, 3.2, -4.4, -8.5, -0.1, -0.3, 1.8, 2.4,
-    -15.3, -32.1, -30.9, -29.6, -26.1, -14.7, -20.0, -21.0, -26.6,
-    -2.0, -3.1, -26.2, 1.7, -2.8, 2.7, -3.6, 6.6, 6.1,
+    1.0, 2.0, 2.0, 1.2, 2.0, 1.7, 1.3, 0.9, 0.0,
+    -1.8, -1.8, -1.3, -4.0, -4.6, -4.5, -4.5, -4.7, -4.0,
+    -3.1, -4.1, 0.5, 0.3, 0.9, 0.2, -0.4, -1.1, 1.2,
+    0.6, -0.7, 0.9, 0.4, -0.9, -1.0, -0.1, -1.5, -0.6,
+    -3.0, -11.7, -2.1, 1.8, -2.3, -3.3, 5.9, 6.2, -2.6,
+    2.7, 2.9, 3.0, -4.7, -8.7, -0.4, -0.5, 1.5, 2.1,
+    -15.6, -32.3, -31.2, -29.8, -26.3, -15.9, -17.7, -16.7, -26.9,
+    -2.2, -3.4, -26.5, 1.4, -3.1, 2.4, -3.8, 6.3, 5.8,
 };
 
 static void allophone(sound *s, int code) {
   stop st;
   switch (code) {
-  case 128: steady(s, 70, vowel_frame(fIY)); break;
-  case 129: steady(s, 70, vowel_frame(fIH)); break;
-  case 130: steady(s, 70, vowel_frame(fEY)); break;
-  case 131: steady(s, 70, vowel_frame(fEH)); break;
-  case 132: steady(s, 70, vowel_frame(fAY)); break;
-  case 133: steady(s, 70, vowel_frame(fAX)); break;
-  case 134: steady(s, 70, vowel_frame(fUX)); break;
-  case 135: steady(s, 70, vowel_frame(fOH)); break;
-  case 136: steady(s, 70, vowel_frame(fAW)); break;
-  case 137: steady(s, 70, vowel_frame(fOW)); break;
-  case 138: steady(s, 70, vowel_frame(fUH)); break;
-  case 139: steady(s, 70, vowel_frame(fUW)); break;
+  /* the vowels' and liquids' three volumes are the chip's: at pitch 40 on the
+   * second VoxProbe recording each voicing pulse is the three formant sines
+   * alone, and fitting them gives each one's amplitude; divided by the output
+   * filter's gain at its frequency (see output_fir), that is the volume here.
+   * with them the voiced sounds go from 3.51 to 3.37dB of two chips' spectra
+   * (both units' VoxRecord recordings) */
+  case 128: steady(s, 70, voiced_frame(fIY, 24.0, 10.1, 7.1)); break; /* IY */
+  case 129: steady(s, 70, voiced_frame(fIH, 24.0, 10.5, 6.3)); break; /* IH */
+  case 130: steady(s, 70, voiced_frame(fEY, 24.0, 10.6, 5.8)); break; /* EY */
+  case 131: steady(s, 70, voiced_frame(fEH, 24.0, 11.1, 7.9)); break; /* EH */
+  case 132: steady(s, 70, voiced_frame(fAY, 24.0, 8.5, 10.0)); break; /* AY */
+  case 133: steady(s, 70, voiced_frame(fAX, 24.0, 11.8, 6.2)); break; /* AX */
+  case 134: steady(s, 70, voiced_frame(fUX, 24.0, 12.0, 7.3)); break; /* UX */
+  case 135: steady(s, 70, voiced_frame(fOH, 24.0, 15.4, 6.7)); break; /* OH */
+  case 136: steady(s, 70, voiced_frame(fAW, 24.0, 16.7, 6.6)); break; /* AW */
+  case 137: steady(s, 70, voiced_frame(fOW, 24.0, 21.6, 6.0)); break; /* OW */
+  case 138: steady(s, 70, voiced_frame(fUH, 24.0, 19.7, 4.4)); break; /* UH */
+  case 139: steady(s, 70, voiced_frame(fUW, 24.0, 16.6, 2.4)); break; /* UW */
   /* the nasals' resonances and volumes are fitted to the VoxRecord recording's
    * third take (the middle of each, in sixth octaves from 200Hz to 3.9kHz):
    * besides the low murmur the chip's nasals have strong resonances near 1.4
@@ -724,26 +730,27 @@ static void allophone(sound *s, int code) {
   case 142: steady(s, 70, voiced_frame(FM(310, 1097, 2568), 22.0, 6.0, 12.0)); break; /* NO */
   case 143: steady(s, 70, voiced_frame(FM(396, 2100, 2700), 22.0, 7.0, 4.0)); break; /* NGE */
   case 144: steady(s, 70, voiced_frame(FM(396, 1500, 1910), 22.0, 6.5, 8.2)); break; /* NGO */
-  case 145: steady(s, 70, liquid_frame(fLE)); break;
+  case 145: steady(s, 70, voiced_frame(fLE, 22.0, 17.9, 2.8)); break; /* LE */
   case 146: steady(s, 70, liquid_frame(fLO)); break;
-  case 147: steady(s, 70, liquid_frame(fWW)); break;
-  case 148: steady(s, 70, liquid_frame(fRR)); break;
-  case 149: diphthong(s, 200, vowel_frame(fIY), liquid_frame(fER)); break; /* IYRR */
-  case 150: diphthong(s, 200, vowel_frame(fEH), liquid_frame(fER)); break; /* EYRR */
+  case 147: steady(s, 70, voiced_frame(fWW, 22.0, 23.7, 3.1)); break; /* WW */
+  case 148: steady(s, 70, voiced_frame(fRR, 22.0, 12.8, 3.3)); break; /* RR */
+  /* the diphthongs' vowel ends take their vowel's volumes (above) */
+  case 149: diphthong(s, 200, voiced_frame(fIY, 24.0, 10.1, 7.1), liquid_frame(fER)); break; /* IYRR */
+  case 150: diphthong(s, 200, voiced_frame(fEH, 24.0, 11.1, 7.9), liquid_frame(fER)); break; /* EYRR */
   case 151: diphthong(s, 190, vowel_frame(FM(500, 1400, 1750)), liquid_frame(fER)); break; /* AXRR */
   case 152: diphthong(s, 200, vowel_frame(fOHr), liquid_frame(fER)); break; /* AWRR */
   case 153: diphthong(s, 185, vowel_frame(fAWr), liquid_frame(fER)); break; /* OWRR */
-  case 154: diphthong(s, 165, vowel_frame(fEY), vowel_frame(fIY)); break; /* EYIY */
-  case 155: diphthong(s, 200, vowel_frame(fOH), vowel_frame(fIY)); break; /* OHIY */
-  case 156: diphthong(s, 225, vowel_frame(fAWr), vowel_frame(fIY)); break; /* OWIY */
-  case 157: diphthong(s, 185, vowel_frame(fOH), vowel_frame(fIH)); break; /* OHIH */
-  case 158: diphthong(s, 170, vowel_frame(fYY), vowel_frame(fEH)); break; /* IYEH */
-  case 159: diphthong(s, 140, vowel_frame(fAX), liquid_frame(fLO)); break; /* EHLL */
-  case 160: diphthong(s, 180, vowel_frame(fYY), vowel_frame(fUW)); break; /* IYUW */
-  case 161: diphthong(s, 170, vowel_frame(fAH), vowel_frame(fUW)); break; /* AXUW */
-  case 162: diphthong(s, 170, vowel_frame(FM(330, 1300, 2300)), vowel_frame(fUW)); break; /* IHWW */
-  case 163: diphthong(s, 200, vowel_frame(fAY), vowel_frame(fUH)); break; /* AYWW */
-  case 164: diphthong(s, 131, vowel_frame(fOW), vowel_frame(FM(330, 700, 2250))); break; /* OWWW */
+  case 154: diphthong(s, 165, voiced_frame(fEY, 24.0, 10.6, 5.8), voiced_frame(fIY, 24.0, 10.1, 7.1)); break; /* EYIY */
+  case 155: diphthong(s, 200, voiced_frame(fOH, 24.0, 15.4, 6.7), voiced_frame(fIY, 24.0, 10.1, 7.1)); break; /* OHIY */
+  case 156: diphthong(s, 225, vowel_frame(fAWr), voiced_frame(fIY, 24.0, 10.1, 7.1)); break; /* OWIY */
+  case 157: diphthong(s, 185, voiced_frame(fOH, 24.0, 15.4, 6.7), voiced_frame(fIH, 24.0, 10.5, 6.3)); break; /* OHIH */
+  case 158: diphthong(s, 170, vowel_frame(fYY), voiced_frame(fEH, 24.0, 11.1, 7.9)); break; /* IYEH */
+  case 159: diphthong(s, 140, voiced_frame(fAX, 24.0, 11.8, 6.2), liquid_frame(fLO)); break; /* EHLL */
+  case 160: diphthong(s, 180, vowel_frame(fYY), voiced_frame(fUW, 24.0, 16.6, 2.4)); break; /* IYUW */
+  case 161: diphthong(s, 170, vowel_frame(fAH), voiced_frame(fUW, 24.0, 16.6, 2.4)); break; /* AXUW */
+  case 162: diphthong(s, 170, vowel_frame(FM(330, 1300, 2300)), voiced_frame(fUW, 24.0, 16.6, 2.4)); break; /* IHWW */
+  case 163: diphthong(s, 200, voiced_frame(fAY, 24.0, 8.5, 10.0), voiced_frame(fUH, 24.0, 19.7, 4.4)); break; /* AYWW */
+  case 164: diphthong(s, 131, voiced_frame(fOW, 24.0, 21.6, 6.0), vowel_frame(FM(330, 700, 2250))); break; /* OWWW */
   case 165: /* JH */
     st = STOP(25, 5.52, 12.89, true, lPalatal, 3165, 2474, 2.1, 29.3, 0, 0);
     affricate(s, &st, voiced_noise_frame(FM(158, 1974, 1842), 10.04, 1922, 3058, 5.99, 8.79, 66), 45);
@@ -772,9 +779,9 @@ static void allophone(sound *s, int code) {
   case 184: steady(s, 70, noise_frame(FM(600, 1000, 2400), 1952, 1257, 13.5, 24.0, 201)); break; /* HO */
   case 185: steady(s, 70, noise_frame(fWW, 720, 3171, 24.0, 9.3, 207)); break; /* WH */
   case 186: steady(s, 70, noise_frame(lLabial, 3991, 3311, 27.2, 21.5, 87)); break; /* FF */
-  case 187: thumped(s, 2.89, 484, 27.4, 37.11, frSE()); break; /* SE */
-  case 188: thumped(s, 2.89, 601, 21.6, 37.11, frSO()); break; /* SO */
-  case 189: thumped(s, 13.29, 423, 5, 36.71, frSH()); break; /* SH */
+  case 187: thumped(s, 5.65, 394, 14.71, 34.35, frSE()); break; /* SE */
+  case 188: thumped(s, 4.98, 457, 18.76, 35.02, frSO()); break; /* SO */
+  case 189: thumped(s, 8.89, 437, 14.08, 41.11, frSH()); break; /* SH */
   case 190: steady(s, 40, noise_frame(lDental, 2472, 2618, 23.7, 15.1, 141)); break; /* TH */
   case 191: st = STOPN(50, 31.8, 7.11, false, lAlveolar, 2689, 3257, 15.9, 22.1, 3188, 3038, 73, 19, 3.7, 17.4, 0, 0); plosive(s, &st); break; /* TT */
   case 192: st = STOPN(70, 15.11, 27.16, false, lAlveolar, 3582, 3908, 2.9, 2.8, 3126, 2620, 4, 33, 27.7, 5.4, 0, 0); plosive(s, &st); break; /* TU */

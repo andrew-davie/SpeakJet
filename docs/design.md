@@ -636,6 +636,43 @@ not in two (one speed 0 group then speed 100; the same bytes all at speed
 60), nor anywhere else in the recording. It is neither a fixed position in
 the stream nor a fixed time; it needs a long run of slow sounds.
 
+### A second AtariVox
+
+The same three ROMs (VoxRecord and both VoxProbes) recorded on a different
+unit, an original AtariVox:
+
+- Same firmware. Every Pitch from 40 to 254 gives the same voicing count,
+  the same 12 exceptions included; the DTMF steps and the formants are the
+  same. Everything runs 0.3% slower (tones 0.9971 times, timing 0.34%
+  longer): the chip's own clock.
+- No extra sound: every variant of the long Speed sweep plays correctly on
+  it. That reset belongs to the first unit.
+- The two chips agree far more closely than the library does with either:
+  on the VoxRecord sounds, 97 to 98% spectrogram match on vowels, nasals,
+  liquids and diphthongs (0.8 to 0.9 dB), 95% on effects, 65 to 75% on hiss
+  and stops; the library was at 72 to 74% overall against both. The low
+  agreement between takes of the first unit on hiss came from the clipped
+  first take, not from the chip. FF and TS do differ between the two chips.
+- The background whine isn't a clock reference after all: on this setup it
+  sits 0.8% higher and drifts 0.18% within a recording.
+
+Fitting to both chips together:
+
+| | Found | Fix |
+|---|---|---|
+| SE, SO, SH | the chip's low onset is quiet (20 to 27 dB under the hiss), then the hiss at full level; here the onset was the loudest part and the hiss 20 dB under it, which the second chip's quieter recording exposed | refitted to both chips with their level envelopes as a further term; SE's length still fitted to the connected groups |
+| Vowel and liquid volumes | the single-pulse fits give each formant's amplitude, which needs dividing by the output filter's gain at its frequency to be a volume (the first try, without, was worse) | the chip's volumes for 15 vowels and liquids, and for the vowel ends of the diphthongs |
+
+Against both chips, the allophones go from 73.1% to 74.7% spectrogram match
+and from 4.30 to 3.97 dB, the hiss sounds from 50% to 57% and 4.4 to 2.9 dB.
+
+Tried and not kept: a voicing fade for each sound (the chips' fades differ
+by sound in a pattern both repeat, but one ramp already reproduces most of
+it: 0.02 dB); a curved fade; and starting the formant sines at any phase but
+0 at each pulse, or not restarting them (all 7 to 12 points worse, which
+confirms the restart). What still separates the library's vowels from the
+chip's is mostly the valleys between formants, 8 to 17 dB deeper here.
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown

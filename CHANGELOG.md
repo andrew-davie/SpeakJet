@@ -172,6 +172,19 @@ A second VoxProbe recording, of every Pitch and of single voicing pulses
   The first VoxProbe recording's sustained sounds go from 4.5 to 3.7 dB; LE
   improves by 7 dB.
 
+The same ROMs on a second unit (an original AtariVox), and fitting to both
+chips (see docs/design.md): same firmware, a 0.3% slower clock, and no
+extra sound.
+
+- SE, SO and SH: the chip's quiet low onset and full-level hiss (the onset
+  was the loudest part here). Hiss sounds 50% to 57%, 4.4 to 2.9 dB, over
+  both chips.
+- The vowels' and liquids' formant volumes are the chip's, measured from
+  single voicing pulses and corrected for the output filter; the
+  diphthongs' vowel ends take them too.
+- Allophones over both chips: 73.1% to 74.7% spectrogram match, 4.30 to
+  3.97 dB.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths
