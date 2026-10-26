@@ -106,6 +106,21 @@ short to within 1% (22 ms average error with each group left out of its own
 fit, 38 before). Sounds played alone now run 13 ms long on average. Stops and
 affricates now have their own entries in allophone_length.
 
+Comparing every allophone and effect with the third take found four more
+things, now fixed. Allophone spectra go from 5.2 to 4.6 dB RMS of the chip's
+(6.0 for the original library); syllables from 77% to 82% spectrogram match.
+
+- AWRR, OWRR and OWIY start from the earlier OH and AW (fOHr, fAWr): the
+  third take's corrections to OH and AW had put them 1 to 3 dB further off.
+- Noise that starts now starts at its own frequencies (msa_noise_onset())
+  instead of gliding up from the previous sound's: SE and SO no longer sweep
+  up into their hiss.
+- Nasals: resonances and volumes fitted to the chip's spectra (strong
+  resonances near 1.4-1.6 and 2.2-2.6 kHz the published values lacked);
+  nasal_frame() is gone. 8.6 to 4.4 dB.
+- Stops: each stop's burst and aspiration frequencies scaled together (0.5
+  to 1.15) to its spectrum; they were 6-8 dB too strong at 3.2-4 kHz.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths

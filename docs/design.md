@@ -455,6 +455,28 @@ Bend, how fast formants move from one sound to the next, oscillator volumes,
 the other allophones and the sound effects are measured by at most one of
 the sources, so they remain the choices described above.
 
+### Comparing every sound
+
+Every allophone and effect was then compared with the third take on its own:
+the RMS difference of its third-octave spectrum (250 Hz to 4 kHz) for the
+allophones, and how much of the hardware's spectrogram it reproduces after
+time alignment for the effects. That found four more things, now fixed:
+
+| | Found | Fix |
+|---|---|---|
+| AWRR, OWRR, OWIY | 1 to 3 dB further from the chip than before the third take | they start from the earlier OH and AW, which the corrections to OH and AW had moved |
+| Fricative onsets | the noise oscillators glided up from the previous sound, so SE and SO swept up into their hiss | noise that starts now starts at its own frequencies |
+| Nasals | the chip's nasals have strong resonances near 1.4 to 1.6 kHz and 2.2 to 2.6 kHz | each nasal's resonances and volumes fitted to its spectrum (NGE by a search on the whole sound) |
+| Stops | 6 to 8 dB too much at 3.2 to 4 kHz | each stop's burst and aspiration frequencies scaled together (0.5 to 1.15); most of the chip's bursts are lower |
+
+The levels were refitted after each change. Results, against the third take:
+
+| | Original library | Before these fixes | After |
+|---|---|---|---|
+| Allophone spectra (mean RMS difference) | 6.0 dB | 5.2 dB | 4.6 dB (better than the original on 61 of 72, and none more than 1 dB worse) |
+| Nasals | 8.8 dB | 8.6 dB | 4.4 dB (spectrogram 56% to 85%) |
+| Syllables of sections 12 and 13 (spectrogram match) | 70% | 77% | 82% |
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown
