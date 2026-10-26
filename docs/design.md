@@ -477,6 +477,122 @@ The levels were refitted after each change. Results, against the third take:
 | Nasals | 8.8 dB | 8.6 dB | 4.4 dB (spectrogram 56% to 85%) |
 | Syllables of sections 12 and 13 (spectrogram match) | 70% | 77% | 82% |
 
+### Fitting whole sounds
+
+Scoring every sound the same way (how much of the chip's spectrogram each
+reproduces, both cropped to the same depth below their peak) left 14 sounds
+under 30%, all of them hiss, stops or effects. Two further passes fitted
+those as whole sounds.
+
+Effects. Seven effects (C0, C2, C3, C4, C6, C8, C9) are tones the chip
+switches on and off at a voicing rate: each now has a gate (`fx_gate`, a
+rate and an envelope wave) found by search. R0 to R9 are steady tones on the
+chip, not the traced glides, and are rebuilt from measured tones keeping the
+traced loudness. The effects' levels were refitted.
+
+Allophones. A test program builds one allophone from a set of values with
+the library's own constructors and plays it through the library exactly as
+sjwav does (bit for bit the same output). A search (differential evolution)
+moved the values to bring the spectrogram closest to the chip's, with the
+third-octave spectrum and the length as further terms. What it found:
+
+| | Found | Fix |
+|---|---|---|
+| Hiss is narrow on the chip | TT and TU hiss in a band near 2.8 to 3.6 kHz; the bursts and aspiration here were broad noise (distortion 255 and 230) centred at 1 to 2 kHz | each stop now has its own burst and aspiration noise widths and aspiration volumes (`STOPN()`) |
+| SE, SO and SH start with a thump | about 10 ms of a 400 to 600 Hz tone before the hiss, in both unclipped takes | `thumped()` |
+| CH and TS had a thump the chip hasn't | a stop with no aspiration drove the noise oscillators at 0 Hz, which hold the phase the burst left them at: a step the dc blocker turns into a low thump | that part is now silent |
+| Voiced stops | their loci and voicing differ from the published values; EB, OB, ED and OD last 25 to 35 ms on the chip, not 10 | fitted loci, voice bar and onset voicing |
+| JH, VV | JH is a buzz with a resonance near 2 kHz, VV a buzz with resonances near 500 and 1500 Hz | fitted frames |
+
+Three things kept the fit honest:
+
+- The chip doesn't match itself on hiss. The first and third takes match
+  each other only 28% (TT), 34% (SE), 46% (FF), 49% (TS), 53% (TH) and 70%
+  (SO, SH). Fitting the third take alone fitted that take's noise (TT 69%,
+  above what the chip manages against itself), so each sound is fitted to
+  both takes and two noise seeds together.
+- A silent closure can't be measured from a sound played alone (it is
+  cropped with the leading silence), so the search left it anywhere (ED and
+  OD began with 120 ms of silence). The stops whose closure is silent keep
+  the closure length they had; TT's comes from the connected groups.
+- A sound played alone and the same sound in connected speech don't take the
+  same time on the chip. TT and SE, which the 30 connected groups contain,
+  were fitted with the groups' lengths as another term.
+
+Each sound's parts still add up to the manual's length, the difference being
+in allophone_length. Results, against the third take:
+
+| | Original library | Before | After |
+|---|---|---|---|
+| Allophones (spectrogram, mean) | 57% | 63% | 73% |
+| Allophones under 30% | 13 | 10 | 1 (TS) |
+| Voiceless stops | 32% | 32% | 65% |
+| Fricatives | 37% | 44% | 65% |
+| Effects (spectrogram, mean) | 29% | 64% | 70% |
+| Effects under 30% | 40 | 4 | 1 (C8) |
+| Connected groups (mean length error) | | 17 ms | 12 ms |
+
+A hiss sound's score against one take moves by up to 10 points with the
+noise, so scores on single hiss sounds are only good to about that.
+
+### The VoxProbe recording
+
+The VoxProbe ROM (see the VoxProbe repository) plays a sequence built to
+test the engine rather than individual sounds: low pitches where each voicing
+pulse stands alone, Repeat, pauses and delays three times each, effects at
+other Pitches and Speeds, a Bend sweep on a DTMF tone, a Volume sweep and a
+Pitch sweep. One recording, of the same AtariVox, changed the engine:
+
+| | On the chip | Before | Now |
+|---|---|---|---|
+| Voicing | each pulse restarts the formant sines, which fall in a straight line to nothing in a fixed time (7.4 ms for AW at pitch 40, a fit with R² 0.96); the rest of a long period is silent, and above 125 Hz the next pulse cuts the ramp short | a sawtooth over the whole period | `ENV_VOICE`, 8 ms (the best fit to both recordings; 7.4 to 8.5 ms fitted to AW's waveform, 5 to 8.7 ms for other single sounds) |
+| Effects and Speed | stretched by the speech's Speed curve (A1 2.70 times at speed 60, the curve 2.69) | not stretched | stretched |
+| Voiced effects and Pitch | A1 and M2 follow the Pitch control (60.3, 87.9, 149.5 Hz at 60, 88, 150) | the traced pitch | the traced pitch scaled by the Pitch control |
+| Repeat | each copy after the first adds just the manual's length (AW 70 ms; IY, UW, MM six times within 6 ms) | each copy the whole stretched sound | copies at the manual's length |
+| Lengths of vowels, nasals, liquids and diphthongs | (from Repeat) the manual's length and a fixed time | a multiplier fitted to each of 37 sounds | the manual's length and 28 ms (`TRANSITION_MS`) |
+| Fast, Slow | 0.63 to 0.66, 1.31 to 1.42 | 0.6, 1.5 | 0.65, 1.35 |
+| Pauses | AW, pause, AW: 21, 109, 212, 661, 26, 47, 73 ms between the AWs; pause 0 still leaves a gap | 0, 100, 200, 650, 30, 45, 70 ms | lengths that give the chip's gaps within about 5 ms |
+| Delay | 30, 60, 90 ms leave 44, 75, 116 ms; unchanged by Speed | exact | 12 ms more |
+
+The spectra here are compared with each floored 30 dB under its own peak:
+compared whole, the hardware's noise floor against the library's silence
+counts as a difference (a pure DTMF tone, 98% spectrogram match, read 19 dB
+off), and that chose a 6 ms ramp that was worse than the old sawtooth. With
+the floor, the fixed ramp at 8 ms takes the voiced allophones' spectra from
+3.94 to 3.82 dB of the third take, and the VoxProbe recording's sustained
+sounds from 5.2 to 4.5 dB; 6 ms is worse than the sawtooth on the third take
+at a floor of 25, 30 or 35 dB, and 8 ms better on both recordings at all
+three. The voiced stops, VV and JH were refitted
+with it, TT's and SE's lengths refitted to the connected groups, and the
+levels refitted. Against the third take, allophones go from 72.6% to 73.6%
+spectrogram match and from 5.25 to 4.28 dB since the last release (floored
+spectra); the connected groups from 13 to 14 ms (one constant now does what 37
+lengths did).
+
+Confirmed as the library had them: Bend adds 44 Hz a step and only 22 Hz
+between 4 and 5 (the two DTMF tones stay 512.2 Hz apart at every Bend), and
+moves C8's noise but not SE's hiss; Stress raises F2 and F3 by about 85 Hz
+and Relax changes nothing; Volume is linear in amplitude (within 0.5 dB from
+8 to 127); Pause scales with Speed.
+
+Not changed:
+
+- Pitch. The chip's voicing frequency departs from the setting by +0.5% to
+  -1.7%, and not smoothly (229.7 Hz at 230, 167.5 at 170). The library's
+  formula is up to 2.7% off at high pitch, which makes most of the remaining
+  error there, but twelve settings can't recover the chip's mapping, and the
+  recorder's clock is only known to about 0.7% (its 2600 line-rate whine reads
+  15816.9 Hz against 15699.8; the third take's correction used the broadcast
+  15734 Hz and may be 0.2% short).
+- DTMF and tones sit about 5 Hz above nominal at every Bend (an offset, not a
+  ratio), and Bend's steps alternate 43 and 45 Hz above Bend 7: the chip's
+  frequency arithmetic is quantised somehow, but neither a divider nor an
+  accumulator step fits.
+- The extra sound in the VoxRecord recording is the chip's: at the same point
+  of the long Speed sweep, after TT, the rest of the speed 100 group is lost,
+  and after 0.8 s of silence it plays DTMF 0, 1, 0 at Bend 0 and carries on
+  at 136 Hz and 5.5 dB louder. It looks like a reset and isn't emulated.
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown
@@ -486,10 +602,9 @@ The manual doesn't say, so these are guesses (described above):
 | | What the library does |
 |---|---|
 | The oscillator settings behind each allophone | Built from published formant measurements of English speech; only the formants that two sets of measurements of the chip agree on are from the chip, and no volumes are |
-| The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants |
+| The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants; seven are gated at a fitted voicing rate |
 | How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties |
-| Bend between 1 and 5 | Where the 22 Hz shortfall falls isn't measured; it is taken at 5 |
-| The synthesizer's details | Formant oscillators restarting each voicing period, distortion as random frequency modulation |
+| The synthesizer's details | Distortion as random frequency modulation; how the chip turns a Pitch setting into a frequency (see the VoxProbe recording) |
 | What Soft (18) does | Ignored; it is a real command (see PhraseALator above), but nothing describes its effect |
 
 Apart from the measured values above, none of this has been compared with a

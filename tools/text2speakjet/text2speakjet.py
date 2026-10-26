@@ -214,23 +214,28 @@ def describe(codes):
 # measured from recordings of the real chip): CHIP_LENGTH is how much longer
 # than the manual's length each allophone lasts at the default speed
 # (allophone_length), CHIP_EFFECT_MS
-# the length of each sound effect (codes 200 to 254) and CHIP_PAUSE_MS of
-# pauses 0 to 6 (pause_ms). Keep these in step with speakjet.c.
+# the length of each sound effect (codes 200 to 254) at the default speed and
+# CHIP_PAUSE_MS of pauses 0 to 6 (pause_ms). Speed stretches all of them;
+# Delay is its 10ms intervals and CHIP_DELAY_EXTRA_MS more (DELAY_EXTRA_MS),
+# whatever the speed. Keep these in step with speakjet.c.
 CHIP_LENGTH = [
-    1.19, 1.34, 1.62, 1.63, 1.68, 1.49, 1.64, 1.61, 1.48, 1.29, 1.26, 1.24,
-    1.20, 1.15, 1.20, 1.15, 1.15, 1.04, 1.14, 1.26, 1.51, 1.16, 1.28, 1.35,
-    1.22, 1.25, 1.21, 1.18, 1.16, 1.21, 1.31, 1.23, 1.17, 1.25, 1.40, 1.22,
-    1.47, 1.40, 0.84, 0.99, 0.88, 0.88, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40,
-    1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.17, 1.15, 1.11, 1.09, 2.58,
-    2.60, 1.28, 1.09, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40,
+    1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40,
+    1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.40, 1.14, 1.14, 1.15,
+    1.14, 1.15, 1.17, 1.14, 1.12, 1.15, 1.16, 1.20, 1.16, 1.16, 1.16, 1.14,
+    1.21, 0.82, 0.84, 0.99, 0.88, 0.88, 1.63, 1.40, 2.67, 3.27, 1.40, 1.40,
+    3.74, 3.16, 1.40, 1.40, 1.40, 1.40, 2.46, 1.17, 1.15, 1.11, 1.49, 2.92,
+    3.14, 1.78, 1.77, 2.07, 2.78, 1.37, 2.44, 1.40, 2.40, 2.46, 1.40, 1.40,
 ]
 CHIP_EFFECT_MS = [
     138, 133, 138, 133, 133, 133, 128, 128, 133, 133, 398, 1008, 1003, 573,
-    298, 588, 233, 628, 313, 353, 213, 433, 438, 348, 418, 208, 208, 203, 358,
-    333, 248, 333, 253, 253, 268, 383, 308, 423, 148, 128, 153, 153, 153, 153,
-    153, 153, 153, 153, 153, 153, 153, 153, 1233, 250, 558,
+    298, 588, 233, 628, 313, 353, 213, 433, 438, 348, 418, 208, 208, 203,
+    358, 333, 248, 333, 253, 253, 268, 383, 308, 423, 148, 128, 153, 153,
+    153, 153, 153, 153, 153, 153, 153, 153, 153, 153, 1233, 250, 558,
 ]
-CHIP_PAUSE_MS = [0, 100, 200, 650, 30, 45, 70]
+CHIP_DELAY_EXTRA_MS = 12
+FAST_SCALE = 0.65
+SLOW_SCALE = 1.35
+CHIP_PAUSE_MS = [14, 107, 203, 645, 25, 43, 70]
 
 
 def chip_length(code):
@@ -254,21 +259,23 @@ def estimate_ms(codes):
         if c in ARG_NAME:
             if c == 21 and i + 1 < len(codes):
                 speed = codes[i + 1]
+            elif c == 30 and i + 1 < len(codes):
+                total += codes[i + 1] * 10 + CHIP_DELAY_EXTRA_MS
             i += 2
             continue
         if c <= 6:
             total += CHIP_PAUSE_MS[c] * speed_factor(speed)
         elif c == 7:
-            scale = 0.6
+            scale = FAST_SCALE
         elif c == 8:
-            scale = 1.5
+            scale = SLOW_SCALE
         elif c == 31:
             speed = DEFAULT_SPEED
         elif c in DURATION:
             if c < 200:
                 total += DURATION[c] * scale * chip_length(c) * speed_factor(speed)
             else:
-                total += CHIP_EFFECT_MS[c - 200]
+                total += CHIP_EFFECT_MS[c - 200] * speed_factor(speed)
             scale = 1.0
         i += 1
     return total

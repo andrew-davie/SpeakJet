@@ -121,10 +121,49 @@ things, now fixed. Allophone spectra go from 5.2 to 4.6 dB RMS of the chip's
 - Stops: each stop's burst and aspiration frequencies scaled together (0.5
   to 1.15) to its spectrum; they were 6-8 dB too strong at 3.2-4 kHz.
 
+Fitting whole sounds to the third take (see docs/design.md). Allophones go
+from 63% to 73% spectrogram match, and from 10 under 30% to 1 (TS);
+effects from 64% to 70%, and from 4 under 30% to 1 (C8). Connected groups
+go from 17 ms to 12 ms mean length error.
+
+- Effects: C0, C2, C3, C4, C6, C8 and C9 are gated at a fitted voicing rate
+  (`fx_gate`); R0 to R9 are steady measured tones; levels refitted.
+- Stops: each has its own burst and aspiration noise widths and aspiration
+  volumes (`STOPN()`); BE, EB, OB, ED, OD, TT, TU, KE, EK and OK are fitted
+  as whole sounds, the voiced ones with their own loci and voicing. TT 7% to
+  47%, TU 0% to 65%, KE 19% to 65%, EK 15% to 88%.
+- SE, SO and SH start with the chip's short low thump (`thumped()`); SE,
+  SO, SH, FF and TH are fitted as whole sounds. SE 12% to 67%, SO 15% to
+  60%.
+- CH, JH, TS and VV refitted (JH 3% to 60%, VV 16% to 86%). A stop with no
+  aspiration is now silent after its burst, instead of holding its noise
+  oscillators at 0 Hz (a thump).
+- Each refitted sound's parts still add up to the manual's length; the
+  difference is in allophone_length.
+
+A recording of the VoxProbe ROM, built to test the engine, changes it
+(see docs/design.md):
+
+- Voicing: each pulse restarts the formant oscillators, which fall in a
+  straight line to nothing in a fixed 8 ms (`ENV_VOICE`), not a sawtooth over
+  the whole period. Voiced spectra 3.94 to 3.81 dB of the third take, and the
+  VoxProbe's sustained sounds 5.2 to 4.5 dB (spectra floored 30 dB under their
+  peak).
+- Effects are stretched by Speed like speech, and voiced effects (A1, M2)
+  follow the Pitch control.
+- Repeat: copies after the first take the manual's length.
+- Vowels, nasals, liquids and diphthongs are the manual's length and 28 ms
+  (`TRANSITION_MS`), replacing 37 fitted multipliers.
+- Fast 0.65 and Slow 1.35; pause lengths give the chip's gaps (pause 0 is a
+  short gap, not nothing); Delay is 12 ms longer than its intervals.
+- Voiced stops, VV and JH refitted with the new voicing; TT's and SE's
+  lengths refitted to the connected groups; levels refitted.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths
-  and effect lengths, and lengthens pauses with Speed.
+  and effect lengths, lengthens pauses and effects with Speed, and counts
+  Delay.
 
 - Words in no dictionary are guessed with Festival's letter-to-sound decision
   trees (trained on the CMU dictionary) instead of the 1976 NRL rules: 43%
