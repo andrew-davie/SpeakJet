@@ -1040,6 +1040,94 @@ What it shows about the chip:
 - **Effects at bend 15** match worst (C3 12 dB, R8 12 dB, C8, C9, A1 9 dB):
   more than the noise is involved. Not yet resolved.
 
+### The gates, M2 and bend 15
+
+The three things above were taken up again on the same recording. Fitting
+used both units at the default pitch, at pitch 60 and at bend 0, with the
+VoxRecord recording; pitch 150, speeds 90 and 127 and bend 15 were left out
+to check. The comparison also adds the recording's own background to the
+library's output before both are measured, so that a library sound isn't
+marked down for detail the background would hide on the chip (C3 stands only
+20 dB over it).
+
+**The gates.** Folded at each gate's period (a Hilbert envelope in 0.25 ms
+steps), the pulses have a fixed length whatever the rate: C4's falls 0, -3,
+-5, -8, -11, -17, -28 dB a millisecond apart at pitch 60, 88 and 150 alike,
+which is the voicing fade less about a millisecond. C0's is about 1.3 times as
+long, C3's and C6's about 1.6 times, and C2's as long but in two humps, its
+tones beating, restarted together at each pulse. The offsets from the voicing,
+from the periods on both units at all three pitches: C0 -4.7, C2 -20.5, C3
+-27.9, C4 +0.2, C6 +42.7 Hz. C0's sweep is timed in milliseconds, not pulses
+(it passes 800 Hz at about 72 ms at every pitch), so only the gate moves.
+
+That explains the earlier result: the traced shapes (square, sine, saw) were
+fitted at one rate, and scaling them with the rate shortens the pulse, which
+the chip doesn't do. Keeping each shape's length fixed instead was worse at
+pitch 150 (C3's saw lasts 17 ms; the chip's pulse is down to a quarter by 8).
+So C2, C4 and C6 now pulse as the voicing does (`fx_pulse`), with their
+noise's level and depth fitted again (3 dB quieter; 0.4, 1 and 0 deep). On the
+items left out, C2 73 to 77% and 2.5 to 2.2 dB, C4 65 to 71% and 4.0 to 3.6,
+C6 65 to 67% and 3.0 to 2.1. C0 played this way came out no better on the
+items left out and worse on the VoxRecord recording, which gates it at 85 Hz
+where this recording has 82 Hz at the same pitch; C3 came out worse on the
+items left out. A ramp into each pulse (0.5 to 1.5 ms) was worse for all
+five.
+
+**Bend.** From bend 0 to bend 15 most effects move 610 to 650 Hz, as the
+library's Bend (636 Hz) does. C8's and C9's noise moves as a block: at bend 15
+nothing is left under 560 Hz within 20 dB, where moving the oscillators
+widened it (the spread is in proportion to the frequency) and left it
+reaching down to 300 Hz. Bend is now added after the spread. Even then the
+noise had long skirts below; a new random frequency every sample can't make
+a band with an edge. Holding each value 0.75 ms does, with the spread and
+frequencies fitted again. That fit is scored over several noise sequences:
+one sequence made the old C8 look 0.6 dB better than its average.
+
+| C8 and C9, all items, 6 noise sequences | % | dB | each sequence, dB |
+|---|---|---|---|
+| before | 45.6 | 3.77 | 3.32 to 4.05 |
+| now | 56.9 | 2.78 | 2.29 to 3.37 |
+
+The first VoxProbe recording's C8 at bend 0, 5 and 15, also left out, agrees:
+3.2 to 3.0, 1.6 unchanged, 9.8 to 8.6 dB.
+
+**M2** is the same at bend 0 and 15 to within half a hertz over its whole
+length, on both units, so it doesn't follow Bend. Its "part near 2.1 kHz" is
+its own F2 glide. Every M2 rises about 434 Hz and falls back in all three
+formants, but where it starts differs between recordings: VoxRecord 524 /
+1746 / 2961 Hz, the first VoxProbe recording F1 under 300 / 1690 / 2950, this
+one no F1 at all and F2 and F3 at 1954 / 2859. Pitch commands don't cause it
+(the first recording sends the same ones), and the sound before (M1) doesn't
+end on M2's start frequencies, so what sets them isn't known; M2 keeps the
+VoxRecord trace.
+
+**Silent tones.** A traced effect's silent points carry whatever the
+background held (C3's first and last 227 Hz), and the library glided each
+tone in from there. At bend 15 that put a sweep near 660 Hz into C3, at -5 dB,
+that neither unit has. A tone now holds still while it is silent.
+
+| all effect items | before | now |
+|---|---|---|
+| default pitch | 66.3% 2.63 dB | 66.1% 2.56 dB |
+| pitch 60 and 150 | 55.1% 3.78 | 55.8% 3.71 |
+| bend 0 | 51.8% 4.58 | 52.6% 4.35 |
+| bend 15 | 46.0% 6.21 | 48.3% 6.08 |
+| VoxRecord, unit B | 85.1% 1.58 | 85.1% 1.57 |
+
+Still open, with what was measured:
+
+- **R8 and R9.** Their high tone moves with Bend exactly (R8 3102 Hz to 2903
+  and 3541); their low tone moves the full range from bend 0 to bend 15 but
+  starts about 126 Hz lower than on the VoxRecord recording, as M2's formants
+  do. Not modelled.
+- **A1.** Its trace is wrong even at the default: on both recordings the chip
+  plays a steady formant near 200 Hz and a straight sweep from about 200 Hz
+  to 2.5 kHz over a second, where the trace has three wandering formants. At
+  bend 0 the sweep turns back at 1.1 kHz; at bend 15 a steady 570 Hz part
+  dominates. Needs tracing again.
+- **C0's sweep** bottoms out at about 200 Hz at bend 0 and 405 Hz at bend 15
+  rather than following Bend all the way down.
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown
@@ -1049,7 +1137,7 @@ The manual doesn't say, so these are guesses (described above):
 | | What the library does |
 |---|---|
 | The oscillator settings behind each allophone | Built from published formant measurements of English speech; only the formants that two sets of measurements of the chip agree on are from the chip, and no volumes are |
-| The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants; seven are gated at a fitted voicing rate |
+| The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants; C2, C4 and C6 pulse at the voicing rate plus a measured offset, C0 and C3 are gated at a fitted rate |
 | How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties |
 | The synthesizer's details | Distortion as random frequency modulation; the arithmetic behind the chip's voicing count at the 12 settings that differ from 8000 / Pitch + 1; whether a pulse starts each sound |
 | What Soft (18) does | Ignored; it is a real command (see PhraseALator above), but nothing describes its effect |

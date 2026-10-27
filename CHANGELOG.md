@@ -299,6 +299,33 @@ The fourth VoxProbe recording, on both units, held out (see docs/design.md):
   frequency plus an offset), M2's part near 2.1 kHz, and the effects at
   bend 15.
 
+The same recording, looked at again for those three (see docs/design.md, "The
+gates, M2 and bend 15"). Fitted on the default pitch, pitch 60 and bend 0;
+pitch 150, the speeds and bend 15 left out to check. Effects only; speech is
+unchanged to the bit. The reference samples are regenerated.
+
+- C2, C4 and C6 pulse as the voicing does: at the voicing frequency plus 20.5
+  Hz under, 0 and 42.7 Hz over, each pulse fading in a fixed time (the voicing
+  fade, 1.6 times as long for C6), with their noise refitted. On the items
+  left out C2 73 to 77%, C4 65 to 71%, C6 65 to 67% (2.5 to 2.2, 4.0 to 3.6,
+  3.0 to 2.1 dB). C0 and C3 keep their gates (worse or no better that way).
+- Bend moves an effect's noise as a block, added after the distortion spread,
+  rather than moving the oscillators and widening it: C8 and C9 at bend 15
+  10 to 8.8 and 7.5 dB; the first VoxProbe recording, left out, agrees.
+- C8 and C9 hold each random value of their noise 0.75 ms, which gives the
+  sharp lower edge both units have at bend 15, with the frequencies and spread
+  fitted again. Scored over six noise sequences rather than one: all their
+  items 46 to 57% and 3.8 to 2.8 dB; bend 15 37 to 62% and 8.3 to 4.4 dB.
+- M2 doesn't follow Bend (the same within half a hertz at bend 0 and 15). Its
+  "part near 2.1 kHz" is its own F2, which on this recording starts 260 Hz
+  higher than on the VoxRecord recording, with no F1; what decides M2's
+  starting formants isn't known.
+- A traced effect's tone doesn't glide while silent (C3 at bend 15 had swept
+  in from 227 Hz).
+- All effect items: bend 15 46.0 to 48.3% and 6.21 to 6.08 dB (with C8 and C9
+  to 3.5 to 4.5 dB), bend 0 4.58 to 4.35 dB, the pitches 3.78 to 3.71 dB; the
+  VoxRecord recording unchanged.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths

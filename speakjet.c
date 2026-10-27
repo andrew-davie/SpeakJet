@@ -133,6 +133,21 @@ typedef struct frame {
   /* how deeply the envelope gates oscillators 4 and 5 (0 to 1), when they
    * aren't half enveloped (see NOISE_GATE) */
   double noise_depth;
+
+  /* how far Bend moves oscillators 4 and 5 of a sound effect, in hertz,
+   * added after their distortion spread (see msa_expand()) */
+  double noise_shift;
+
+  /* how long each random value of the distortion is held, in ms; 0 for a new
+   * one every sample (see c_noise()) */
+  double noise_hold_ms;
+
+  /* a gated effect that pulses as the voicing does (see fx_pulse): its rate
+   * is pulse_offset hertz from the voicing, and its pulses fade along
+   * voice_fade stretched fade_scale times (0 is 1) */
+  bool pulsed;
+  double pulse_offset;
+  double fade_scale;
 } frame;
 
 /* lerp returns the frame part way between a and b. the envelope control
@@ -196,6 +211,11 @@ typedef struct synth {
   /* noise source for distortion (xorshift) */
   uint32_t noise;
 
+  /* the held random values of oscillators 4 and 5, and the samples left
+   * until the next (see noise_hold_ms) */
+  double held[2];
+  long hold_left;
+
   /* dc blocker state */
   double dc_in, dc_out;
 } synth;
@@ -241,8 +261,10 @@ static double synth_sample(synth *s, const frame *f, double master) {
     /* the chip's voicing: each pulse restarts the formant oscillators at full
      * level and they fade to nothing along voice_fade in under 10ms, whatever
      * the pitch or volume. at low pitch the rest of the period is silent; at
-     * high pitch the next pulse cuts the fade short */
-    const double k = (double)s->env_age * 1000 / CHIP_RATE / VOICE_FADE_STEP_MS;
+     * high pitch the next pulse cuts the fade short. a pulsed effect's fade
+     * can be longer (see fx_pulse) */
+    const double k = (double)s->env_age * 1000 / CHIP_RATE / VOICE_FADE_STEP_MS /
+                     (f->fade_scale > 0 ? f->fade_scale : 1);
     const int i = (int)k;
     env = i >= VOICE_FADE_N - 1 ? 0 : voice_fade[i] + (voice_fade[i + 1] - voice_fade[i]) * (k - i);
   } else if (f->pitch > 0) {
@@ -294,12 +316,22 @@ static double synth_sample(synth *s, const frame *f, double master) {
   }
 
   /* mixer 2: oscillators 4 and 5, with distortion spreading noise around
-   * the oscillator frequency */
+   * the oscillator frequency, a new random value every sample or held for
+   * noise_hold_ms, and then moved by noise_shift */
   double mix2 = 0;
   const double spread = f->distortion / 255 * 1.5;
+  if (f->noise_hold_ms > 0 && --s->hold_left <= 0) {
+    s->held[0] = synth_random(s);
+    s->held[1] = synth_random(s);
+    s->hold_left = (long)(f->noise_hold_ms * CHIP_RATE / 1000 + 0.5);
+  }
   for (int i = 3; i < 5; i++) {
     const double fr = fmin2(on_grid(f->freq[i]), MAX_FREQUENCY);
-    s->phase[i] += fr * (1 + spread * synth_random(s)) / CHIP_RATE;
+    const double r = f->noise_hold_ms > 0 ? s->held[i - 3] : synth_random(s);
+    double hz = fr * (1 + spread * r) + f->noise_shift;
+    if (spread == 0)
+      hz = fmax2(fmin2(hz, MAX_FREQUENCY), 0);
+    s->phase[i] += hz / CHIP_RATE;
     s->phase[i] -= floor(s->phase[i]);
     mix2 += fmin2(f->vol[i], MAX_OSC_VOLUME) * sin(2 * SJ_PI * s->phase[i]);
   }
@@ -352,6 +384,9 @@ typedef struct sound {
 
   int nparts;
   part parts[MAX_PARTS];
+
+  /* the sound doesn't follow the Bend control (see msa_expand()) */
+  bool no_bend;
 } sound;
 
 /* the chip's lengths for speech sounds, measured from a recording of a real
@@ -2606,6 +2641,45 @@ static const struct {
 };
 /* FX-GATE-END */
 
+/* the fourth VoxProbe recording plays the gated effects at pitch 60 and 150
+ * and at bend 0 and 15, on both units. their gates follow the Pitch control,
+ * a steady distance from the voicing frequency at all three pitches: C0 4.7Hz
+ * under it, C2 20.5Hz under, C3 27.9Hz under, C4 on it and C6 42.7Hz over.
+ * and each pulse has the same length whatever the rate: folded at the gate's
+ * period, the envelope starts each pulse at full level and fades to nothing
+ * in a fixed time, as the voicing does (see voice_fade): C4 as the voicing,
+ * C0 about 1.3 times as long, C3 and C6 about 1.6 times, and C2 as long but
+ * in two humps (its tones beating, restarted together each pulse). at low
+ * pitch the rest of each period is silent; at high pitch the next pulse cuts
+ * the fade short.
+ *
+ * C2, C4 and C6 play that way here: voiced at the voicing frequency plus
+ * their distance, along voice_fade stretched as measured, with their noise
+ * (see fx_noise) refitted to it. fitted on both recordings at the default
+ * pitch, at pitch 60 and at bend 0, and checked at pitch 150, at speeds 90 and
+ * 127 and at bend 15, which were left out: C2 73 to 77% and 2.5 to 2.2dB on
+ * those, C4 65 to 71% and 4.0 to 3.6dB, C6 65 to 67% and 3.0 to 2.1dB. C0 and
+ * C3 keep their gates: played this way C0 came out flat on the ones left out
+ * and worse on the VoxRecord recording, which gates it at 85Hz where the
+ * fourth VoxProbe recording has 82Hz at the same pitch, and C3 came out
+ * worse on the ones left out */
+static const struct {
+  short code;
+  double offset_hz, fade;
+} fx_pulse[] = {
+    {232, -20.5, 1.0},
+    {234, 0.2, 1.0},
+    {236, 42.7, 1.6},
+};
+
+/* the entry in fx_pulse for an effect, or -1 */
+static int fx_pulse_index(int code) {
+  for (int i = 0; i < (int)(sizeof(fx_pulse) / sizeof(fx_pulse[0])); i++)
+    if (fx_pulse[i].code == code)
+      return i;
+  return -1;
+}
+
 
 /* the noise under some of the traced effects. on both units of the VoxRecord
  * recording C0, C1, C2, C4, C6 and C7 have a broad noise under their tones
@@ -2615,7 +2689,9 @@ static const struct {
  * frequencies and width, to both units at once. C0 70 to 78% and 2.7 to
  * 2.3dB, C1 42 to 67% and 5.7 to 1.7dB, C2 74 to 79% and 5.1 to 3.3dB, C4 68
  * to 75% and 4.8 to 4.3dB, C6 66 to 72% and 3.8 to 2.7dB, C7 58 to 65% and
- * 6.3 to 1.9dB. C3's made it match one unit worse, so it has none.
+ * 6.3 to 1.9dB. C3's made it match one unit worse, so it has none. C2's, C4's
+ * and C6's levels and depths were fitted again for their pulses (see
+ * fx_pulse): 3dB quieter each, and 0.4, 1 and 0 deep.
  *
  * the tone effects (see fx2_points) have it too: on both units a pure tone
  * sits on a skirt of noise and scattered lines 15 to 30dB under it, across
@@ -2631,9 +2707,9 @@ static const struct {
 } fx_noise[] = {
     {230, 2361.6, 2282.7, 27.5, 0.371, -12.86},
     {231, 1810.5, 2003.4, 147.2, 0.324, -1.82},
-    {232, 1935.8, 1748.1, 54.8, 0.287, -12.15},
-    {234, 1704.5, 3553.6, 228.3, 0.909, -9.64},
-    {236, 2357.3, 2947.3, 10.8, 0.670, -6.44},
+    {232, 1935.8, 1748.1, 54.8, 0.4, -15.15},
+    {234, 1704.5, 3553.6, 228.3, 1.0, -12.64},
+    {236, 2357.3, 2947.3, 10.8, 0.0, -9.44},
     {237, 442.9, 1765.9, 199.9, 0.832, -7.05},
     {200, 600.9, 527.1, 135.1, 0, -17.96},
     {201, 1143.9, 3430.0, 31.9, 0, -10.65},
@@ -2666,6 +2742,8 @@ static int fx_noise_index(int code) {
   return -1;
 }
 
+static double voice_hz(double pitch);
+
 static frame fx_frame(const fx_point *p, int code) {
   const double g = pow(10, p->db / 20.0);
   frame f;
@@ -2683,6 +2761,14 @@ static frame fx_frame(const fx_point *p, int code) {
       f.pitch = p->pitch;
       f.wave = ENV_VOICE;
       f.voiced = true;
+    } else if (fx_pulse_index(code) >= 0) {
+      const int k = fx_pulse_index(code);
+      f.pitch = voice_hz(SJ_DEFAULT_PITCH) + fx_pulse[k].offset_hz;
+      f.wave = ENV_VOICE;
+      f.voiced = true;
+      f.pulsed = true;
+      f.pulse_offset = fx_pulse[k].offset_hz;
+      f.fade_scale = fx_pulse[k].fade;
     } else if (fx_gate[code - 200].hz > 0) {
       f.pitch = fx_gate[code - 200].hz;
       f.wave = fx_gate[code - 200].wave;
@@ -2706,14 +2792,42 @@ static frame fx_frame(const fx_point *p, int code) {
 }
 
 /* contour plays a traced effect: a quick start on the first point, then a
- * glide to each of the others in turn, then 3ms to silence */
+ * glide to each of the others in turn, then 3ms to silence. a tone doesn't
+ * move while it is silent: it fades out where it was and fades in where it
+ * is going. the traces give the silent points whatever the background held
+ * (C3's first and last are 227Hz), and gliding from those swept each tone in
+ * from far below, which at bend 15 put a strong sweep near 660Hz into C3 that
+ * neither unit of the fourth VoxProbe recording has (10.6 to 10.1dB there) */
 static void contour(sound *s, const fx_point *p, int n, int code) {
-  hold(s, p[0].ms, 2, fx_frame(&p[0], code));
+  frame fr[MAX_PARTS];
+  for (int i = 0; i < n; i++)
+    fr[i] = fx_frame(&p[i], code);
+  for (int j = 0; j < 3; j++) {
+    bool on[MAX_PARTS];
+    for (int i = 0; i < n; i++)
+      on[i] = p[i].db > -60 && p[i].freq[j] > 0 && (j == 0 || p[i].rel[j] > -59);
+    for (int i = 0; i < n; i++) {
+      if (on[i])
+        continue;
+      if (i > 0 && on[i - 1]) {
+        fr[i].freq[j] = fr[i - 1].freq[j];
+        continue;
+      }
+      int k = i + 1;
+      while (k < n && !on[k])
+        k++;
+      if (k < n)
+        fr[i].freq[j] = fr[k].freq[j];
+      else if (i > 0)
+        fr[i].freq[j] = fr[i - 1].freq[j];
+    }
+  }
+  hold(s, p[0].ms, 2, fr[0]);
   for (int i = 1; i < n; i++) {
     const double ms = p[i].ms - p[i - 1].ms;
-    hold(s, ms, ms, fx_frame(&p[i], code));
+    hold(s, ms, ms, fr[i]);
   }
-  hold(s, 3, 3, quiet(fx_frame(&p[n - 1], code)));
+  hold(s, 3, 3, quiet(fr[n - 1]));
 }
 
 /* C8 and C9 are noise from about 400Hz to 2.8kHz, flat within a few dB, the
@@ -2724,7 +2838,19 @@ static void contour(sound *s, const fx_point *p, int n, int code) {
  * 5ms at the level both units have (the mean of the two, in dB against the
  * loudest); the frequencies, width and depth are fitted to both units at
  * once, and the depth comes out at 0.83 (-15dB), as measured. C8 and C9
- * 34% to 58% and 8.4 to 2.9dB */
+ * 34% to 58% and 8.4 to 2.9dB.
+ *
+ * the fourth VoxProbe recording moves them with Bend (see msa_expand()), and
+ * at bend 15 both units' noise has a sharp lower edge, nothing under 560Hz
+ * within 20dB, which a new random frequency every sample, spreading the
+ * noise in long skirts around the oscillator, can't give. holding each random
+ * value 0.75ms makes a band with edges instead; with the spread, the
+ * frequencies and the hold fitted to both recordings at default and bend 0
+ * and the pitches, and scored over four noise sequences rather than one
+ * (the noise carries on from the sounds before), C8 and C9 go from 49 to 55%
+ * and 2.8 to 2.3dB there, 52 to 56% and 2.8 to 2.5dB on the VoxRecord
+ * recording, and at bend 15, left out of the fit, from 37 to 62% and 8.3 to
+ * 4.4dB */
 static const double c8_db[] = {
     -16.2, -11.8, -9.5, -5.5, -1.1, -0.5, -0.4, -0.3, -0.1, -0.3,
     -0.2, -0.1, -0.3, -0.5, -0.5, -0.2, -0.9, -1.3, -1.8, -5.2,
@@ -2735,7 +2861,8 @@ static const double c9_db[] = {
 };
 
 static void c_noise(sound *s, const double *db, int n) {
-  frame f = noise_frame(lGlottal, 1316.3, 1855.6, 0, 0, 203.2);
+  frame f = noise_frame(lGlottal, 1416.3, 1905.6, 0, 0, 100);
+  f.noise_hold_ms = 0.75;
   f.pitch = 52;
   f.wave = ENV_SAW;
   f.noise_depth = 0.826;
@@ -4547,9 +4674,10 @@ static bool lookup(uint8_t code, sound *s) {
   memset(s, 0, sizeof(*s));
   if (code >= 128 && code < 128 + NUM_ALLOPHONES)
     allophone(s, code);
-  else if (code >= 200 && code < 200 + NUM_EFFECTS)
+  else if (code >= 200 && code < 200 + NUM_EFFECTS) {
     effect(s, code);
-  else
+    s->no_bend = code == 254; /* M2 (see msa_expand()) */
+  } else
     return false;
   for (int k = 0; k < (int)(sizeof(noise_rate_fit) / sizeof(noise_rate_fit[0])); k++) {
     if (noise_rate_fit[k].code != code)
@@ -4821,25 +4949,35 @@ static void msa_expand(msa *m, const sound *s) {
       t.pitch = voice_hz((double)m->pitch);
       t.freq[1] += stress_hz;
       t.freq[2] += stress_hz;
+    } else if (t.pulsed) {
+      /* a pulsed effect's gate keeps its distance from the voicing (see
+       * fx_pulse) */
+      t.pitch = fmax2(voice_hz((double)m->pitch) + t.pulse_offset, 1);
     } else if (t.wave == ENV_VOICE) {
       /* a voiced effect follows the Pitch control: on the chip A1 and M2 are
        * voiced at 60.3, 87.9 and 149.5Hz at pitch 60, 88 and 150. their
        * traced pitch is the chip's at the default pitch */
       t.pitch *= voice_hz((double)m->pitch) / voice_hz(SJ_DEFAULT_PITCH);
     }
-    for (int j = 0; j < 3; j++)
-      if (t.freq[j] > 0)
-        t.freq[j] = fmax2(t.freq[j] + bend_hz, 0);
-    /* Bend moves an effect's noise as well: on both units of the fourth
-     * VoxProbe recording C8's and C9's noise moves about 200Hz down at bend 0
-     * and 440Hz up at bend 15, as their tones do. the effects at bends 0 and
-     * 15 match both units better with it (4.30 to 4.25dB on one, 4.28 to
-     * 4.23dB on the other). whether the hiss of speech moves too isn't
-     * measured, so it doesn't here */
-    if (!s->speech)
-      for (int j = 3; j < 5; j++)
+    /* M2 doesn't follow Bend: on both units of the fourth VoxProbe recording
+     * it is the same at bend 0 and bend 15, its formants within half a hertz
+     * of each other over its whole length */
+    if (!s->no_bend)
+      for (int j = 0; j < 3; j++)
         if (t.freq[j] > 0)
           t.freq[j] = fmax2(t.freq[j] + bend_hz, 0);
+    /* Bend moves an effect's noise as well: on both units of the fourth
+     * VoxProbe recording C8's and C9's noise moves about 200Hz down at bend 0
+     * and 440Hz up at bend 15, as their tones do. it moves as a block, its
+     * width unchanged: at bend 15 nothing is left under 560Hz within 20dB,
+     * where moving the oscillators, whose spread is in proportion to their
+     * frequency, widened it and left the noise reaching down to 300Hz. so the
+     * Bend is added after the spread (see synth_sample()): C8 and C9 at bend
+     * 15 10.0 to 8.8 and 10.0 to 7.5dB, and on the first VoxProbe recording,
+     * left out, C8 at bend 0 3.2 to 3.0 and at bend 15 9.8 to 8.6dB. whether
+     * the hiss of speech moves too isn't measured, so it doesn't here */
+    if (!s->speech)
+      t.noise_shift = bend_hz;
     segment *sg = &m->segs[m->nsegs++];
     sg->samples = to_samples(ms);
     sg->glide = to_samples(glide);
