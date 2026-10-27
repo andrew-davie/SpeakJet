@@ -998,6 +998,48 @@ Level per band above 4 kHz, against the in-band peak, unit B:
 | before | (none) | | | | | |
 | now | -34.3 | -32.4 | -37.5 | -41.8 | -43.3 | -45.7 |
 
+### The fourth VoxProbe recording
+
+VoxProbe 4 was recorded on both units after everything above, so none of it
+was fitted to. Each item's start comes from the library playing the same
+bytes (which byte the chip is on), anchored at each section's DTMF marker and
+then matched item by item; both recordings clip in only a few items, which are
+left out, as are items that stand under 20 dB over the background: that drops
+all 48 hiss items (the hisses were recorded too close to the background to
+say anything) and a few quiet effects. About 145 items per unit remain.
+
+| | original | 14181cc | 708ed16 | bb90c14 |
+|---|---|---|---|---|
+| unit A, below 4 kHz | 27% 10.6 dB | 58% 5.6 | 64.3% 3.74 | 63.5% 3.79 |
+| unit B, below 4 kHz | 27% 10.6 dB | 58% 5.6 | 63.7% 3.74 | 63.4% 3.77 |
+| unit A, above 4 kHz | | | 18.6 dB | 1.7 dB |
+| unit B, above 4 kHz | | | 19.4 dB | 2.0 dB |
+
+So the work holds on data it never saw. The output above 4 kHz (bb90c14) costs
+half a point below it, which comes from the change of rate (the output stage
+alone loses 1 to 1.5 points; the noise refits win back 0.7).
+
+What it shows about the chip:
+
+- **Gates follow Pitch.** C0, C2, C3, C4 and C6 gate at the voicing frequency
+  plus a fixed offset of their own (-3, -22, -29, -1 and +37 Hz): C2 gates at
+  38.2, about 66 and 126.7 Hz at pitch 60, 88 and 150, where the rule gives
+  37.6, 66 and 125.9. C8 and C9 gate at 52 Hz whatever the pitch. B9, A1, A3
+  and M2 buzz at the voicing frequency. Here the gates don't follow Pitch
+  yet: given the right rates, C0 to C6 match both units worse at pitch 150,
+  so something else in how they are built holds only at the default pitch.
+  Shaping the gates as the voicing fade, or not restarting the tones at each
+  gate pulse, was worse still.
+- **Bend moves the noise of effects** (C8's and C9's by about -200 Hz at
+  bend 0 and +440 Hz at bend 15), as it does their tones; it does here now.
+- **A3's buzz** was traced at 470 to 490 Hz but repeats at the voicing
+  frequency; it does here now (79 to 80%, 80 to 82%).
+- **M2** has a strong part near 2.1 kHz that Bend doesn't move and Pitch
+  voices; the library's M2 lacks it, and M2 at other pitches and bends matches
+  badly (under 12%). Not yet modelled.
+- **Effects at bend 15** match worst (C3 12 dB, R8 12 dB, C8, C9, A1 9 dB):
+  more than the noise is involved. Not yet resolved.
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown

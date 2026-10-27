@@ -288,6 +288,17 @@ The output above 4 kHz (see docs/design.md, "The output above 4 kHz"):
   second take 57% to 60%.
 - The comparison runs to 16 kHz.
 
+The fourth VoxProbe recording, on both units, held out (see docs/design.md):
+
+- Every stage holds on it: below 4 kHz the original library matches 27%,
+  14181cc 58%, 708ed16 64%, now 63.5%; above 4 kHz 19 dB off before, 2 dB
+  now.
+- Bend moves the noise of effects too (C8 and C9 move with it on the chip).
+- A3 buzzes at the voicing frequency and follows Pitch.
+- Found and not yet modelled: the gates of C0 to C6 follow Pitch (the voicing
+  frequency plus an offset), M2's part near 2.1 kHz, and the effects at
+  bend 15.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths
