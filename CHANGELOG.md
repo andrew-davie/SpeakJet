@@ -275,6 +275,19 @@ on the one before. Where the rebuild had made sounds worse:
 - OB and PO go back to their values before the refit (PO 48% to 64% on
   unit B).
 
+The output above 4 kHz (see docs/design.md, "The output above 4 kHz"):
+
+- The output is now at 48 kHz (`SJ_SAMPLE_RATE`), not 8192 Hz. The chip makes
+  its samples at about 8028 Hz (measured from the mirror images of its tones,
+  8040 and 8015 Hz on the two units, not the manual's 8192), holds each until
+  the next, and the AtariVox's low pass shapes the images that puts up to
+  23 kHz; all three are modelled (`CHIP_RATE`, `output_sos`). Above 4 kHz the
+  library matches unit B within 2.0 dB where it had nothing (15.5 dB off).
+- The noise sounds are fitted again at the chip's rate, their level held
+  (`noise_rate_fit`): stops and fricatives 70.5% to 73.3% on unit B, the
+  second take 57% to 60%.
+- The comparison runs to 16 kHz.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths

@@ -187,7 +187,8 @@ follow the manual, and a recording of a real SpeakJet confirms its order:
 
 **From the manual:**
 
-- Output is 8192 samples per second.
+- Output is 8192 samples per second. (Measured, the chip makes about 8030
+  and holds each until the next; see "The output above 4 kHz".)
 - Oscillators 1 to 3 run from 0 to 3999 Hz with a volume of 0 to 31. They are
   summed in a mixer limited to 63.
 - Oscillators 4 and 5 share a distortion control (0 to 255) that spreads
@@ -934,10 +935,68 @@ take, where they have it) agreed:
 - EB, HO, TH, CH, HE, OHIY, OHIH, OD and DO are mixed or worse at their
   earlier values, so they stay.
 
-What the comparison still can't see: anything above 4 kHz (the chip has some,
-from its output's images and hiss; the library renders at 8192 Hz and has
-none) and how sounds join in phrases beyond their spectra. Listening against
-the chip remains the final check.
+What the comparison couldn't see then: anything above 4 kHz. That is fixed
+below. It still can't see how sounds join in phrases beyond their spectra, so
+listening against the chip remains the final check.
+
+### The output above 4 kHz
+
+Every comparison above stopped at 4 kHz, because that was as far as the
+library went: it rendered at 8192 Hz. The band was chosen to suit the
+library, so it could never show what the library lacked. The chip puts real
+sound above 4 kHz: vowels 29 to 40 dB under their main band (10 to 15 dB over
+the background), SE as much at 4 to 5 kHz as in its main band, B7's 3.9 kHz
+tone an image at 4.12 kHz only 1 dB down.
+
+- **The chip's rate.** Every steady tone has a mirror image at the rate less
+  the tone. From 26 tone effects that rate is 8040 Hz on unit A and 8015 Hz
+  on unit B, the same 0.3% apart as their pitches and the same as their
+  voicing ticks, not the manual's 8192. Here it is 8028 Hz (`CHIP_RATE`), the
+  mean.
+- **Holding.** The images repeat around each multiple of the rate up to
+  23 kHz on the recordings, at the levels holding each sample until the next
+  gives: the chip's samples are held, not smoothed.
+- **The low pass after it.** Below 4 kHz the voicing pulses gave it (the
+  output filter used until now, which had holding folded into it). Above,
+  160 images on both units, each against its own tone, give it within 2 dB:
+  -18 dB at 5.5 kHz, -23 at 7.5, -27 at 10.5, -33 at 15.5, -38 at 23.5 kHz
+  against 500 Hz.
+
+So the library now makes its samples at 8028 Hz, holds them, and outputs at
+48 kHz (`SJ_SAMPLE_RATE`) through a filter fitted to that low pass
+(`output_sos`, within 0.3 dB RMS below 4 kHz and 1.6 dB above). The level at
+500 Hz is unchanged.
+
+The noise sounds had been fitted at 8192 Hz, and the noise here (a frequency
+jittered every sample) changes with the rate; at 8028 Hz they matched both
+units 1 to 15 points worse. Each was fitted again (`noise_rate_fit`), its
+frequencies, width and the balance of its two noise oscillators, with its
+overall level held. A first fit, with the level free, made SE and others
+louder against the vowels: alone they scored better (each sound is scored
+against its own loudest), but the connected groups, never fitted, got worse,
+which is why the level is now held. 38 of 55 were kept, where both units and
+the second take agreed (TS 28 to 54%, CH 67 to 83%, TT 29 to 45%).
+
+The comparison now also runs to 16 kHz, over the bands where the chip is
+6 dB or more over its background. Against unit B:
+
+| | before | now |
+|---|---|---|
+| above 4 kHz, 123 sounds | 15.5 dB | 2.0 dB |
+| below 4 kHz, all 126 sounds | 83.9% 1.93 dB | 84.5% 1.80 dB |
+| stops and fricatives | 70.5% 2.88 dB | 73.3% 2.58 dB |
+| unit A, 74 unclipped | 80.8% 2.31 dB | 81.5% 2.08 dB |
+| second take (held out) | 57.1% 3.32 dB | 59.7% 3.11 dB |
+| VoxProbe sustained (held out) | 1.40, 1.48 dB | 1.45, 1.46 dB |
+| connected groups (held out) | 86.4% / 74.1% | 86.0% / 73.8% |
+
+Level per band above 4 kHz, against the in-band peak, unit B:
+
+| | 4.5 kHz | 5.7 | 7.1 | 9.0 | 11.3 | 14.3 |
+|---|---|---|---|---|---|---|
+| chip | -34.2 | -31.3 | -37.0 | -40.8 | -42.2 | -42.9 |
+| before | (none) | | | | | |
+| now | -34.3 | -32.4 | -37.5 | -41.8 | -43.3 | -45.7 |
 
 ## What isn't known, and what isn't emulated
 

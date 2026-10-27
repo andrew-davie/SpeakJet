@@ -55,7 +55,7 @@ static double on_grid(double hz) { return floor(hz / FREQ_STEP_HZ + 0.5) * FREQ_
  * 40 each pulse stands alone and about 24 of them were averaged, on 18 vowels,
  * nasals and liquids on two AtariVoxes. each pulse was fitted as three sines
  * starting together, times one envelope shared by every sound, through one
- * output filter (see output_fir); the envelope and the filter were solved for
+ * output filter (see CHIP_RATE); the envelope and the filter were solved for
  * along with each sound's frequencies and amplitudes. that leaves 1/470 of the
  * pulses' energy unexplained (-26.7dB), against 1/28 for the straight 8ms ramp
  * first used. the fade starts at full level, dips to about 0.7 within half
@@ -149,24 +149,37 @@ static frame lerp(const frame *a, const frame *b, double t) {
 }
 
 /* synth is the 5-channel synthesizer */
-/* the low pass after the PWM output (the manual places a "two pole" filter
- * there). the openFPGA-7800 AtariVox engine (MIT licence) fitted a 2-pole
- * 2200Hz corner to recordings of games, and Stella's SpeakJet engine measured
- * 1700Hz. the VoxRecord recording's third take measured its level directly,
- * from the sound effects that sweep a single pure tone: flat to 1.5kHz, then
- * -2.2dB at 1.9kHz, -5.7 at 2.4, -10.8 at 2.9, -15.8 at 3.6. the voicing
- * pulses of the third VoxProbe recording (see voice_fade) measure it again,
- * level and phase, on both units: -1.2dB at 1kHz, -2.8 at 1.5, -5.4 at 2,
- * -8.9 at 2.5, -11.8 at 3 and -14.3 at 3.5kHz against 500Hz, with no delay
- * that changes with frequency. the two measurements agree within 2 to 3dB;
- * this is the second, as an 11-tap FIR at this sample rate (within 0.75dB RMS
- * and 5 degrees of it). it includes whatever filtering the AtariVox and the
- * recorder add */
-#define OUTPUT_TAPS 11
-static const double output_fir[OUTPUT_TAPS] = {
-    0.0195866114, -0.0027854151, 0.0363309004, -0.0453457714,
-    0.3233301119, 0.5632340831, 0.2283437277, 0.0506567790,
-    -0.0181499488, 0.0017538421, -0.0052263971,
+/* the chip's output. it makes its samples at CHIP_RATE, not the manual's
+ * 8192 a second: on both units of the VoxRecord recording every steady tone
+ * has a mirror image at the rate less the tone (B7's 3915Hz at 4124Hz, 1dB
+ * down), which puts the rate at 8040Hz on one unit and 8015Hz on the other
+ * (their clocks differ by the same 0.3 percent as their pitches), the same as
+ * their voicing ticks. each sample is held until the next, so the images
+ * repeat above that, around each multiple of the rate, at the levels holding
+ * gives, up to 23kHz on the recordings, and a smooth analogue low pass after
+ * the chip shapes them all.
+ *
+ * that low pass is measured twice. below 4kHz the voicing pulses of the third
+ * VoxProbe recording give it, level and phase, on both units: -1.2dB at 1kHz,
+ * -2.8 at 1.5, -5.4 at 2, -8.9 at 2.5, -11.8 at 3 and -14.3 at 3.5kHz against
+ * 500Hz, holding included (it agrees within 2 to 3dB with the tone sweeps of
+ * the VoxRecord recording, -10.8 at 2.9 and -15.8 at 3.6kHz). above 4kHz the
+ * images give it: 160 of them from 26 tone effects on both units, each against
+ * its own tone, less what holding accounts for (within 2dB of each other):
+ * -18dB at 5.5kHz, -23 at 7.5, -27 at 10.5, -33 at 15.5 and -38 at 23.5kHz. it
+ * includes whatever the AtariVox and the recorder add.
+ *
+ * so here the chip's samples are held, each output sample is the average of
+ * what is held over its time, and output_sos (a filter at SJ_SAMPLE_RATE,
+ * fitted to both measurements, within 0.3dB RMS below 4kHz and 1.6dB above)
+ * is the low pass. the level at 500Hz is the one the output had before */
+#define CHIP_RATE 8028.0
+
+#define OUTPUT_SECTIONS 3
+static const double output_sos[OUTPUT_SECTIONS][6] = {
+    {0.0636279260299, 0, 0, 1, 0.0618381585253, 0},
+    {1, -0.0974446347576, 0, 1, -1.63378468591, 0.680472611685},
+    {1, 0.985616684932, 0, 1, 1.0014122889, 0.0588508646104}
 };
 
 typedef struct synth {
@@ -183,8 +196,7 @@ typedef struct synth {
   /* noise source for distortion (xorshift) */
   uint32_t noise;
 
-  /* output filter history (newest first) and dc blocker state */
-  double hist[OUTPUT_TAPS];
+  /* dc blocker state */
   double dc_in, dc_out;
 } synth;
 
@@ -210,7 +222,7 @@ static double synth_sample(synth *s, const frame *f, double master) {
   double env = 1.0;
   bool pulse = false;
   if (f->pitch > 0) {
-    s->env_phase += f->pitch / SJ_SAMPLE_RATE;
+    s->env_phase += f->pitch / CHIP_RATE;
     if (s->env_phase >= 1) {
       s->env_phase -= floor(s->env_phase);
       pulse = true;
@@ -230,7 +242,7 @@ static double synth_sample(synth *s, const frame *f, double master) {
      * level and they fade to nothing along voice_fade in under 10ms, whatever
      * the pitch or volume. at low pitch the rest of the period is silent; at
      * high pitch the next pulse cuts the fade short */
-    const double k = (double)s->env_age * 1000 / SJ_SAMPLE_RATE / VOICE_FADE_STEP_MS;
+    const double k = (double)s->env_age * 1000 / CHIP_RATE / VOICE_FADE_STEP_MS;
     const int i = (int)k;
     env = i >= VOICE_FADE_N - 1 ? 0 : voice_fade[i] + (voice_fade[i + 1] - voice_fade[i]) * (k - i);
   } else if (f->pitch > 0) {
@@ -263,7 +275,7 @@ static double synth_sample(synth *s, const frame *f, double master) {
   double mix1 = 0, total = 0;
   for (int i = 0; i < 3; i++) {
     const double fr = fmin2(on_grid(f->freq[i]), MAX_FREQUENCY);
-    s->phase[i] += fr / SJ_SAMPLE_RATE;
+    s->phase[i] += fr / CHIP_RATE;
     s->phase[i] -= floor(s->phase[i]);
     const double v = fmin2(f->vol[i], MAX_OSC_VOLUME);
     total += v;
@@ -276,8 +288,8 @@ static double synth_sample(synth *s, const frame *f, double master) {
   /* the voicing coming up from silence (see ONSET_MS) */
   if (total == 0) {
     s->onset_age = 0;
-  } else if (f->onset_ms > 0 && s->onset_age < (long)(f->onset_ms * SJ_SAMPLE_RATE / 1000)) {
-    mix1 *= (double)s->onset_age / (f->onset_ms * SJ_SAMPLE_RATE / 1000);
+  } else if (f->onset_ms > 0 && s->onset_age < (long)(f->onset_ms * CHIP_RATE / 1000)) {
+    mix1 *= (double)s->onset_age / (f->onset_ms * CHIP_RATE / 1000);
     s->onset_age++;
   }
 
@@ -287,7 +299,7 @@ static double synth_sample(synth *s, const frame *f, double master) {
   const double spread = f->distortion / 255 * 1.5;
   for (int i = 3; i < 5; i++) {
     const double fr = fmin2(on_grid(f->freq[i]), MAX_FREQUENCY);
-    s->phase[i] += fr * (1 + spread * synth_random(s)) / SJ_SAMPLE_RATE;
+    s->phase[i] += fr * (1 + spread * synth_random(s)) / CHIP_RATE;
     s->phase[i] -= floor(s->phase[i]);
     mix2 += fmin2(f->vol[i], MAX_OSC_VOLUME) * sin(2 * SJ_PI * s->phase[i]);
   }
@@ -305,15 +317,7 @@ static double synth_sample(synth *s, const frame *f, double master) {
   s->dc_in = x;
   s->dc_out = y;
 
-  /* output filter */
-  for (int i = OUTPUT_TAPS - 1; i > 0; i--)
-    s->hist[i] = s->hist[i - 1];
-  s->hist[0] = y;
-  double out = 0;
-  for (int i = 0; i < OUTPUT_TAPS; i++)
-    out += output_fir[i] * s->hist[i];
-
-  return out;
+  return y;
 }
 
 /* ======================================================================== */
@@ -714,7 +718,7 @@ static frame frZH(void) {
  *
  * all of them but BE, BO, DO, ED, OD, GE, GO, EG and OG (which are played from
  * the chip's frames: see vf_points) and TT were then fitted again, with the
- * output filter measured from the voicing pulses (see output_fir), to both
+ * output filter measured from the voicing pulses (see CHIP_RATE), to both
  * units' VoxRecord recordings at once: the spectrogram, the spectrum and the
  * level over time, each unit's level compared down to its own background, so
  * that a part the chip doesn't play costs as much as one it plays wrongly
@@ -1478,7 +1482,7 @@ static void dtmf(sound *s, int low, int high) {
  * in dB (-60 is silence), the three frequencies (0 for none) and the second
  * and third's levels against the first (-60 while a tone that comes and goes
  * is absent, so that it fades rather than sweeping from 0Hz). the levels are the recording's with
- * the output filter's loss at each frequency added back (see output_fir), as
+ * the output filter's loss at each frequency added back (see CHIP_RATE), as
  * the filter here takes it off again. many effects are nothing like their
  * names suggest, and many differ in length from the manual: A1 and A2 last
  * about a second, and M0 is a 1.2 second tone around 1.8kHz that dies away.
@@ -4473,6 +4477,68 @@ static void effect(sound *s, int code) {
 /* lookup builds the sound for an MSA code. the Go version builds every sound
  * once into a table; here each is built when it is needed, which costs a few
  * struct copies per command and keeps the library free of global state */
+/* the noise refitted at the chip's own rate. the noise sounds were fitted
+ * while this library ran at 8192 samples a second; at CHIP_RATE the same
+ * values make different noise (it is a frequency jittered every sample, so
+ * its spread, and where it folds back around half the rate, move with the
+ * rate), and those sounds matched both units 1 to 15 points worse. so each
+ * sound with noise was fitted again at CHIP_RATE, with changes to the noise
+ * oscillators (4 and 5) in all its parts: a scale on their frequencies, a
+ * change to their width (distortion) and the balance of their levels, against
+ * both units of the VoxRecord recording with the background taken out and
+ * clipped sounds left out. the sound's overall level is held where it was
+ * (each sound is scored against its own loudest, so a fit left free to
+ * change it made SE and others louder against the vowels, and the connected
+ * groups, which nothing was fitted to, worse). each is kept only where it
+ * matches both units better, by at least 0.05dB or half a point, and doesn't
+ * match the second take (which nothing was fitted to) worse: TS 28 to 54%,
+ * CH 67 to 83%, TT 29 to 45%, KE 62 to 72%, C9 51 to 58% on unit B. HO, WH,
+ * FF, SO, SH, TH, R5, R8, A7, A9, B0, B1, B2, B5, B8, C5, M0 and M1 (clipped
+ * on both units) keep theirs */
+static const struct {
+  short code;
+  double freq_scale, distortion, db4, db5;
+} noise_rate_fit[] = {
+    {165, 0.9836, -0.3, -0.28, 1.63},
+    {166, 0.9824, 6.7, 3.06, -0.80},
+    {170, 0.9310, -65.4, 3.72, -3.84},
+    {172, 1.0617, -43.2, 8.47, -9.02},
+    {173, 0.9253, 78.7, -1.43, -1.04},
+    {174, 0.9881, -26.6, -1.23, 1.34},
+    {182, 0.9778, 4.5, 0.80, -1.31},
+    {183, 1.0414, -17.3, 0.07, 2.65},
+    {187, 1.0507, -14.3, 3.45, -0.95},
+    {191, 1.0258, 9.5, -2.09, 1.07},
+    {192, 0.9785, -13.6, 1.15, -0.49},
+    {193, 1.0706, -13.3, 10.28, -7.08},
+    {194, 1.0126, 29.7, 0.95, -1.50},
+    {195, 1.0266, 38.7, 0.68, -0.16},
+    {196, 1.0444, -8.5, 5.29, 0.25},
+    {197, 0.9356, 13.6, -0.62, 1.86},
+    {198, 0.9956, 2.6, 0.55, -0.66},
+    {199, 0.9547, 72.6, -0.02, -0.38},
+    {200, 0.9870, 54.5, -7.08, 6.43},
+    {201, 0.9336, -10.3, 1.43, -1.06},
+    {202, 1.0186, 11.8, -4.17, 4.26},
+    {204, 0.9880, -20.2, -0.10, 0.58},
+    {206, 0.9968, -16.9, -1.95, 1.83},
+    {207, 0.9756, 76.1, -0.32, -0.13},
+    {209, 0.9111, -9.6, -1.21, 1.75},
+    {210, 1.0497, 15.8, 2.86, -2.60},
+    {214, 0.9786, 65.5, -1.43, 1.26},
+    {216, 1.0994, -3.7, -0.16, -0.05},
+    {218, 0.9956, 14.7, 8.70, -9.23},
+    {226, 1.0477, -5.8, 0.02, 0.45},
+    {230, 1.0215, 17.9, -0.72, 0.24},
+    {231, 1.0252, -41.2, -1.28, 1.67},
+    {232, 1.0196, 0.3, 3.26, -4.28},
+    {234, 1.0933, 49.7, 2.56, -2.96},
+    {236, 0.9841, 31.2, 1.12, -1.36},
+    {237, 0.9611, 36.2, -0.42, -0.06},
+    {238, 1.0423, 12.9, -0.26, 0.61},
+    {239, 1.0203, 39.1, 2.42, -6.94}
+};
+
 static bool lookup(uint8_t code, sound *s) {
   memset(s, 0, sizeof(*s));
   if (code >= 128 && code < 128 + NUM_ALLOPHONES)
@@ -4481,6 +4547,20 @@ static bool lookup(uint8_t code, sound *s) {
     effect(s, code);
   else
     return false;
+  for (int k = 0; k < (int)(sizeof(noise_rate_fit) / sizeof(noise_rate_fit[0])); k++) {
+    if (noise_rate_fit[k].code != code)
+      continue;
+    const double g4 = pow(10, noise_rate_fit[k].db4 / 20);
+    const double g5 = pow(10, noise_rate_fit[k].db5 / 20);
+    for (int i = 0; i < s->nparts; i++) {
+      frame *f = &s->parts[i].target;
+      f->freq[3] *= noise_rate_fit[k].freq_scale;
+      f->freq[4] *= noise_rate_fit[k].freq_scale;
+      f->distortion = fmin2(fmax2(f->distortion + noise_rate_fit[k].distortion, 0), 255);
+      f->vol[3] *= g4;
+      f->vol[4] *= g5;
+    }
+  }
   return true;
 }
 
@@ -4534,7 +4614,7 @@ typedef struct segment {
 } segment;
 
 static int to_samples(double ms) {
-  return (int)round(ms * SJ_SAMPLE_RATE / 1000);
+  return (int)round(ms * CHIP_RATE / 1000);
 }
 
 /* msa sequences commands into segments and plays them on the synthesizer.
@@ -4875,6 +4955,14 @@ struct sj_chip {
   int pending_code;
 
   msa msa;
+
+  /* the output (see CHIP_RATE): the sample being held, how far through it
+   * the output is (in samples at CHIP_RATE), whether the chip was sounding
+   * when it was made, and the low pass's state */
+  double held;
+  double held_pos;
+  bool held_sounding;
+  double sos_z[OUTPUT_SECTIONS][2];
 };
 
 int sj_command_size(uint8_t code) {
@@ -5035,26 +5123,55 @@ static bool execute(sj_chip *sj, uint8_t code, uint8_t data) {
   return true;
 }
 
-bool sj_render(sj_chip *sj, float *buf, size_t n) {
+/* the chip's next sample, at CHIP_RATE */
+static double chip_sample(sj_chip *sj) {
   msa *m = &sj->msa;
-  bool sounding = false;
+  while (!msa_busy(m)) {
+    if (sj->executing > 0)
+      retire(sj);
 
-  for (size_t i = 0; i < n; i++) {
-    while (!msa_busy(m)) {
-      if (sj->executing > 0)
-        retire(sj);
-
-      command c;
-      if (!pop(sj, &c)) {
-        msa_auto_silence(m);
-        break;
-      }
-
-      execute(sj, c.code, c.data);
+    command c;
+    if (!pop(sj, &c)) {
+      msa_auto_silence(m);
+      break;
     }
 
-    buf[i] = (float)msa_next(m);
-    sounding = sounding || msa_busy(m) || sj->buffered > 0;
+    execute(sj, c.code, c.data);
+  }
+
+  const double v = msa_next(m);
+  sj->held_sounding = msa_busy(m) || sj->buffered > 0;
+  return v;
+}
+
+bool sj_render(sj_chip *sj, float *buf, size_t n) {
+  const double step = CHIP_RATE / SJ_SAMPLE_RATE;
+  bool sounding = sj->held_sounding || sj->buffered > 0 || msa_busy(&sj->msa);
+
+  for (size_t i = 0; i < n; i++) {
+    /* the average of the held samples over this output sample's time */
+    double rest = step, sum = 0;
+    while (sj->held_pos + rest >= 1) {
+      sum += sj->held * (1 - sj->held_pos);
+      rest -= 1 - sj->held_pos;
+      sj->held = chip_sample(sj);
+      sj->held_pos = 0;
+      sounding = sounding || sj->held_sounding;
+    }
+    sum += sj->held * rest;
+    sj->held_pos += rest;
+
+    /* the low pass after the chip (direct form II transposed) */
+    double v = sum / step;
+    for (int k = 0; k < OUTPUT_SECTIONS; k++) {
+      const double *c = output_sos[k];
+      double *z = sj->sos_z[k];
+      const double y = c[0] * v + z[0];
+      z[0] = c[1] * v - c[4] * y + z[1];
+      z[1] = c[2] * v - c[5] * y;
+      v = y;
+    }
+    buf[i] = (float)v;
   }
 
   sj->speaking = sounding;

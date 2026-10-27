@@ -46,9 +46,12 @@ extern "C" {
 #define SJ_VERSION_PATCH 0
 #define SJ_VERSION "1.0.0"
 
-/* the rate at which samples are produced. from the manual: "The frequency is
- * produced at a rate of 8192 samples per second" */
-#define SJ_SAMPLE_RATE 8192
+/* the rate at which samples are produced. the chip makes its own at about
+ * 8kHz (the manual: "The frequency is produced at a rate of 8192 samples per
+ * second"; measured, 8015 to 8040), but holds each until the next, which puts
+ * images of the sound up to 20kHz and more; the output is at a rate that
+ * carries them */
+#define SJ_SAMPLE_RATE 48000
 
 /* the size of the input buffer, in bytes, and the level above which the
  * Buffer Half Full status line is set. from the manual */

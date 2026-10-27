@@ -10,7 +10,9 @@ into SpeakJet codes, and **sjwav**, which renders codes to a WAV file.
 - Takes the raw serial byte stream, and gives you the Buffer Half Full and
   Speaking lines, so it drops straight into an emulator's AtariVox.
 - Save state support.
-- Output: mono float samples at 8192 Hz.
+- Output: mono float samples at 48 kHz: the chip's own samples (about
+  8 kHz), held as the chip holds them, through its measured low pass, so the
+  images it puts above 4 kHz are there too.
 
 Listen to [`samples/`](samples/) to hear what it sounds like.
 
@@ -50,7 +52,7 @@ sj_write_byte(sj, 100);
 sj_write_byte(sj, 183);  /* HO */
 sj_write_byte(sj, 135);  /* OH */
 
-/* pull audio: mono floats in -1..1, at SJ_SAMPLE_RATE (8192 Hz) */
+/* pull audio: mono floats in -1..1, at SJ_SAMPLE_RATE (48000 Hz) */
 float buf[256];
 while (sj_render(sj, buf, 256) || sj_buffered(sj) > 0) {
   /* play or resample buf */
