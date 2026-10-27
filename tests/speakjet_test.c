@@ -50,8 +50,9 @@ static void test_durations(void) {
     FAIL("table has %d entries", (int)(sizeof(manual_ms) / sizeof(manual_ms[0])));
 
   /* the allophones' parts add up to the manual's length (the chip's longer
-   * lengths come from sound.length). most of the sound effects are traced
-   * from a recording of the chip and have its lengths instead, so for them
+   * lengths come from sound.length). most of the sound effects, and the
+   * allophones played from the chip's own frames (see vf_points), are traced
+   * from recordings of the chip and have its lengths instead, so for them
    * only check that they exist */
   for (int code = 128; code <= 254; code++) {
     sound s;
@@ -63,7 +64,7 @@ static void test_durations(void) {
     for (int i = 0; i < s.nparts; i++)
       ms += s.parts[i].ms;
     const double want = manual_ms[code - 128];
-    if (code >= 200) {
+    if (code >= 200 || vf_index[code - 128].count > 0) {
       if (ms <= 0)
         FAIL("code %d (%s): no length", code, sj_sound_name((uint8_t)code));
       continue;

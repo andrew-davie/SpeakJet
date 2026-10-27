@@ -705,6 +705,178 @@ liquids, and at other Bends, Volumes and Pitches. Both units recorded it.
   each sound, without that, made the allophones 0.7 points worse, so it isn't
   emulated.
 
+### Rebuilt from the recordings
+
+The values above were mostly fitted, sound by sound, within a structure
+chosen before any recording existed. Here the measured findings were kept
+(pitch ticks, the frequency grid, timing, pauses, Speed) and the rest was
+rebuilt from what the recordings themselves show, on both units.
+
+- **Voicing, from the waveform.** Each averaged single pulse of VoxProbe 3 was
+  fitted in time, not by its spectrum: three sines starting together, times
+  one envelope shared by all 18 sounds, through one output filter, the
+  envelope and filter solved for along with every sound's frequencies and
+  amplitudes. That explains all but 1/470 of the pulses' energy (-26.7 dB),
+  against 1/28 for the straight 8 ms ramp. The fade holds 2 ms and falls in
+  almost a straight line to nothing at 7.75 ms (the earlier spectral fit's long
+  tail at an eighth was a compromise); the filter is a smooth low pass, -5.4 dB
+  at 2 kHz and -11.8 at 3 kHz, with no frequency-dependent delay. Fitted to
+  either unit it fits the other within 0.2 dB, and the same fit applied to this
+  library's own pulses gives back its own envelope and filter. The filter
+  agrees within 2 to 3 dB with the one measured from the tone sweeps, and is
+  now `output_fir`. Against the chips' pulses the library's waveform error
+  went from -8.6 to -16.4 dB, its fine-resolution spectrum from 3.38 to 2.50 dB.
+- **Formants don't start in step.** The fit leaves each sound's second and
+  third formants at their own phase against the first, the same on both
+  units (IH's about 0.13 and 0.17 of a cycle, MM's 0.25 and 0.27, IY's
+  -0.08). Forcing all three to start together, as the library first did,
+  takes the fitted pulses from 1.96 to 4.52 dB, and up to 12 dB for IY, MM and
+  NE: the phases set how deep the dips between the formants are. The 16
+  steady sounds measured take them (`formant_phases`). The fade's measured
+  onset, a dip to about 0.7 in the first half millisecond, is kept too:
+  smoothing it flat cost the pulses 1.8 dB. Together they take the voiced
+  sounds from 2.09 to 1.90 dB. Per-pulse phases for the sounds played from
+  frames made those worse (single pulses within a short sound give noisy
+  phases), so they restart together.
+- **Formants come in steps.** F1 and F2 of all 18 sounds are whole multiples
+  of about 88.4 Hz less 3.5 Hz, within 2.2 Hz RMS (the method recovers known
+  frequencies within 1.4 Hz).
+- **Voiced sounds frame by frame.** At the default pitch each voicing pulse of
+  the VoxRecord recording also stands alone, so every pulse of every voiced
+  sound was fitted the same way, giving the chip's own sequence of formant
+  frames. On the chip the voiced stops are a voice bar (F1 alone near 270 Hz)
+  and then a short vowel-like release, with no noise burst to speak of; the
+  voiced fricatives are mostly voicing; the diphthongs move in steps. 26
+  sounds are now played from those frames (`vf_points`), at their measured
+  length: IH, NO, LO, IYRR, AXRR, AWRR, OWRR, OWIY, IYEH, EHLL, IYUW, AXUW,
+  IHWW, AYWW, OWWW, ZZ, ZH, DH, BO, DO, ED, OD, GE, GO, EG and OG, the ones
+  where it brings both units' recordings closer (the two units' pulses are
+  paired on the pattern of all three formants' levels): diphthongs 84.7 to 88.9%,
+  voiced fricatives 65 to 78%, BO 59 to 86%, GE 64 to 92%, ZH 61 to 94%.
+- **Effects traced again.** The first traces had taken the recording's
+  background (20 to 50 ms at the start and end) for part of each effect, and
+  glided tones in from other frequencies. Silencing that background gave 70.5
+  to 73.5%. The tone effects were then tracked a millisecond at a time on both
+  units, each tone on an oscillator of its own that starts and stops in place
+  (`fx2_points`): 80.3%, with B5 54 to 94%, B8 62 to 99%, R7 34 to 87%.
+- **Noise sounds and stops refitted.** The fricatives, voiceless stops,
+  affricates and the voiced stops not played from frames were fitted again
+  through the new output filter to both units at once, with the level over
+  time compared down to each unit's own background, so that a faint part the
+  chip doesn't play costs something (the earlier fits had put tails and tones
+  at the background's level, where they cost nothing). Their lengths stay the
+  ones the connected groups give: fitted to sounds alone they came out
+  shorter and connected speech went from 21 to 60 ms out. TT keeps its
+  values, since its refit made groups ending in TT 100 ms short. KE went from
+  54 to 74% and 11.3 to 4.2 dB, KO 55 to 81%, EK 71 to 88%, OK 68 to 86%, DE
+  44 to 86%, JH 49 to 80%.
+- **A buzz effect frame by frame.** A2 is voiced at the default pitch with
+  moving formants, so it is played from the chip's pulses as the voiced
+  allophones are (72 to 82%). A1 isn't three voiced formants after its first
+  300 ms, and A1, A3 and M2 measured this way came out further from the
+  recordings, so they keep their traces.
+- **Noise doesn't repeat.** The hiss of SE, SH, SO, FF, HE and TH has no
+  repeat within 75 ms on either unit (no lag correlates above 0.22): it is
+  noise, not a short pseudo-random loop.
+
+Over both units: allophones 75.4 to 82.2% spectrogram match and 3.89 to
+2.53 dB, effects 70.5 to 80.5% and 4.21 to 3.45 dB; connected groups 14 to
+16 ms.
+
+### The worst sounds
+
+Each sound was ranked by how much further the library is from the two units
+than they are from each other (floor-matched spectrum), and the worst looked
+at together for what they share. By group the excess is: buzz effects 4.3 dB,
+tone effects 2.6, voiced stops 1.4, vowels and diphthongs 1.1, the voiceless
+fricatives and stops 0.1. The hiss sounds read worst, but the two units differ
+on them as much, so most of what is left is in the effects.
+
+- **Voicing onset.** In 39 of the 42 voiced sounds the chip takes longer to
+  rise from -35 to -8 dB (median 8.8 ms longer; the units differ by 3.8).
+  Period by period the first three stand at -17, -6.3 and -1.5 dB on the
+  chips and -8, -2.7 and 0 here. The volumes did glide in over 20 to 50 ms,
+  but the mixer's limit (`MAX_MIXER1`) holds the formants' sum at full
+  level well before the volumes get there. A straight 40 ms ramp on the
+  voicing after the mixer, from silence only (`ONSET_MS`), gives +1.4, +0.9
+  and +0.4 dB. It is a time, not a number of periods: AW MM at pitches 60 to
+  250 rises in about 30 ms on both units. On the voiced stops and fricatives
+  it made both units match worse, so only the vowels, nasals, liquids and
+  diphthongs have it. Voiced sounds 92.1 to 93.2%.
+- **TS.** On both units TS is hiss starting at its loudest, peaked at 3.5
+  kHz, 6 dB down 40 ms on and 14 dB by 120 ms, turning flat. The stop fit had
+  a long broad burst before a short hiss. Rebuilt in that order from the
+  fit's hiss: 13 to 37% (the units 35%), the spectrum 3.5 to 3.7 dB.
+- **A4.** Its trace stopped at 1315 Hz, where the volume reached the
+  oscillators' limit. On both units it goes on, faster, to 3.9 kHz and dies
+  away; the rest is tracked again with this library's filter loss added
+  back: 40 to 68%, 9.0 to 2.7 dB.
+- **M1** is faded to both units' envelope and stops at 300 ms: 4.3 to 3.9 dB.
+- **Nasals.** Measured from where they rise out of the recording's
+  background, both units have the nasals within 3 dB of full level by their
+  second period, faster than the vowels (they had looked slower, but being
+  quieter they sit nearer the background, which the first measure counted).
+  25 ms (`NASAL_ONSET_MS`) fits them best, by a little.
+- **NGE and NGO** were never measured (VoxProbe 3 doesn't play them), but both
+  units agree on every harmonic of them within 0.5 dB RMS, so their
+  frequencies, volumes and phases are fitted to those harmonics as played
+  here: NGE 87 to 97% and 3.9 to 1.1 dB, NGO 93 to 96% and 3.0 to 1.8 dB.
+  On the chip NGE's second and third formants are one peak near 2.3 kHz.
+- **C8 and C9** are noise, not tones: from 400 Hz to 2.8 kHz flat within a
+  few dB, alike on both units and nearly alike each other, gated at 52 Hz
+  13 to 16 dB deep with a level that falls steadily in dB and rises again.
+  The traces had taken the noise's strongest peaks as three tones. Half
+  enveloped noise can only be gated 6 dB, so a frame can now gate
+  oscillators 4 and 5 to a set depth (`noise_depth`); C8 and C9 are wide
+  noise gated by a saw at both units' level every 5 ms, with the
+  frequencies, width and depth fitted. The depth comes out at 0.83 (-15 dB),
+  as measured: 34 to 58% and 8.4 to 2.9 dB.
+- **Noise under the C-series tones.** The gate rates were right (C0 85 Hz,
+  C2 65, C9 52 on the chips and here; a 160 Hz peak first seen was their
+  second harmonic), but on both units C0, C1, C2, C4, C6 and C7 have broad
+  noise under their tones. Fitted noise (`fx_noise`) brings C1 from 42 to 67%
+  and 5.7 to 1.7 dB, C7 from 6.3 to 1.9 dB, and the others 4 to 8 points.
+  For C3 it made one unit match worse, so C3 has none.
+
+Looked at and not a fault of the library:
+
+- An apparent excess near 170 Hz in every sound came from the recordings'
+  processing (a steep 200 Hz high pass the library's output isn't given).
+  Unfiltered, the chip's and the library's lowest harmonics agree. It also
+  leaves the recordings about 4 dB low in the lowest third-octave band of the
+  scores.
+- A9 looked 50 ms short, but its tones end together on the chips and here;
+  the difference was sound 40 dB down that the length measure counted.
+- The broad effects are not uniformly too dark or too bright (10 of 19 each
+  way), and the tone effects don't share a missing filter: B5 sweeps 3.8
+  octaves and its level follows the chips'.
+
+- **Tone volumes cut off.** The tone traces' volumes were capped at the
+  oscillators' limit (31), and 30 effects reach past it, so their loudest
+  parts were flat: A0's swell, B6's fall, all of the DTMF tones' body. Each
+  is now scaled so its loudest point is at the limit (`fx2_points`): effects
+  82.9 to 83.5% and 2.91 to 2.45 dB. A4, M0 and R6 keep the old volumes,
+  which matched better.
+- **Tones aren't clean.** On both units every tone sits on a skirt of noise
+  and scattered lines 15 to 30 dB under it, 15 to 30 dB over the recording's
+  background (M0's 1.8 kHz tone is spread over +-60 Hz). The same fitted noise
+  as under the C-series (`fx_noise`), kept where neither unit's spectrogram
+  fell more than half a point, gives M0 67 to 97%, A0 66 to 86%, B6 6.1 to
+  0.7 dB, R9 5.5 to 1.8 dB. B7's skirt comes only with its 3.9 kHz tone (the
+  2.9 kHz one has none): the chip's output rate is about 8.03 kHz (the tone's
+  image, 1 dB down, sits at 4.12 kHz), so that tone is beating against its
+  image. Noise there, even only above 3.5 kHz, takes B7's spectrum from 8.7
+  to 2.2 dB but its spectrogram from 75 to 64%, so B7 has none.
+
+Over both units: allophones 82.2 to 83.3% and 2.53 to 2.49 dB, voiced sounds
+92.1 to 93.6% and 1.90 to 1.81 dB, effects 80.5 to 85.3% and 3.45 to 1.90 dB;
+connected speech unchanged.
+
+Still open: the vowels played alone are about 15 ms short on both units
+(connected speech, which their lengths are fitted to, is right); C3 (its
+fitted noise made one unit worse); B7 (above); and the images the chip's
+8.03 kHz output puts above 4 kHz, which nothing here makes.
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown
@@ -755,7 +927,9 @@ are independent: the library has no global state.
 
 ## Testing
 
-- `tests/speakjet_test.c` checks every sound's length against the manual, a
+- `tests/speakjet_test.c` checks every sound's length against the manual
+  (the traced effects and the sounds played from the chip's frames only that
+  they have one), a
   phrase's total length, the buffer and Buffer Half Full, the output range of
   every sound, the byte-stream framing, the controls round trip and the sound
   names.

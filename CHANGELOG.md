@@ -191,6 +191,77 @@ A third VoxProbe recording, of single voicing pulses on both units:
   straight 8 ms ramp: fitted to 18 sounds' single pulses on two AtariVoxes,
   each of which it fits as well. All allophones over both chips: 74.7% to
   75.5% spectrogram match, 3.97 to 3.90 dB; voiced sounds 85.7% to 87.0%.
+- Six stops have a quiet part silenced, which the earlier fit had placed
+  where the recording held only its background noise: the tails of KE, EK and
+  OK, a faint 3.6 kHz tone before TU's hiss, and a blip before CH's and TS's.
+  Neither chip plays anything there above its background. Timing is
+  unchanged, and so are the scores (the comparison already ignored what lies
+  under the background).
+
+Rebuilt from the recordings, on both units, keeping what was measured (pitch,
+frequency grid, timing) and replacing what was fitted:
+
+- Voicing measured from the pulses' waveforms: the fade (`voice_fade`) holds
+  2 ms and is gone by 7.75 ms; the output filter (`output_fir`) is the one the
+  pulses give; the 18 measured vowels', nasals' and liquids' formants and
+  volumes are the mean of both units. The library's pulses match the chips'
+  waveforms to -16.4 dB, from -8.6.
+- The second and third formants restart at each sound's own measured phase
+  against the first (`formant_phases`), and the fade keeps its measured
+  onset: voiced sounds 2.09 to 1.90 dB.
+- 26 voiced sounds (the diphthongs, voiced fricatives ZZ, ZH and DH, voiced
+  stops BO, DO, ED, OD, GE, GO, EG and OG, and IH, NO and LO) are played from
+  the chip's own formant frames, pulse by pulse, at their measured length,
+  and so is the effect A2.
+- The fricatives, voiceless stops, affricates and the other voiced stops (all
+  but TT) are refitted through the new filter to both units at once, keeping
+  their lengths: KE, KO, EK, OK, DE, JH and CH 10 to 40 points closer.
+- The sound effects' traces lose the recording's background at their start
+  and end, and the tone effects are traced again, every tone on its own
+  oscillator, starting and stopping in place (`fx2_points`). A sound can now
+  have 256 parts.
+- Over both units: allophones 75.4% to 82.2% spectrogram match and 3.89 to
+  2.53 dB; effects 70.5% to 80.5% and 4.21 to 3.45 dB; connected speech
+  unchanged.
+
+The sounds furthest from both units, beyond how far the units are from each
+other, looked at for what they have in common:
+
+- Vowels, nasals, liquids and diphthongs bring their voicing up from silence
+  over 40 ms (`ONSET_MS`). On both units their first three voicing periods
+  stand at -17, -6.3 and -1.5 dB, which were -8, -2.7 and 0 here: the mixer's
+  limit had made the 20 to 50 ms volume glide finish within two pulses.
+  Voiced sounds 92.1% to 93.2%.
+- TS is hiss that starts at its loudest at 3.5 kHz and dies away over 120 ms,
+  as on both units, instead of a long broad burst into a short hiss: 13% to
+  37% (the units match each other 35%).
+- A4 sweeps on to 3.9 kHz and dies away, as on both units, instead of
+  stopping at 1315 Hz: 40% to 68%, 9.0 to 2.7 dB.
+- M1 holds longer and stops at 300 ms instead of 250, as on both units: 4.3
+  to 3.9 dB.
+- The nasals come up over 25 ms (`NASAL_ONSET_MS`): both units have them
+  within 3 dB of full level by the second period.
+- NGE and NGO, never measured before, are fitted to both units' harmonics
+  (which agree within 0.5 dB): NGE 87% to 97% and 3.9 to 1.1 dB, NGO 93% to
+  96% and 3.0 to 1.8 dB.
+- C8 and C9 are noise from 400 Hz to 2.8 kHz gated at 52 Hz 15 dB deep, as on
+  both units, instead of traced tones: 34% to 58% and 8.4 to 2.9 dB. A
+  frame's envelope can now gate oscillators 4 and 5 to a set depth
+  (`noise_depth`).
+- C0, C1, C2, C4, C6 and C7 have the broad noise under their tones that both
+  units have (`fx_noise`): C1 42% to 67% and 5.7 to 1.7 dB, C7 6.3 to 1.9 dB,
+  the others 4 to 8 points closer.
+- The traced tone effects' volumes are no longer cut off at the oscillators'
+  limit, which had flattened the loudest part of 30 of them (A0's swell, B6's
+  fall, the DTMF tones' body); each is scaled so its loudest point is at the
+  limit: B2 4.9 to 0.6 dB, R0 3.1 to 1.0 dB.
+- The tone effects have the noise skirt both units put under a pure tone, 15
+  to 30 dB down: M0 67% to 97%, A0 66% to 86%, B6 6.1 to 0.7 dB. B7 is left
+  as it was (its skirt, which on the chip comes only with its 3.9 kHz tone,
+  made its spectrogram worse).
+- Over both units: allophones 82.2% to 83.3% and 2.53 to 2.49 dB; voiced
+  sounds 92.1% to 93.6% and 1.90 to 1.81 dB; effects 80.5% to 85.3% and 3.45
+  to 1.90 dB; connected speech unchanged.
 
 text2speakjet:
 
