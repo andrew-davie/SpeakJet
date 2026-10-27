@@ -545,7 +545,7 @@ Pitch sweep. One recording, of the same AtariVox, changed the engine:
 
 | | On the chip | Before | Now |
 |---|---|---|---|
-| Voicing | each pulse restarts the formant sines, which fall in a straight line to nothing in a fixed time (7.4 ms for AW at pitch 40, a fit with R² 0.96); the rest of a long period is silent, and above 125 Hz the next pulse cuts the ramp short | a sawtooth over the whole period | `ENV_VOICE`, 8 ms (the best fit to both recordings; 7.4 to 8.5 ms fitted to AW's waveform, 5 to 8.7 ms for other single sounds) |
+| Voicing | each pulse restarts the formant sines, which fall in a straight line to nothing in a fixed time (7.4 ms for AW at pitch 40, a fit with R² 0.96); the rest of a long period is silent, and above 125 Hz the next pulse cuts the ramp short | a sawtooth over the whole period | `ENV_VOICE`, at first a straight 8 ms ramp; now the chip's measured curve (see the third VoxProbe recording) |
 | Effects and Speed | stretched by the speech's Speed curve (A1 2.70 times at speed 60, the curve 2.69) | not stretched | stretched |
 | Voiced effects and Pitch | A1 and M2 follow the Pitch control (60.3, 87.9, 149.5 Hz at 60, 88, 150) | the traced pitch | the traced pitch scaled by the Pitch control |
 | Repeat | each copy after the first adds just the manual's length (AW 70 ms; IY, UW, MM six times within 6 ms) | each copy the whole stretched sound | copies at the manual's length |
@@ -672,6 +672,38 @@ it: 0.02 dB); a curved fade; and starting the formant sines at any phase but
 0 at each pulse, or not restarting them (all 7 to 12 points worse, which
 confirms the restart). What still separates the library's vowels from the
 chip's is mostly the valleys between formants, 8 to 17 dB deeper here.
+
+### The third VoxProbe recording
+
+VoxProbe 3 holds each sound at pitch 40, where each voicing pulse stands
+alone, for ten repeats (about 24 pulses to average), on 18 vowels, nasals and
+liquids, and at other Bends, Volumes and Pitches. Both units recorded it.
+
+- The two units' single pulses agree within 0.3 to 1.1 dB: what differs from
+  the library is the chip's.
+- The library lacked a narrow band of energy in each sound, 10 to 15 dB, often
+  where it had a deep notch (IY and IH near 1 kHz, AW, MM and RR near 840 Hz).
+  Under Bend it moves exactly with the formants (AW's: 660, 858, 1077 and
+  1296 Hz at Bend 0, 5, 10 and 15), so it belongs to the formant oscillators,
+  not to a later stage; it doesn't change with Volume from 32 up (so it isn't
+  distortion) or with Pitch from 25 to 60. It is the shape of the fade.
+- Fitting the fade as a free curve (a value every 0.5 ms, never rising) to all
+  18 sounds on both units gives `voice_fade`: quick to about 0.9, held to
+  2 ms, down through a third and a sixth, held near an eighth, and off at
+  about 9.5 ms. Fitted to either unit it fits the other as well (3.0 dB of the
+  single-pulse spectra, against 3.7 for the straight 8 ms ramp). In the
+  library the voiced sounds of both units' VoxRecord recordings go from 85.7%
+  to 87.0% spectrogram match, all allophones from 74.7% to 75.5% and 3.97 to
+  3.90 dB, and the first VoxProbe recording's sustained sounds from 3.55 to
+  3.33 dB. Scaling the fade with each formant's frequency made it worse.
+- At Volume 8 and 16 the chip adds a low floor between the formants and is
+  0.7 to 2.5 dB louder than its Volume says: limited precision at low level.
+  Not emulated.
+- The pulse at the start of a sound: the chip starts every sound with a pulse
+  (pitch 0 is a pulse a sound), but not the copies of a repeated one; at
+  pitch 8 to 25 the first period is 10 to 17 ms long. A pulse at the start of
+  each sound, without that, made the allophones 0.7 points worse, so it isn't
+  emulated.
 
 ## What isn't known, and what isn't emulated
 

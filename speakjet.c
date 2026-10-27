@@ -48,10 +48,26 @@ typedef enum { ENV_SAW, ENV_SINE, ENV_TRIANGLE, ENV_SQUARE, ENV_VOICE } envelope
 #define FREQ_STEP_HZ 4.3845
 static double on_grid(double hz) { return floor(hz / FREQ_STEP_HZ + 0.5) * FREQ_STEP_HZ; }
 
-/* how long the voicing ramp lasts (see ENV_VOICE in synth_sample()) */
-#ifndef VOICE_ENV_MS
-#define VOICE_ENV_MS 8.0
-#endif
+/* the chip's voicing fade: the level of the formant oscillators after each
+ * voicing pulse, every VOICE_FADE_STEP_MS from the pulse, in between in a
+ * straight line, and after the last nothing (see ENV_VOICE in synth_sample()).
+ * fitted to the third VoxProbe recording, where at pitch 40 each pulse stands
+ * alone and about 24 of them were averaged, on 18 vowels, nasals and liquids
+ * on two AtariVoxes: their single-pulse spectra agree with each other within
+ * about 1dB. it falls fast after 2ms, steps down through about a third and a
+ * sixth, holds near an eighth and stops at about 9.5ms. fitted to either unit
+ * it fits the other as well (3.0dB against 3.7 for a straight 8ms ramp); in
+ * the library it takes the voiced sounds of both units' VoxRecord recordings
+ * from 85.7% to 87.0% spectrogram match and the first VoxProbe recording's
+ * sustained sounds from 3.55 to 3.33dB. Volume and Bend don't change it, and
+ * nor does Pitch from 25 to 60 */
+#define VOICE_FADE_STEP_MS 0.5
+static const double voice_fade[] = {
+    1.000, 0.898, 0.898, 0.898, 0.885, 0.721, 0.635, 0.569,
+    0.425, 0.323, 0.323, 0.171, 0.171, 0.171, 0.127, 0.127,
+    0.127, 0.127, 0.127, 0.038, 0.000,
+};
+#define VOICE_FADE_N ((int)(sizeof(voice_fade) / sizeof(voice_fade[0])))
 
 /* frame is a set of synthesizer register values. the MSA sequencer moves the
  * synthesizer from one frame to the next over time */
@@ -162,11 +178,12 @@ static double synth_sample(synth *s, const frame *f, double master) {
   }
   if (f->wave == ENV_VOICE) {
     /* the chip's voicing: each pulse restarts the formant oscillators at full
-     * level and they fall away in a straight line to nothing in a fixed time,
-     * whatever the pitch or volume. below 125Hz the rest of the period is
-     * silent; above it the next pulse cuts the ramp short. measured from the
-     * VoxProbe recordings, where at pitch 40 to 70 each pulse stands alone */
-    env = fmax2(1 - (double)s->env_age / (SJ_SAMPLE_RATE * VOICE_ENV_MS / 1000), 0);
+     * level and they fade to nothing along voice_fade in under 10ms, whatever
+     * the pitch or volume. at low pitch the rest of the period is silent; at
+     * high pitch the next pulse cuts the fade short */
+    const double k = (double)s->env_age * 1000 / SJ_SAMPLE_RATE / VOICE_FADE_STEP_MS;
+    const int i = (int)k;
+    env = i >= VOICE_FADE_N - 1 ? 0 : voice_fade[i] + (voice_fade[i + 1] - voice_fade[i]) * (k - i);
   } else if (f->pitch > 0) {
     const double p = s->env_phase;
     switch (f->wave) {
@@ -690,14 +707,14 @@ static const double allophone_length[] = {
  * recording, which made the vowels read quiet) and BE, BO, PE and PO too
  * quiet */
 static const double allophone_gain_db[] = {
-    1.0, 2.0, 2.0, 1.2, 2.0, 1.7, 1.3, 0.9, 0.0,
-    -1.8, -1.8, -1.3, -4.0, -4.6, -4.5, -4.5, -4.7, -4.0,
-    -3.1, -4.1, 0.5, 0.3, 0.9, 0.2, -0.4, -1.1, 1.2,
-    0.6, -0.7, 0.9, 0.4, -0.9, -1.0, -0.1, -1.5, -0.6,
-    -3.0, -11.7, -2.1, 1.8, -2.3, -3.3, 5.9, 6.2, -2.6,
-    2.7, 2.9, 3.0, -4.7, -8.7, -0.4, -0.5, 1.5, 2.1,
-    -15.6, -32.3, -31.2, -29.8, -26.3, -15.9, -17.7, -16.7, -26.9,
-    -2.2, -3.4, -26.5, 1.4, -3.1, 2.4, -3.8, 6.3, 5.8,
+    1.1, 2.0, 2.0, 1.2, 2.0, 1.7, 1.3, 0.8, 0.0,
+    -1.8, -1.9, -1.3, -3.9, -4.6, -4.5, -4.5, -4.7, -4.2,
+    -3.2, -4.2, 0.4, 0.3, 0.8, 0.2, -0.5, -1.1, 1.2,
+    0.5, -0.7, 0.9, 0.4, -0.9, -1.0, -0.2, -1.6, -0.6,
+    -3.0, -11.3, -2.1, 1.7, -2.2, -3.3, 5.9, 6.3, -2.6,
+    2.7, 2.9, 3.0, -4.6, -8.6, -0.4, -0.5, 1.7, 2.1,
+    -15.5, -32.3, -31.1, -29.8, -26.3, -15.9, -17.6, -16.6, -26.8,
+    -2.1, -3.3, -26.4, 1.5, -3.0, 2.5, -3.8, 6.4, 5.9,
 };
 
 static void allophone(sound *s, int code) {

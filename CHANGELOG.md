@@ -185,6 +185,13 @@ extra sound.
 - Allophones over both chips: 73.1% to 74.7% spectrogram match, 4.30 to
   3.97 dB.
 
+A third VoxProbe recording, of single voicing pulses on both units:
+
+- The voicing fade is the chip's measured curve (`voice_fade`), not a
+  straight 8 ms ramp: fitted to 18 sounds' single pulses on two AtariVoxes,
+  each of which it fits as well. All allophones over both chips: 74.7% to
+  75.5% spectrogram match, 3.97 to 3.90 dB; voiced sounds 85.7% to 87.0%.
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths
