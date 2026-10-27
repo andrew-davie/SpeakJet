@@ -877,6 +877,68 @@ Still open: the vowels played alone are about 15 ms short on both units
 fitted noise made one unit worse); B7 (above); and the images the chip's
 8.03 kHz output puts above 4 kHz, which nothing here makes.
 
+### Checking the recordings themselves
+
+Every comparison above treats the recordings as the chip. They aren't quite:
+the recording path adds background noise, its own frequency response and, if
+driven too hard, clipping. So the recordings were characterised, the
+comparison rebuilt to take them out, and every change since 14181cc
+re-checked, including against recordings nothing was fitted to.
+
+- **Background.** Measured in the silent gaps (about 33 per recording), it
+  is steady: band levels vary by less than 1 dB across most of the band and
+  3 dB at most, with no drift over a recording. Both units' backgrounds have
+  the same shape (the same peaks and the same dips at 1.4 and 3.6 kHz, within
+  2 dB), which points to the shared recording path or to the chips' idle
+  output, not to either unit. It is now subtracted, as power, from every
+  frame and band before comparing.
+- **Clipping.** Unit A's third VoxRecord take, thought unclipped, has 20,239
+  clipped samples in 101 of its sounds, among them most vowels and many
+  effects. Unit B clips only in M1. Clipped sounds are now left out for that
+  unit. The second take clips in 217 sounds and is 12 dB noisier, so only its
+  17 unclipped sounds (stops and fricatives) are used.
+- **Analysis filtering.** The comparison had high-passed the recordings near
+  200 Hz and not the library; it now filters both alike.
+- **Distortion.** Within the effects that die away (M0 over 25 dB, A0, B6,
+  B7) the noise under a tone falls no faster than the tone itself (slopes
+  0.0 to 0.84, the same on both units), where distortion after the chip
+  would fall two or three times faster. So that noise is the chip's, but
+  part of it holds a fixed level while the chip sounds, which the library,
+  tying it to the tone, only approximates.
+- **Held out.** The first VoxProbe recording (12 sustained sounds at pitches
+  88 and 60, AW from pitch 40 to 254) and the 30 connected groups' spectra
+  were never fitted to.
+
+With all that, each stage is still better than the one before, on both units
+and on what was held out:
+
+| | original | 14181cc | rebuild | worst sounds | now |
+|---|---|---|---|---|---|
+| unit B, all 126 sounds | 45% 7.95 dB | 73% 3.88 | 81% 2.63 | 84% 1.97 | 84% 1.93 |
+| unit A, 74 unclipped | 36% 8.79 dB | 69% 4.27 | 79% 2.80 | 81% 2.36 | 81% 2.31 |
+| VoxProbe, sustained (held out) | 7.0 dB | 3.2 | 1.9 | 1.6 | 1.4 |
+| connected groups, unit A (held out) | 61% 5.6 dB | 84% 3.3 | 85% 2.8 | 86% 2.8 | 86% 2.6 |
+
+The two units match each other 87.7% and 1.11 dB, so there is still room.
+
+Sound by sound, the rebuild had made some worse. Each was tried back at its
+earlier definition and kept only where both units (and VoxProbe or the second
+take, where they have it) agreed:
+
+- **Formant phases.** Measured at pitch 40, they don't all hold at speaking
+  pitch. IY, EY, EH, AY, AX, UX, OH, AW and MM match better without theirs
+  (IY 85 to 91% and 3.2 to 2.0 dB on unit B, 3.4 to 2.2 dB on VoxProbe; MM
+  2.0 to 1.5 dB on VoxProbe); the others keep theirs.
+- **OB and PO** go back to their values before the refit (OB 66 to 75%, PO
+  48 to 64% and 4.9 to 3.0 dB).
+- EB, HO, TH, CH, HE, OHIY, OHIH, OD and DO are mixed or worse at their
+  earlier values, so they stay.
+
+What the comparison still can't see: anything above 4 kHz (the chip has some,
+from its output's images and hiss; the library renders at 8192 Hz and has
+none) and how sounds join in phrases beyond their spectra. Listening against
+the chip remains the final check.
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown

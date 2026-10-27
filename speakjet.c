@@ -383,7 +383,7 @@ typedef struct sound {
  *   MM: F1 F3      EY: F1 F2 F3   EH: F1 F2      AW: F2
  *
  * the third take of the VoxRecord recording (see msa_speed_factor()), whose
- * vowels aren't clipped, confirms AX, UX, EH, EY, IH, OW, UH, LO and RR to
+ * vowels barely clip, confirms AX, UX, EH, EY, IH, OW, UH, LO and RR to
  * within about 5% (formants read by linear prediction, the same way on the
  * recording and on this library's own output, so that the method's errors
  * cancel). it corrects five: AW F1 (590 to 695Hz), UW F1 and F2 (300 to 380,
@@ -477,7 +477,14 @@ static frame voiced_frame(formants f, double v1, double v2, double v3) {
  * shape the dips between the formants: restarting all three together, as
  * first assumed here, leaves those dips up to 10dB too deep (IY, MM, NE) and
  * the single pulses 4.5dB from the chip's rather than 2.0. formant_phases
- * gives a voiced frame those phases */
+ * gives a voiced frame those phases. but measured at pitch 40, they don't all
+ * hold at speaking pitch: against the VoxRecord recording at the default
+ * pitch (background removed, unit B and unit A's unclipped sounds) and the
+ * first VoxProbe recording at pitches 88 and 60 (which nothing here was
+ * fitted to), IY, EY, EH, AY, AX, UX, OH, AW and MM match better without
+ * theirs (IY 85 to 91% and 3.2 to 2.0dB, and 3.4 to 2.2dB on VoxProbe), so
+ * those restart together; OW, UH, UW, NGE, NGO, NE, LE, WW and RR keep
+ * theirs */
 static frame formant_phases(frame f, double p2, double p3) {
   f.phase0[1] = p2;
   f.phase0[2] = p3;
@@ -797,7 +804,7 @@ static const double allophone_length[] = {
 
 /* how much louder (in dB) the chip plays each allophone than the oscillator
  * volumes here give, against AW. fitted to the VoxRecord recording's third
- * take, whose vowels aren't clipped: each allophone's level (where it is
+ * take, whose vowels barely clip: each allophone's level (where it is
  * within 20dB of its loudest) was matched to the recording's, measured the
  * same way, relative to AW. the vowels needed little; the nasals, liquids and
  * hiss were too loud here (the hiss levels were set from an earlier, clipped
@@ -1277,15 +1284,15 @@ static void allophone(sound *s, int code) {
    * voice_fade) gives each one's amplitude, the mean of both units. some of
    * these sounds are instead played from the chip's own frames, pulse by
    * pulse (see vf_points) */
-  case 128: steady(s, 70, formant_phases(voiced_frame(fIY, 24.0, 15.6, 9.8), 0.925, 0.925)); break; /* IY */
+  case 128: steady(s, 70, voiced_frame(fIY, 24.0, 15.6, 9.8)); break; /* IY */
   case 129: steady(s, 70, formant_phases(voiced_frame(fIH, 24.0, 16.7, 10.0), 0.132, 0.175)); break; /* IH */
-  case 130: steady(s, 70, formant_phases(voiced_frame(fEY, 24.0, 14.0, 7.7), 0.032, 0.047)); break; /* EY */
-  case 131: steady(s, 70, formant_phases(voiced_frame(fEH, 24.0, 13.4, 9.3), 0.065, 0.107)); break; /* EH */
-  case 132: steady(s, 70, formant_phases(voiced_frame(fAY, 24.0, 11.3, 6.4), 0.975, 0.972)); break; /* AY */
-  case 133: steady(s, 70, formant_phases(voiced_frame(fAX, 24.0, 14.8, 8.8), 0.018, 0.054)); break; /* AX */
-  case 134: steady(s, 70, formant_phases(voiced_frame(fUX, 24.0, 15.4, 9.6), 0.014, 0.103)); break; /* UX */
-  case 135: steady(s, 70, formant_phases(voiced_frame(fOH, 24.0, 17.9, 9.1), 0.003, 0.091)); break; /* OH */
-  case 136: steady(s, 70, formant_phases(voiced_frame(fAW, 24.0, 22.3, 6.6), 0.995, 0.080)); break; /* AW */
+  case 130: steady(s, 70, voiced_frame(fEY, 24.0, 14.0, 7.7)); break; /* EY */
+  case 131: steady(s, 70, voiced_frame(fEH, 24.0, 13.4, 9.3)); break; /* EH */
+  case 132: steady(s, 70, voiced_frame(fAY, 24.0, 11.3, 6.4)); break; /* AY */
+  case 133: steady(s, 70, voiced_frame(fAX, 24.0, 14.8, 8.8)); break; /* AX */
+  case 134: steady(s, 70, voiced_frame(fUX, 24.0, 15.4, 9.6)); break; /* UX */
+  case 135: steady(s, 70, voiced_frame(fOH, 24.0, 17.9, 9.1)); break; /* OH */
+  case 136: steady(s, 70, voiced_frame(fAW, 24.0, 22.3, 6.6)); break; /* AW */
   case 137: steady(s, 70, formant_phases(voiced_frame(fOW, 20.1, 24.0, 4.9), 0.954, 0.982)); break; /* OW */
   case 138: steady(s, 70, formant_phases(voiced_frame(fUH, 22.5, 24.0, 6.0), 0.924, 0.928)); break; /* UH */
   case 139: steady(s, 70, formant_phases(voiced_frame(fUW, 24.0, 22.5, 3.9), 0.955, 0.032)); break; /* UW */
@@ -1293,7 +1300,7 @@ static void allophone(sound *s, int code) {
    * third take (the middle of each, in sixth octaves from 200Hz to 3.9kHz):
    * besides the low murmur the chip's nasals have strong resonances near 1.4
    * to 1.6kHz and 2.2 to 2.6kHz that the published values here lacked */
-  case 140: steady(s, 70, formant_phases(voiced_frame(FM(266, 1410, 2252), 24.0, 6.3, 1.9), 0.247, 0.268)); break; /* MM */
+  case 140: steady(s, 70, voiced_frame(FM(266, 1410, 2252), 24.0, 6.3, 1.9)); break; /* MM */
   case 141: steady(s, 70, formant_phases(voiced_frame(FM(262, 1572, 2582), 24.0, 3.6, 7.6), 0.032, 0.965)); break; /* NE */
   case 142: steady(s, 70, formant_phases(voiced_frame(FM(269, 1169, 2590), 24.0, 4.6, 7.3), 0.962, 0.031)); break; /* NO */
   /* NGE and NGO had no measurement (VoxProbe 3 doesn't play them), but on
@@ -1337,7 +1344,10 @@ static void allophone(sound *s, int code) {
   case 170: st = STOPN(45, 31.6, 10.8, true, FM(363, 1741, 2562), 2149, 3662, 22, 16.4, 0, 0, 124, 0, 0, 0, 10, 0.84); plosive(s, &st); break; /* BE */
   case 171: st = STOP(45, 25, 8, true, lLabialBack, 600, 1000, 10, 6, 0, 0); plosive(s, &st); break; /* BO */
   case 172: st = STOPN(10, 2.85, 7.15, true, FM(345, 918, 2893), 1733.4, 1870.5, 15.96, 21.89, 0, 0, 99.2, 0, 0, 0, 25.63, 0.444); plosive(s, &st); break; /* EB */
-  case 173: st = STOPN(10, 3.32, 0.14, true, FM(416, 1414, 2909), 1134.8, 3120.7, 7.44, 23, 0, 0, 217.8, 0, 0, 0, 13.43, 0.168); plosive(s, &st); break; /* OB */
+  /* OB and PO keep the values they had before the refit through the new
+   * filter, which matched both units worse once the recordings' background
+   * was taken out (OB 66 to 75%, PO 48 to 64% and 4.9 to 3.0dB on unit B) */
+  case 173: st = STOPN(10, 1, 0.2, true, FM(416, 1414, 2909), 835, 3504, 29.1, 22.8, 0, 0, 201, 0, 0, 0, 2.2, 0.25); plosive(s, &st); break; /* OB */
   case 174: st = STOPN(45, 21.26, 23.74, true, lAlveolar, 2535.3, 1885.7, 29.96, 28.29, 0, 0, 57.5, 0, 0, 0, 12.27, 0.941); plosive(s, &st); break; /* DE */
   case 175: st = STOP(45, 25, 8, true, lAlveolarBak, 1800, 2220, 12, 8, 0, 0); plosive(s, &st); break; /* DO */
   case 176: st = STOPN(10, 1.87, 0.77, true, FM(281, 2404, 2711), 3411, 3749, 16.6, 20.2, 0, 0, 189, 0, 0, 0, 0.3, 0.44); plosive(s, &st); break; /* ED */
@@ -1385,7 +1395,7 @@ static void allophone(sound *s, int code) {
   case 196: st = STOPN(55, 43.95, 8.79, false, lVelar, 2933.4, 3338, 0.86, 0.06, 3538.4, 1860.3, 56.9, 108.4, 4.54, 25.1, 0, 0); plosive(s, &st); break; /* EK */
   case 197: st = STOPN(45, 11.86, 31.21, false, lVelarBack, 3171.3, 812.5, 1.72, 0.23, 1975, 1050.1, 58.1, 112.5, 26.71, 7.48, 0, 0); plosive(s, &st); break; /* OK */
   case 198: st = STOPN(99, 59.57, 31.25, false, lLabial, 410.4, 848.4, 19.62, 14.17, 1315.3, 2497.7, 227.1, 88.6, 9.82, 30.48, 0, 0); plosive(s, &st); break; /* PE */
-  case 199: st = STOPN(99, 62.04, 36.86, false, lLabialBack, 642.9, 3293.2, 15.35, 14.67, 1188.8, 2041.3, 247, 53.9, 14.01, 15.39, 0, 0); plosive(s, &st); break; /* PO */
+  case 199: st = STOP(99, 50, 9, false, lLabialBack, 300, 720, 12, 9, 600, 1380); plosive(s, &st); break; /* PO */
   default: break;
   }
   if (allophone_length[code - 128] > 0) {
@@ -1453,7 +1463,7 @@ static void dtmf(sound *s, int low, int high) {
 
 /* the manual describes the sound effects only by name and length. the others
  * here are traced from the third take of the VoxRecord recording (see
- * msa_speed_factor()), which plays each on its own and isn't clipped: every
+ * msa_speed_factor()), which plays each on its own and clips little: every
  * 5ms the level and the sound's kind were measured, and the trace reduced to
  * the points below, between which the sound glides in a straight line. a
  * tone is up to three pure sines (the chip's tones have no harmonics to speak

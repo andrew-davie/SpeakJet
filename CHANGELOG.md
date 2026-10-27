@@ -263,6 +263,18 @@ other, looked at for what they have in common:
   sounds 92.1% to 93.6% and 1.90 to 1.81 dB; effects 80.5% to 85.3% and 3.45
   to 1.90 dB; connected speech unchanged.
 
+The recordings themselves checked (see docs/design.md, "Checking the
+recordings themselves"): the background measured and subtracted, clipped
+sounds left out (unit A's third take clips in 101 sounds), and the result
+checked against recordings nothing was fitted to. Every stage still improves
+on the one before. Where the rebuild had made sounds worse:
+
+- IY, EY, EH, AY, AX, UX, OH, AW and MM restart their formants together; their
+  measured phases, from pitch 40, don't hold at speaking pitch (IY 3.4 to
+  2.2 dB on the held-out VoxProbe recording).
+- OB and PO go back to their values before the refit (PO 48% to 64% on
+  unit B).
+
 text2speakjet:
 
 - Its length estimate uses the library's Speed curve, lengths, pause lengths
