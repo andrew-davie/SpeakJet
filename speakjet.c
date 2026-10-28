@@ -485,7 +485,9 @@ typedef struct sound {
 
   /* the sound doesn't follow the Bend control (see msa_expand()) */
   bool no_bend;
-  /* the copies' length when repeated, against the manual's (see copy_length) */
+  /* the copies' length when repeated, against the manual's: the second play
+   * and the copies after it (see copy1_length) */
+  double copy1_length;
   double copy_length;
   /* a multiple of the voicing pitch (see voicing_pitch), 0 for none */
   double pitch_scale;
@@ -835,9 +837,12 @@ static const double allophone_length[] = {
 
 /* REFIT-BEGIN */
 /* final_length multiplies an allophone's length when it is the last before a
- * pause or the end and isn't repeated: on the chip a vowel played last is
- * longer than inside a phrase (IY and AW 1.25 times) and TT and FF shorter
- * (0.64, 0.79) */
+ * pause, a command or the end and isn't repeated: on the chip a vowel played
+ * last is longer than inside a phrase (IY and AW 1.25 times) and TT and FF
+ * shorter (0.64, 0.79). a command counts as on both units of the fifth
+ * VoxProbe: AW and IY before a Pitch or Delay are as long as before a pause,
+ * and the same length whatever the pause, and whether or not anything is
+ * waiting in the buffer */
 static const double final_length[] = {
     1.25, 1.175, 1, 1.175, 1, 1, 1, 1, 1.25,
     1, 1, 1.15, 1, 1, 0.9, 1.025, 0.9375, 1,
@@ -849,17 +854,31 @@ static const double final_length[] = {
     0.6375, 1.05, 1, 1, 1.3, 1, 0.8, 1, 0.925,
 };
 /* the copies after the first, when a sound is repeated, as a multiple of the
- * manual's length (see msa_expand()): on the chip many are shorter than the
- * manual says (DO 0.7 times, ZZ 0.69, EB 0.51) */
+ * manual's length (see msa_expand()): the second play of a sound, copy1_length,
+ * and the copies after it, copy_length. on both units of the fifth VoxProbe
+ * the second play runs longer than the rest (AW 72ms then 70, SE 82 then 70,
+ * BE 60 then 70) and most copies are the manual's 70ms; a stop's copies keep
+ * their burst and release and put the rest of their time into the closure
+ * (EB: a burst every 45ms) */
+static const double copy1_length[] = {
+    1.1, 0.7, 1, 1, 1, 1, 1.5, 1, 1.25,
+    1, 1, 1, 1, 1, 0.75, 0.9875, 0.9065, 1,
+    0.75, 1, 1, 1.0625, 0.65, 0.9625, 1, 0.9125, 1.0931,
+    0.8625, 1.075, 0.7088, 0.931875, 0.9625, 0.5655, 0.9125, 1.05, 0.925,
+    0.9375, 0.9375, 1, 0.6359, 0.975, 0.7625, 1.346, 0.825, 4.5,
+    0.8, 1.25, 0.78, 0.95, 0.97625, 0.867188, 0.9875, 0.7, 0.8125,
+    1, 1, 1, 1, 1, 1.165, 1, 1, 1,
+    0.75, 1, 1, 1, 1, 1, 1, 1, 1,
+};
 static const double copy_length[] = {
-    1, 0.7, 1, 1, 1, 1, 1, 1, 1.25,
-    1, 1, 1, 1, 1, 0.75, 0.9875, 0.925, 1,
-    0.75, 1, 1, 1.0625, 0.65, 0.9625, 1, 0.9125, 1.325,
-    0.8625, 1.075, 1.35, 0.931875, 0.9625, 1.0875, 0.9125, 1.05, 0.925,
-    0.9375, 0.9375, 1, 0.6875, 0.975, 0.7625, 0.7625, 0.825, 0.5125,
-    0.8, 1, 0.7, 0.95, 0.97625, 0.867188, 0.9875, 0.7, 0.8125,
-    1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 0.7, 1, 1, 1, 1, 1.125, 1, 1.075,
+    1, 1, 1, 1, 1, 0.75, 0.9875, 0.93425, 1,
+    0.75, 1, 1, 1.0625, 0.65, 0.9625, 1, 0.9125, 1.1925,
+    0.8625, 1.075, 1.215, 0.931875, 0.9625, 1.098375, 0.9125, 1.05, 0.925,
+    0.9375, 0.9375, 1, 0.6875, 0.975, 0.7625, 1.346, 0.825, 4,
+    0.8, 0.875, 0.675, 0.95, 0.97625, 0.867188, 0.9875, 0.7, 0.8125,
+    1, 1, 1, 1, 1, 1.835, 1, 1, 1,
+    1.125, 1, 1, 1, 1, 1, 1, 1, 1,
 };
 /* REFIT-END */
 
@@ -2778,6 +2797,7 @@ static bool lookup(uint8_t code, sound *s) {
   if (code >= 128 && code < 128 + NUM_ALLOPHONES) {
     allophone(s, code);
     sound_shaping(s, code);
+    s->copy1_length = copy1_length[code - 128];
     s->copy_length = copy_length[code - 128];
     for (int k = 0; k < (int)(sizeof(voicing_pitch) / sizeof(voicing_pitch[0])); k++)
       if (voicing_pitch[k].code == code)
@@ -2787,6 +2807,7 @@ static bool lookup(uint8_t code, sound *s) {
     effect(s, code);
     sharp_onset(s, code);
     sound_shaping(s, code);
+    s->copy1_length = 1;
     s->copy_length = 1;
     s->no_bend = code == 254; /* M2 (see msa_expand()) */
   } else
@@ -2848,7 +2869,10 @@ typedef struct segment {
   /* the frequencies are set at the start of the segment rather than glided */
   bool jump;
 
-  /* the timing in the copies after the first, when the sound is repeated */
+  /* the timing in the second play and in the copies after it, when the
+   * sound is repeated (see copy1_length) */
+  int copy1_samples;
+  int copy1_glide;
   int copy_samples;
   int copy_glide;
 } segment;
@@ -2889,6 +2913,7 @@ typedef struct msa {
   int seg;    /* the segment playing; busy while seg < nsegs */
   int copies; /* copies still to play after this one */
   bool in_copy; /* playing a copy after the first */
+  int copy_k;   /* which copy is playing: 1 the second play */
 
   int seg_pos;
   frame seg_start;
@@ -3113,12 +3138,27 @@ static void msa_expand(msa *m, const sound *s) {
     sg->target = t;
     sg->jump = false;
 
-    const double copy_ms = p->ms * copy_scale * s->copy_length;
-    double copy_glide = p->glide_ms * copy_scale;
-    if (p->glide_ms == AUTO_GLIDE)
-      copy_glide = fmin2(fmax2(copy_ms * 0.35, 20), 50);
-    sg->copy_samples = to_samples(copy_ms);
-    sg->copy_glide = to_samples(fmin2(copy_glide, copy_ms));
+    /* the copies (see copy1_length): a stop's keep their burst and release
+     * and give the closure the rest of the copy's time */
+    double rest = 0;
+    for (int k = 1; k < s->nparts; k++)
+      rest += s->parts[k].ms;
+    for (int c = 0; c < 2; c++) {
+      const double len = c == 0 ? s->copy1_length : s->copy_length;
+      double copy_ms = p->ms * copy_scale * len;
+      if (s->stop)
+        copy_ms = (i == 0 ? fmax2((rest + s->parts[0].ms) * len - rest, 1.0) : p->ms) * copy_scale;
+      double copy_glide = p->glide_ms * copy_scale;
+      if (p->glide_ms == AUTO_GLIDE)
+        copy_glide = fmin2(fmax2(copy_ms * 0.35, 20), 50);
+      if (c == 0) {
+        sg->copy1_samples = to_samples(copy_ms);
+        sg->copy1_glide = to_samples(fmin2(copy_glide, copy_ms));
+      } else {
+        sg->copy_samples = to_samples(copy_ms);
+        sg->copy_glide = to_samples(fmin2(copy_glide, copy_ms));
+      }
+    }
   }
 
   m->fast = m->slow = m->stress = m->relax = false;
@@ -3130,6 +3170,7 @@ static void msa_expand(msa *m, const sound *s) {
 
   m->copies = m->repeat > 1 ? m->repeat - 1 : 0;
   m->in_copy = false;
+  m->copy_k = 0;
   m->repeat = 0;
 }
 
@@ -3219,8 +3260,8 @@ static double msa_next(msa *m) {
     return synth_sample(&m->synth, &m->current, (double)m->volume);
 
   const segment *sg = &m->segs[m->seg];
-  const int glide = m->in_copy ? sg->copy_glide : sg->glide;
-  const int samples = m->in_copy ? sg->copy_samples : sg->samples;
+  const int glide = !m->in_copy ? sg->glide : m->copy_k == 1 ? sg->copy1_glide : sg->copy_glide;
+  const int samples = !m->in_copy ? sg->samples : m->copy_k == 1 ? sg->copy1_samples : sg->copy_samples;
   if (glide > 0 && m->seg_pos < glide)
     m->current = lerp(&m->seg_start, &sg->target,
                       (double)(m->seg_pos + 1) / (double)glide);
@@ -3234,6 +3275,7 @@ static double msa_next(msa *m) {
     m->seg++;
     if (m->seg >= m->nsegs && m->copies > 0) {
       m->copies--;
+      m->copy_k++;
       m->in_copy = true;
       m->seg = 0;
     }
@@ -3442,10 +3484,11 @@ static bool execute(sj_chip *sj, uint8_t code, uint8_t data) {
         uint8_t next;
         msa_join(m, &s, peek(sj, &next) && next >= 128 && next < 200);
       }
-      /* the last sound before a pause or the end (see final_length) */
+      /* the last sound before a pause, a command or the end (see
+       * final_length) */
       if (code >= 128 && code < 128 + NUM_ALLOPHONES && m->repeat <= 1) {
         uint8_t next;
-        if (!peek(sj, &next) || next <= 6)
+        if (!peek(sj, &next) || next < 128)
           s.length *= final_length[code - 128];
       }
       msa_expand(m, &s);

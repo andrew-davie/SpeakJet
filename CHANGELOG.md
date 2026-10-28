@@ -587,7 +587,52 @@ samples are regenerated.
   targets (the loosest thinning) cost 0.09 to 1.4 per sound, so the chip's
   pulse-by-pulse steps stay.
 
+A fifth VoxProbe recording, on both units, settles what the buffer holds and
+how repeats run. The score's 752 items 1.178 to 1.176; its own 410 items 1.216
+to 1.166; the 973 earlier held-out items 1.213 to 1.184. The reference samples
+are regenerated.
+
+- What is waiting in the buffer makes no difference: each of ten sounds sent
+  streamed, alone with nothing after it, and alone followed by pauses comes
+  out the same length on both units, to within 5 ms. The 15% by which the
+  VoxProbe recordings play SH, UX and others shorter than VoxRecord is
+  between sessions, not something the chip does to isolated sounds.
+- The phrase-final length applies before any command byte, not only before
+  a pause: AW and IY before a Pitch or a Delay are as long as before a pause
+  on both units, and the same length whatever the pause (0 to 6). The
+  library cut them short before a command. The reading "full after silence,
+  the manual's length after a sound, no lookahead" was tried and is worse
+  (1.39 to 1.42 on the score's items).
+- Repeats have two lengths: the second play of a sound runs longer than the
+  copies after it, and most copies after it are the manual's 70 ms (AW 72
+  then 70, SE 82 then 70, IY 70 then 70, a third copy adds 70 ms on both
+  units). `copy1_length` (new) is the second play's; `copy_length` the rest.
+  "AW AW" plays as one sound and a copy on the chip, the same waveform as
+  repeat 2, and now in the library too. The AW copy length pushed in 45cecbb
+  (1.25 for every copy) overshot the third copy; the second play keeps 1.25
+  (the second VoxProbe's 446 repeated AWs at every pitch want it) and the
+  rest are 1.075. 14 sounds have the two values.
+- A stop's copies keep their burst and release and put the rest of the copy's
+  time into the closure: EB repeated is a burst every 45 ms on the chip,
+  where the library's copies were 5 ms blobs; stretched evenly they were
+  longer blobs. EB's copies 4.5 and 4.0 times the manual's 10 ms, BE's 1.35.
+  EB's repeats 2.5 to 2.2, BE's 2.0 to 1.5 on the fifth VoxProbe; the fourth
+  VoxProbe's repeat-5 EB reads 15 frames on one unit and 8 on the other, so
+  it isn't measuring the copies, and its repeat-5 BE is 0.07 worse.
+- Checked and not taken up: UX and EYIY longer as the last sound (1.35 and
+  1.05 better on both VoxProbe units and VoxRecord, but Man Goes Down, where
+  UX follows SE and EYIY NE, 0.2 to 0.5 worse); OHIH and OWIY shorter (the
+  fifth VoxProbe wants it, VoxRecord doesn't); DE longer (the fourth VoxProbe
+  doesn't); PE's and DE's peaking filters refitted (no gain; PE's spectral
+  peaks are far off on every recording and need its burst traced).
+- Still open: PE; the chip's EB and BE copies at repeat 5 and over; the
+  robots at Bend; Man Goes Down's phrases on the fifth VoxProbe couldn't be
+  placed (no marker found after section 10).
+
 text2speakjet:
+
+- Its phrase-final rule counts a command byte as a phrase end, as the chip
+  does.
 
 - Its lengths follow the refitted `allophone_length` and `final_length`.
 

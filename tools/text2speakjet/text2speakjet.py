@@ -248,7 +248,7 @@ CHIP_CLOSURE_MS = {165: 12.7, 170: 51.5, 172: 7.6, 173: 3.3, 174: 29.8, 182: 56.
 
 
 # CHIP_FINAL_LENGTH multiplies an allophone's length again when it is the last
-# sound before a pause or the end and isn't repeated (final_length).
+# sound before a pause, a command or the end and isn't repeated (final_length).
 CHIP_FINAL_LENGTH = [
     1.25, 1.175, 1, 1.175, 1, 1, 1, 1, 1.25,
     1, 1, 1.15, 1, 1, 0.9, 1.025, 0.9375, 1,
@@ -303,7 +303,7 @@ def estimate_ms(codes):
             if c < 200:
                 if c >= NO_SLOW_FROM and scale == SLOW_SCALE:
                     scale = 1.0
-                final = (i + 1 >= len(codes) or codes[i + 1] <= 6) and repeat <= 1
+                final = (i + 1 >= len(codes) or codes[i + 1] < 128) and repeat <= 1
                 total += (DURATION[c] * scale * chip_length(c) * speed_factor(speed)
                           * (CHIP_FINAL_LENGTH[c - 128] if final else 1.0))
                 if c in CHIP_CLOSURE_MS:
