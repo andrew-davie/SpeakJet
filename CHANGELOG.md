@@ -629,6 +629,13 @@ are regenerated.
   robots at Bend; Man Goes Down's phrases on the fifth VoxProbe couldn't be
   placed (no marker found after section 10).
 
+The build no longer fuses multiply-adds (`-ffp-contract=off`), so every
+compiler gives the same samples: Apple's clang on arm64 fuses `a*b+c` into one
+rounding and gcc and clang on x86-64 don't, and after the integer tables three
+reference phrases differed by up to 45 (of 32768) between the two, which failed
+the Linux tests. The reference samples are regenerated without fusing; three
+change by a few units.
+
 text2speakjet:
 
 - Its phrase-final rule counts a command byte as a phrase end, as the chip

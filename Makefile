@@ -1,5 +1,8 @@
 CC ?= cc
-CFLAGS ?= -std=c99 -O2 -Wall -Wextra -pedantic
+# no fused multiply-add: compilers that fuse a*b+c into one rounding (Apple
+# clang on arm64) and those that don't (gcc and clang on x86-64) would give
+# samples a few units apart, and the reference samples are compared to 2
+CFLAGS ?= -std=c99 -O2 -Wall -Wextra -pedantic -ffp-contract=off
 PYTHON ?= python3
 
 all: libspeakjet.a sjwav

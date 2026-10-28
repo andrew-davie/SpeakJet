@@ -98,41 +98,53 @@ every function.
 
 ## How close it is
 
-Every allophone and sound effect is compared with recordings of two real
-AtariVoxes (an original AtariVox and a later unit), with each recording's
-background noise taken out and any clipped sound left out. Two numbers are
-used: how much of the chip's spectrogram the library reproduces (after
-lining the two up in time), and how far its overall spectrum is from the
-chip's, in dB.
+Every allophone and sound effect, alone and in connected speech, is compared
+with recordings of two real AtariVoxes (an original AtariVox and a later
+unit): the library is given each recording's own background noise, both
+sides are cut out by the same rule, and clipped sounds are left out. The
+measure, M, has ten parts: length, level over time, the time-frequency
+picture after the two are lined up (smoothed over 15 ms and 1.5 ERB, so the
+noise speckle that two real chips differ in doesn't count), its worst 25 ms,
+how much the level flickers, the timing inside the sound, sideways spectral
+shift, the whole-sound spectrum, the positions of its peaks, and pitch. Each
+part is divided by how far the two real chips are from each other on that
+part, and the parts furthest off count most. So 0 means as close as a second
+chip, 1 about twice the chips' own difference, and lower is better.
 
-On the fourth VoxProbe recording, made after all the fitting and so never
-fitted to (about 145 sounds on each unit, below 4 kHz):
+Over the 752 recordings the fitting used (both units: VoxRecord, its
+connected groups, the fourth VoxProbe, Man Goes Down) and the 1,383 it never
+saw (VoxProbe 1, 2, 3 and 5 on both units, and vox_test):
 
-| Library | Unit A | Unit B |
+| Library | Fitted recordings | Held-out recordings |
 |---|---|---|
-| The first version, from the manual and published formants | 27%, 10.6 dB | 27%, 10.6 dB |
-| Fitted to the first recordings (14181cc) | 58%, 5.6 dB | 58%, 5.6 dB |
-| Rebuilt from the recordings, checked against held-out data (708ed16) | 64%, 3.7 dB | 64%, 3.7 dB |
-| Now, with the output above 4 kHz | 63.5%, 3.8 dB | 63.4%, 3.8 dB |
+| The first version, from the manual and published formants | 2.77 | 2.46 |
+| Fitted to the first recordings (14181cc) | 2.29 | |
+| Rebuilt from the recordings, checked against held-out data (708ed16) | 2.14 | |
+| The chip's output above 4 kHz (bb90c14) | 1.61 | |
+| Every sound refitted on all recordings at once (bc97573) | 1.29 | |
+| Tables consolidated and in the chip's integers (921abb1) | 1.22 | 1.36 |
+| Now | 1.18 | 1.18 |
 
-Above 4 kHz, where the chip has a quiet edge to its sound, the library had
-nothing (19 dB off); it now matches the chip's level there within 2 dB.
+On the same measure the two real chips are about 0.5 from each other, so the
+library is about two and a half times as far from either chip as the chips
+are from each other. The allophones alone are at 0.72, the sound effects
+alone at 1.00, and Man Goes Down's phrases, the slowest to improve, at 1.62.
 
-On the VoxRecord recording of every sound, against the clean unit, it
-matches 84.6% (1.8 dB). The two real chips match each other about 88%
-(1.1 dB) on the sounds both recorded cleanly: that is about as close as it
-can usefully get, and the gap left is real.
+What is still known to be off, with the measurements behind it in
+[`CHANGELOG.md`](CHANGELOG.md):
 
-What is still known to be off, all described in
-[`docs/design.md`](docs/design.md):
-
-- The gated effects C0 to C6 change their gating with Pitch on the chip (at
-  the voicing frequency plus an offset of their own); here they don't yet.
-- M2 lacks a part near 2.1 kHz, and effects at high Bend settings are well
-  off (C3 and R8 by about 12 dB at bend 15).
-- Vowels played on their own are about 15 ms shorter than the chip's; in
-  connected speech, which their lengths are fitted to, they are right.
-- The hiss sounds have only been measured on the earlier recordings.
+- PE's burst is spectrally far off on every recording and needs tracing.
+- B9's middle is a pulsed tone sweeping 1 kHz to 550 Hz and back under its
+  second burst, which its three-tone trace misses; M2 is the worst effect.
+- The robots (R0 to R9) match less well at Bend 0 and 15 than at the default.
+- At a pitch under 12 the chip starts a sound with two pulses 7 ms apart,
+  and the two chips themselves differ most at Pitch 40 and under, where the
+  measure can say little.
+- Repeated voiced stops at Repeat 5 and over: the fourth and fifth VoxProbe
+  recordings disagree about EB's and BE's later copies.
+- Several sounds (SH, UX, SE, ZZ) play about 15% shorter on the VoxProbe
+  recordings than on VoxRecord, on both units, and it isn't the buffer
+  state; the library sits between.
 
 Numbers aren't everything: listening against the chip is the final check.
 
@@ -178,9 +190,10 @@ those in from published formant measurements of English speech. Since then
 nearly all of them have been measured from the chip itself, from recordings
 of two AtariVoxes playing test ROMs made for the purpose: Alex Herbert's
 vox_test, three takes of VoxRecord (every allophone and effect, and sweeps of
-each control) and VoxProbe 1 to 4 (single voicing pulses, every Pitch,
-sustained and repeated sounds, the move from one sound to the next, and the
-effects at other Pitch and Bend settings). From them:
+each control), VoxProbe 1 to 5 (single voicing pulses, every Pitch,
+sustained and repeated sounds, the move from one sound to the next, the
+effects at other Pitch and Bend settings, sounds sent alone with nothing
+behind them in the buffer) and the game Man Goes Down. From them:
 
 - **The chip's output.** It makes its samples at about 8028 Hz (not the
   manual's 8192), holds each until the next, and a measured low pass shapes
@@ -191,14 +204,21 @@ effects at other Pitch and Bend settings). From them:
   oscillators run on a 4.3845 Hz grid. Formants, volumes and phases come from
   single pulses, and 26 sounds (most diphthongs, most voiced stops, ZZ, ZH,
   DH, IH, NO and LO) are played from the chip's own formants, pulse by pulse.
-  Voicing fades in over 40 ms from silence (25 ms for the nasals).
+  Voicing fades in over 40 ms from silence (25 ms for the nasals); below a
+  20 Hz voicing pitch a sound starts with a full pulse at once. DH, ZH, JH
+  and BO are voiced a little faster than the vowels.
 - **Timing and controls.** The lengths of sounds alone and in connected
-  speech, the pauses, Repeat, Speed, Fast and Slow, Bend, Stress and Volume.
+  speech, the longer last sound before a pause or a command, the pauses,
+  Speed, Fast and Slow, Bend, Stress and Volume. A repeated sound's second
+  play runs longer than the copies after it, and a stop's copies keep their
+  burst and put the extra time into the closure.
 - **Noise.** The hiss of each fricative and stop, fitted to both units at the
-  chip's own rate, with its level against the vowels kept.
+  chip's own rate, with its level against the vowels kept; SE and SH are
+  broad hiss, as on the chip, and each sound has its own peaking filters.
 - **Sound effects.** Traced from the recordings: tones on their own
-  oscillators, buzzes, gated noise, and the noise the chip puts under its
-  tones.
+  oscillators, buzzes, gated and swept noise (C8 and C9 are a narrow band
+  swept 650 Hz to 3 kHz and back every 19.5 ms), A4's third harmonic, and
+  the noise the chip puts under its tones.
 
 The method is described there too. Each recording's background is measured
 and taken out, clipped sounds are left out, and every change is kept only if
