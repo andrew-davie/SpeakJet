@@ -1298,6 +1298,98 @@ TT's burst and aspiration are about 40 ms long, alone too; in "man goes down"
 GO OWWW is about 65 ms short and OWWW's third formant 6 dB strong; C1 is a
 tick or two slow at pitch 150.
 
+### Every sound, worst first
+
+Every item of the three recordings (both units of the fourth VoxProbe and
+VoxRecord recordings, and the game) was scored with the library at full band,
+ranked by how far it falls short of the two units' agreement with each other,
+and worked from the bottom up.
+
+**C3 pulses, slowing down.** Its pulses come 15, 15, 16, 16, 17, 19, 19, 22 and
+22 ms apart at the default pitch on every C3 of both units, each 5 to 6 ms
+long. At speed 90 the slowing is drawn out and at speed 127 squeezed, so it
+follows the trace, not the clock; at pitch 60 and 150 the gaps (24 to 50 and 8
+to 12 ms) are the voicing less a distance growing from about 20 to 42 Hz along
+it, as at the default pitch. Its steady 59 Hz gate pulsed nearly twice as
+fast as the chip at pitch 60. It is now a pulsed effect whose distance falls
+0.14 Hz for each millisecond of its trace (`fx_pulse.drift`).
+
+**A tone Bend takes under nothing wraps round.** At bend 0 A1's third formant,
+which starts at 120 Hz, isn't 197 Hz lower but mirrored: a line falling from
+2.4 kHz as the formant rises, reaching nothing near 820 ms and rising again,
+and its first formant becomes a steady line near 2.4 kHz. Measured at four
+times, the line is 8028 Hz less the formant, Bend and 5720 Hz, within 10 Hz:
+the tone goes up by about 5700 Hz and the chip's rate folds it. It stays
+wrapped as the effect goes on. A tone the trace couldn't read (quieter than
+`WRAP_MIN_VOL`) doesn't wrap; those put a 2.4 kHz line into C0, C3 and C7 that
+neither unit has. A1's first formant, read at 207 Hz off the harmonics, goes
+under too, so it is put at 175 Hz.
+
+**C0 pulses.** Its gate is the voicing less 4 to 6 Hz at all three pitches
+(every 18.1, 12.3 and 7.0 ms at pitch 60, 88 and 150), where it had a steady
+85 Hz. A square gate at that distance made it worse, its pulses too long at
+low pitch; pulses fading at 0.66 of the voicing's fade, its noise 6 dB
+quieter, fitted.
+
+**C8's and C9's gate keeps time with Speed.** C8's gate comes every 19.1 ms at
+the default speed, 32.7 at speed 90 and 11.2 at speed 127 (1.71 and 0.59
+times, where Speed stretches the sound 1.75 and 0.59 times), and 18.9 to 19.2
+ms at both pitches and both bends (`sound.speed_gate`).
+
+**A noise floor.** On both units a pure tone (the DTMF tones, B3, R3 and the
+rest) sits on noise from 100 Hz to 3 kHz 40 to 55 dB under it, above the
+recording's background. The library's clean tones left it out, every band
+between the tones counting as missing. White noise now follows the output's
+level, over about 25 ms, 24 dB under it (`SKIRT_DB`), the level that matched
+best without moving the spectrogram match. The speech hides it under its
+harmonics.
+
+Before and after, both units, full band, every item of each sound:
+
+| | before | now |
+|---|---|---|
+| C3 (18 items) | 0.668, 4.06 dB | 0.772, 2.65 dB |
+| C0 (17) | 0.762, 2.15 dB | 0.797, 2.43 dB |
+| A1 (17) | 0.910, 1.63 dB | 0.944, 1.33 dB |
+| A1 at bend 0 | 0.59, 3.8 dB | 0.82, 2.3 dB |
+| C8 (17) | 0.798, 3.40 dB | 0.807, 3.30 dB |
+| C8 at speed 90 | 0.62, 4.7 dB | 0.68, 4.1 dB |
+| VoxRecord effects (81) | 89.1%, 5.99 dB | 89.3%, 4.36 dB |
+| fourth VoxProbe, effects at pitch and bend (120) | 79.8%, 3.65 dB | 81.2%, 3.50 dB |
+| fourth VoxProbe, effects at speed (24) | 77.8%, 3.10 dB | 81.0%, 2.91 dB |
+
+The speech, the game and the rest are unchanged within 0.003. The DTMF tones
+go from 6.4 to 10.2 dB to 2.7 to 7.5 dB. B0 and B7 lose 0.02 and 0.01 (the
+floor lingers into their quiet gaps) while their spectra go from 8.8 to 3.4
+and 15.4 to 5.7 dB; C1 at bend 0 loses 0.016 to the wrap.
+
+Tried and left out: C3's low tones (200 to 400 Hz, which the chip has at
+every bend) not following Bend, 0.002; C8's gate rate and step, within the
+noise; a pulse rate rising 0.86 Hz for each hertz of the voicing for R8 and R9
+(suggested by pitch 150), 0.002; cutting a voiceless sound's hiss when the
+next sound's voicing starts, 0.003 on TT AW and SE AW.
+
+Left open:
+
+- Repeated sounds. On the chip each copy after the first glides from the
+  copy before over about 40 ms (OHIY: F2 falling 2.1 to 1 kHz), where here it
+  starts at once; and some framed sounds' copies are 9 to 34 ms shorter than
+  the sound alone (DO, BO, OWWW, AXUW, IYEH, EHLL, OWRR, and at pitch 40 LO,
+  ZZ and DH, all about 70 ms there), others not (IYRR, AXRR, OWIY, IYUW, GE,
+  GO). Gliding a copy in from the one before also glides its level up from
+  the last one's tail, which was worse; no rule fits the lengths.
+- M2 on the fourth VoxProbe recording starts from formants near 2.0, 3.0, 3.6
+  to 4.0 and 5 kHz, nothing like the VoxRecord recording's 540, 1690 and 2860
+  Hz, after M1 (noise) and after itself alike, so what sets its start is
+  unknown.
+- B9's middle (75 to 195 ms) pulses at the voicing on both units and carries
+  tones at 2.55, 3.8 to 4.2 and 5.5 kHz the trace lacks; at speed 90 its three
+  parts stretch 1.4, 1.9 and 1.3 times, not 1.75.
+- TT AW: on the chip AW after TT is about 150 ms, here 100; the other 15 pairs
+  are within 15 ms.
+- JH and EB repeated: the two units match each other only 0.64 and 0.47
+  (clicks of their own), so these can't be fitted.
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown
@@ -1307,7 +1399,7 @@ The manual doesn't say, so these are guesses (described above):
 | | What the library does |
 |---|---|
 | The oscillator settings behind each allophone | Built from published formant measurements of English speech; only the formants that two sets of measurements of the chip agree on are from the chip, and no volumes are |
-| The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants; C1 voiced at its own measured pitch with oscillator 3 free; C2, C4 and C6 pulse at the voicing rate plus a measured offset, R8 and R9 at half their tone (both following Pitch), C0 and C3 are gated at a fitted rate; A1 at bend 0 and M2's carried-over start aren't modelled |
+| The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants; C1 voiced at its own measured pitch with oscillator 3 free; C0, C2, C4 and C6 pulse at the voicing rate plus a measured offset, C3 at an offset growing along it, R8 and R9 at half their tone (all following Pitch); C8 and C9 are gated at a rate that follows Speed; a tone Bend takes under nothing wraps round; M2's carried-over start and repeated sounds' glide from copy to copy aren't modelled |
 | How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties; a pause shortens a following stop's closure and framed sounds keep their level between sounds (both measured in one game only) |
 | The synthesizer's details | Distortion as random frequency modulation; the arithmetic behind the chip's voicing count at the 12 settings that differ from 8000 / Pitch + 1; whether a pulse starts each sound |
 | What Soft (18) does | Ignored; it is a real command (see PhraseALator above), but nothing describes its effect |

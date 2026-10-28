@@ -369,6 +369,24 @@ docs/design.md, "Man Goes Down"). The reference samples are regenerated.
 - The game's four phrases: 0.82 to 0.83, 0.75 to 0.875, 0.60 to 0.85, 0.63 to
   0.875. Everything else unchanged or better, but C1 at pitch 60.
 
+Every item of the three recordings scored at full band and worked from the
+worst up (see docs/design.md, "Every sound, worst first"). The reference
+samples are regenerated.
+
+- C3 pulses with the voicing at a distance growing along its trace (new
+  `fx_pulse.drift`): its pulses slow from 15 to 22 ms apart as it plays. All
+  18 C3 items 0.668 to 0.772, 4.06 to 2.65 dB; pitch 60 0.50 to 0.72.
+- A tone Bend takes under nothing wraps round, about 5.7 kHz up, folded at the
+  chip's rate, and stays there: A1 at bend 0 0.59 to 0.82. A1's first formant
+  is 175 Hz (was 207). All A1 items 0.910 to 0.944.
+- C0 pulses with the voicing, 4 Hz under it, its noise 6 dB quieter: 0.762 to
+  0.797, pitch 60 0.73 to 0.80.
+- C8's and C9's gate keeps time with Speed (new `sound.speed_gate`): C8 at
+  speed 90 0.62 to 0.68.
+- A noise floor 24 dB under the output's level, as the chip has under its
+  tones: the VoxRecord effects 5.99 to 4.36 dB, the DTMF tones 6.4 to 10.2 dB
+  to 2.7 to 7.5 dB. The speech is unchanged.
+
 text2speakjet:
 
 - Its length estimate follows the changes above: Slow skips the voiceless

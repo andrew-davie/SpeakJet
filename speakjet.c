@@ -222,6 +222,11 @@ typedef struct synth {
   double held[2];
   long hold_left;
 
+  /* the level the noise floor follows, and its own noise source (see
+   * SKIRT_DB) */
+  double skirt_level;
+  uint32_t skirt_noise;
+
   /* dc blocker state */
   double dc_in, dc_out;
 } synth;
@@ -230,6 +235,7 @@ typedef struct synth {
 static void synth_init(synth *s) {
   memset(s, 0, sizeof(*s));
   s->noise = 0x2545f491u;
+  s->skirt_noise = 0x9e3779b9u;
   s->env_age = 1L << 30;
   s->onset_age = 0;
 }
@@ -240,6 +246,17 @@ static double synth_random(synth *s) {
   s->noise ^= s->noise << 5;
   return (double)(int32_t)s->noise / SJ_MAX_INT32;
 }
+
+/* the chip's output has a floor of noise under whatever it plays: on both
+ * units of the VoxRecord recording a pure tone (the DTMF tones, B3, R3 and
+ * the rest) sits on noise from 100Hz to 3kHz 40 to 55dB under it, above the
+ * recording's background, which this library's clean tones left out, every
+ * band between the tones counting as missing. here white noise follows the
+ * output's level (over about 25ms) SKIRT_DB under it: the effects of the
+ * VoxRecord recording 5.94 to 4.57dB with their spectrogram match within a
+ * tenth of a point, and the speech unchanged (it hides under the harmonics) */
+#define SKIRT_DB (-24.0)
+#define SKIRT_FOLLOW 0.995
 
 /* sample produces the next output sample, in the range -1 to 1. master is
  * the master volume (0 to 127) */
@@ -350,8 +367,15 @@ static double synth_sample(synth *s, const frame *f, double master) {
     mix2 *= 1 - f->noise_depth * (1 - env);
 
   /* mixer 5: summation and master volume */
-  const double x = (mix1 + mix2) / (MAX_MIXER1 + 2 * MAX_OSC_VOLUME) *
-                   fmin2(master, MAX_MASTER) / MAX_MASTER;
+  double x = (mix1 + mix2) / (MAX_MIXER1 + 2 * MAX_OSC_VOLUME) *
+             fmin2(master, MAX_MASTER) / MAX_MASTER;
+
+  /* the noise floor (see SKIRT_DB) */
+  s->skirt_level = SKIRT_FOLLOW * s->skirt_level + (1 - SKIRT_FOLLOW) * fabs(x);
+  s->skirt_noise ^= s->skirt_noise << 13;
+  s->skirt_noise ^= s->skirt_noise >> 17;
+  s->skirt_noise ^= s->skirt_noise << 5;
+  x += pow(10, SKIRT_DB / 20) * s->skirt_level * (double)(int32_t)s->skirt_noise / SJ_MAX_INT32;
 
   /* dc blocker */
   const double y = x - s->dc_in + 0.995 * s->dc_out;
@@ -406,6 +430,9 @@ typedef struct sound {
 
   /* the sound is played from the chip's own frames (see vf_points) */
   bool framed;
+
+  /* the sound's gate keeps time with the Speed control (see c_noise()) */
+  bool speed_gate;
 
   /* the sound is a stop, its first part the closure (see plosive() and
    * msa_closure()) */
@@ -1603,7 +1630,11 @@ static void dtmf(sound *s, int low, int high) {
  * here was fitted to, 36 to 91% and 7.3 to 1.1dB. at bend 0 the chip plays
  * something else: the second formant moves 197Hz down as it should, but the
  * third is mirrored, falling as 2.5kHz less its rise, and a line holds near
- * 2.4kHz; that isn't modelled (31 to 21% there, 6.4 to 3.5dB) */
+ * 2.4kHz. both are a frequency Bend took under nothing (see msa_expand()):
+ * the third formant starts at 120Hz, and the steady line is the first, which
+ * read 207Hz off the harmonics but goes under at bend 0 too, so it is put
+ * at 175Hz, the lowest that does: every A1 item 91.0 to 94.5% and 1.63 to
+ * 1.33dB, bend 0 59 to 82% and 3.8 to 2.3dB */
 enum { FX_TONE, FX_NOISE, FX_BUZZ };
 
 typedef struct fx_point {
@@ -1826,44 +1857,44 @@ static const fx_point fx_points[] = {
     {385, 0, 0, -60.0, {245, 991, 157}, {0, -13.7, -60.0}},
     {395, 0, 0, -60.0, {239, 991, 157}, {0, -13.0, -60.0}},
     /* A1 */
-    {15, 2, 87, -60.0, {207, 720, 120}, {0, 15.0, -3.0}},
-    {35, 2, 87, -16.1, {207, 720, 120}, {0, 15.0, -3.0}},
-    {60, 2, 87, 4.7, {207, 750, 172}, {0, -5.3, -3.0}},
-    {85, 2, 87, 18.2, {207, 780, 224}, {0, -16.7, -3.0}},
-    {110, 2, 87, 13.5, {207, 809, 293}, {0, -9.0, 0.7}},
-    {135, 2, 87, 7.9, {207, 838, 362}, {0, -9.1, 0.4}},
-    {160, 2, 87, 7.9, {207, 868, 428}, {0, -4.3, 3.6}},
-    {185, 2, 87, 5.7, {207, 898, 495}, {0, -2.9, -1.0}},
-    {210, 2, 87, 7.6, {207, 929, 567}, {0, -10.8, -6.4}},
-    {235, 2, 87, 6.7, {207, 960, 640}, {0, -1.2, -6.9}},
-    {260, 2, 87, 8.4, {207, 992, 709}, {0, -11.9, -3.9}},
-    {285, 2, 87, 8.5, {207, 1024, 778}, {0, -3.0, -3.0}},
-    {310, 2, 87, 7.4, {207, 1048, 861}, {0, -3.0, -3.0}},
-    {335, 2, 87, 7.7, {207, 1072, 945}, {0, -3.0, -3.0}},
-    {360, 2, 87, 7.3, {207, 1096, 1028}, {0, -3.0, -3.0}},
-    {385, 2, 87, 6.6, {207, 1120, 1111}, {0, -3.0, -3.0}},
-    {410, 2, 87, 7.6, {207, 1144, 1194}, {0, -3.0, -3.0}},
-    {435, 2, 87, 6.9, {207, 1168, 1278}, {0, -3.0, -3.0}},
-    {460, 2, 87, 7.1, {207, 1191, 1361}, {0, -3.0, -3.0}},
-    {485, 2, 87, 2.9, {207, 1215, 1445}, {0, -3.0, -3.0}},
-    {510, 2, 87, 2.3, {207, 1239, 1525}, {0, -3.4, -7.7}},
-    {535, 2, 87, 1.5, {207, 1263, 1605}, {0, -2.6, -1.4}},
-    {560, 2, 87, 2.7, {207, 1295, 1689}, {0, -7.5, -6.1}},
-    {585, 2, 87, 3.9, {207, 1327, 1773}, {0, -3.5, -7.6}},
-    {610, 2, 87, 2.0, {207, 1357, 1858}, {0, -3.6, -0.3}},
-    {635, 2, 87, 4.8, {207, 1388, 1943}, {0, -9.4, -11.3}},
-    {660, 2, 87, 2.6, {207, 1418, 2027}, {0, -1.1, -1.2}},
-    {685, 2, 87, 1.7, {207, 1449, 2112}, {0, -5.7, -4.7}},
-    {710, 2, 87, 3.3, {207, 1473, 2192}, {0, -5.5, -8.1}},
-    {735, 2, 87, 2.6, {207, 1498, 2272}, {0, -5.5, -1.1}},
-    {760, 2, 87, 5.4, {207, 1516, 2347}, {0, -7.2, -12.6}},
-    {785, 2, 87, 2.8, {207, 1535, 2422}, {0, -3.9, 2.8}},
-    {810, 2, 87, 3.5, {207, 1554, 2497}, {0, -6.5, -9.0}},
-    {835, 2, 87, 2.8, {207, 1573, 2573}, {0, -4.2, -2.2}},
-    {860, 2, 87, 2.1, {207, 1591, 2648}, {0, -5.8, -2.7}},
-    {885, 2, 87, 5.2, {207, 1610, 2723}, {0, -6.8, -12.4}},
-    {910, 2, 87, 7.9, {207, 1627, 2797}, {0, -10.4, -7.8}},
-    {975, 2, 87, 6.0, {207, 1668, 2984}, {0, -3.0, -3.0}},
+    {15, 2, 87, -60.0, {175, 720, 120}, {0, 15.0, -3.0}},
+    {35, 2, 87, -16.1, {175, 720, 120}, {0, 15.0, -3.0}},
+    {60, 2, 87, 4.7, {175, 750, 172}, {0, -5.3, -3.0}},
+    {85, 2, 87, 18.2, {175, 780, 224}, {0, -16.7, -3.0}},
+    {110, 2, 87, 13.5, {175, 809, 293}, {0, -9.0, 0.7}},
+    {135, 2, 87, 7.9, {175, 838, 362}, {0, -9.1, 0.4}},
+    {160, 2, 87, 7.9, {175, 868, 428}, {0, -4.3, 3.6}},
+    {185, 2, 87, 5.7, {175, 898, 495}, {0, -2.9, -1.0}},
+    {210, 2, 87, 7.6, {175, 929, 567}, {0, -10.8, -6.4}},
+    {235, 2, 87, 6.7, {175, 960, 640}, {0, -1.2, -6.9}},
+    {260, 2, 87, 8.4, {175, 992, 709}, {0, -11.9, -3.9}},
+    {285, 2, 87, 8.5, {175, 1024, 778}, {0, -3.0, -3.0}},
+    {310, 2, 87, 7.4, {175, 1048, 861}, {0, -3.0, -3.0}},
+    {335, 2, 87, 7.7, {175, 1072, 945}, {0, -3.0, -3.0}},
+    {360, 2, 87, 7.3, {175, 1096, 1028}, {0, -3.0, -3.0}},
+    {385, 2, 87, 6.6, {175, 1120, 1111}, {0, -3.0, -3.0}},
+    {410, 2, 87, 7.6, {175, 1144, 1194}, {0, -3.0, -3.0}},
+    {435, 2, 87, 6.9, {175, 1168, 1278}, {0, -3.0, -3.0}},
+    {460, 2, 87, 7.1, {175, 1191, 1361}, {0, -3.0, -3.0}},
+    {485, 2, 87, 2.9, {175, 1215, 1445}, {0, -3.0, -3.0}},
+    {510, 2, 87, 2.3, {175, 1239, 1525}, {0, -3.4, -7.7}},
+    {535, 2, 87, 1.5, {175, 1263, 1605}, {0, -2.6, -1.4}},
+    {560, 2, 87, 2.7, {175, 1295, 1689}, {0, -7.5, -6.1}},
+    {585, 2, 87, 3.9, {175, 1327, 1773}, {0, -3.5, -7.6}},
+    {610, 2, 87, 2.0, {175, 1357, 1858}, {0, -3.6, -0.3}},
+    {635, 2, 87, 4.8, {175, 1388, 1943}, {0, -9.4, -11.3}},
+    {660, 2, 87, 2.6, {175, 1418, 2027}, {0, -1.1, -1.2}},
+    {685, 2, 87, 1.7, {175, 1449, 2112}, {0, -5.7, -4.7}},
+    {710, 2, 87, 3.3, {175, 1473, 2192}, {0, -5.5, -8.1}},
+    {735, 2, 87, 2.6, {175, 1498, 2272}, {0, -5.5, -1.1}},
+    {760, 2, 87, 5.4, {175, 1516, 2347}, {0, -7.2, -12.6}},
+    {785, 2, 87, 2.8, {175, 1535, 2422}, {0, -3.9, 2.8}},
+    {810, 2, 87, 3.5, {175, 1554, 2497}, {0, -6.5, -9.0}},
+    {835, 2, 87, 2.8, {175, 1573, 2573}, {0, -4.2, -2.2}},
+    {860, 2, 87, 2.1, {175, 1591, 2648}, {0, -5.8, -2.7}},
+    {885, 2, 87, 5.2, {175, 1610, 2723}, {0, -6.8, -12.4}},
+    {910, 2, 87, 7.9, {175, 1627, 2797}, {0, -10.4, -7.8}},
+    {975, 2, 87, 6.0, {175, 1668, 2984}, {0, -3.0, -3.0}},
     /* A2 */
     {5, 2, 128, -60.0, {165, 1996, 1996}, {0, -0.0, -35.8}},
     {10, 2, 127, -60.0, {165, 1996, 1996}, {0, -0.1, -36.0}},
@@ -2699,7 +2730,9 @@ static const struct {
  * at 59Hz, C6 at 125Hz, on for a quarter to two fifths of each cycle (B9
  * pulses at 87Hz too, but plays closer to the recording ungated). C8 and C9
  * are gated noise, built in effect() (see c_noise()). the envelope shape for each is the one that brought it closest to
- * the recording. 0 is not gated. for codes 200 to 254 */
+ * the recording. 0 is not gated. for codes 200 to 254. C0, C2, C3, C4 and C6
+ * have since been found to pulse with the voicing instead (see fx_pulse),
+ * which takes the place of their gates here */
 /* FX-GATE-BEGIN */
 static const struct {
   short hz;
@@ -2711,7 +2744,7 @@ static const struct {
     {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW},
     {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW},
     {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW},
-    {85, ENV_SQUARE}, {0, ENV_SAW}, {66, ENV_SINE}, {59, ENV_SAW},
+    {0, ENV_SAW}, {0, ENV_SAW}, {66, ENV_SINE}, {0, ENV_SAW},
     {87, ENV_SINE}, {0, ENV_SAW}, {125, ENV_SAW}, {0, ENV_SAW},
     {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW},
     {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW}, {0, ENV_SAW},
@@ -2737,11 +2770,10 @@ static const struct {
  * (see fx_noise) refitted to it. fitted on both recordings at the default
  * pitch, at pitch 60 and at bend 0, and checked at pitch 150, at speeds 90 and
  * 127 and at bend 15, which were left out: C2 73 to 77% and 2.5 to 2.2dB on
- * those, C4 65 to 71% and 4.0 to 3.6dB, C6 65 to 67% and 3.0 to 2.1dB. C0 and
- * C3 keep their gates: played this way C0 came out flat on the ones left out
- * and worse on the VoxRecord recording, which gates it at 85Hz where the
- * fourth VoxProbe recording has 82Hz at the same pitch, and C3 came out
- * worse on the ones left out.
+ * those, C4 65 to 71% and 4.0 to 3.6dB, C6 65 to 67% and 3.0 to 2.1dB. C0
+ * and C3 came out worse played this way (on the 4kHz comparison of the
+ * time); C3 pulses at a moving distance, and C0, measured full band, closer
+ * and with a shorter fade (below).
  *
  * R8 and R9 pulse too. their low tone, near 650Hz, is restarted at half its
  * frequency: on both units of the fourth VoxProbe recording its lines are
@@ -2757,16 +2789,39 @@ static const struct {
  * the tones' levels were fitted at pitch 60, at bend 0 and on the VoxRecord
  * recording: on pitch 150, bend 15 and the speeds, left out, R8 61 to 77% and
  * 4.9 to 2.8dB, R9 34 to 67% and 7.1 to 3.2dB. a rate rising 0.86Hz to each
- * hertz of the voicing, which pitch 150 suggests, made R8 worse */
+ * hertz of the voicing, which pitch 150 suggests, made R8 worse.
+ *
+ * C3 pulses too, but its pulses slow down as it plays: on every C3 of both
+ * units of the fourth VoxProbe recording and of the VoxRecord recording
+ * they come 15, 15, 16, 16, 17, 19, 19, 22 and 22ms apart at the default
+ * pitch, 5 to 6ms long each at every pitch. at speed 90 the slowing is
+ * drawn out and at speed 127 squeezed, so it follows the trace, not the
+ * clock, and at pitch 60 and 150 the gaps (24 to 50ms and 8 to 12ms) are
+ * the voicing less a distance growing from about 20 to 42Hz along it, as at
+ * the default pitch. so its distance falls by drift hertz for each
+ * millisecond of the trace. fitted on every C3: 66.9 to 77.2% and 4.06 to
+ * 2.67dB, pitch 60 50 to 72%, speed 127 65 to 79%, its old steady 59Hz gate
+ * at pitch 60 having pulsed nearly twice as fast as the chip.
+ *
+ * C0 pulses as well. its gate is the voicing less 4 to 6Hz at all three
+ * pitches (every 18.1, 12.3 and 7.0ms at pitch 60, 88 and 150, on both
+ * units), where it had a steady 85Hz gate. a steady distance on that gate
+ * made it worse, its square pulses too long at low pitch; pulses fading at
+ * 0.66 of the voicing's fade, with its noise (see fx_noise) 6dB quieter,
+ * fitted on every C0 of both recordings: 76.2 to 79.8% and 2.15 to 2.43dB,
+ * pitch 60 73 to 80%, bend 0 76 to 83%, bend 15 72 to 78%, pitch 150 82 to
+ * 79% */
 static const struct {
   short code;
-  double offset_hz, fade;
+  double offset_hz, fade, drift;
 } fx_pulse[] = {
-    {232, -20.5, 1.0},
-    {234, 0.2, 1.0},
-    {236, 42.7, 1.6},
-    {208, 0, 0.7},
-    {209, 0, 0.7},
+    {232, -20.5, 1.0, 0},
+    {234, 0.2, 1.0, 0},
+    {236, 42.7, 1.6, 0},
+    {208, 0, 0.7, 0},
+    {209, 0, 0.7, 0},
+    {233, -13.0, 1.075, 0.14},
+    {230, -4.0, 0.6625, 0},
 };
 
 /* the entry in fx_pulse for an effect, or -1 */
@@ -2803,7 +2858,7 @@ static const struct {
   short code;
   double n1, n2, dist, depth, db;
 } fx_noise[] = {
-    {230, 2361.6, 2282.7, 27.5, 0.371, -12.86},
+    {230, 2361.6, 2282.7, 27.5, 0.371, -18.86},
     {231, 1810.5, 2003.4, 147.2, 0.324, -1.82},
     {232, 1935.8, 1748.1, 54.8, 0.4, -15.15},
     {234, 1704.5, 3553.6, 228.3, 1.0, -12.64},
@@ -2860,11 +2915,11 @@ static frame fx_frame(const fx_point *p, int code) {
       f.voiced = true;
     } else if (fx_pulse_index(code) >= 0) {
       const int k = fx_pulse_index(code);
-      f.pitch = voice_hz(SJ_DEFAULT_PITCH) + fx_pulse[k].offset_hz;
+      f.pulse_offset = fx_pulse[k].offset_hz - fx_pulse[k].drift * p->ms;
+      f.pitch = voice_hz(SJ_DEFAULT_PITCH) + f.pulse_offset;
       f.wave = ENV_VOICE;
       f.voiced = true;
       f.pulsed = true;
-      f.pulse_offset = fx_pulse[k].offset_hz;
       f.fade_scale = fx_pulse[k].fade;
     } else if (fx_gate[code - 200].hz > 0) {
       f.pitch = fx_gate[code - 200].hz;
@@ -2947,7 +3002,14 @@ static void contour(sound *s, const fx_point *p, int n, int code) {
  * (the noise carries on from the sounds before), C8 and C9 go from 49 to 55%
  * and 2.8 to 2.3dB there, 52 to 56% and 2.8 to 2.5dB on the VoxRecord
  * recording, and at bend 15, left out of the fit, from 37 to 62% and 8.3 to
- * 4.4dB */
+ * 4.4dB.
+ *
+ * the gate keeps time with Speed, not Pitch: on both units of the fourth
+ * VoxProbe recording C8's gate comes every 19.1ms at the default speed, 32.7
+ * at speed 90 and 11.2 at speed 127 (1.71 and 0.59 times, where Speed
+ * stretches the sound 1.75 and 0.59 times), and every 18.9 to 19.2ms at
+ * pitch 60 and 150 and both bends. C8 at speed 90 62 to 68%, at speed 127 85
+ * to 86% */
 static const double c8_db[] = {
     -16.2, -11.8, -9.5, -5.5, -1.1, -0.5, -0.4, -0.3, -0.1, -0.3,
     -0.2, -0.1, -0.3, -0.5, -0.5, -0.2, -0.9, -1.3, -1.8, -5.2,
@@ -2958,6 +3020,7 @@ static const double c9_db[] = {
 };
 
 static void c_noise(sound *s, const double *db, int n) {
+  s->speed_gate = true;
   frame f = noise_frame(lGlottal, 1416.3, 1905.6, 0, 0, 100);
   f.noise_hold_ms = 0.75;
   f.pitch = 52;
@@ -5141,6 +5204,19 @@ static double msa_bend_hz(const msa *m) {
   return FREQ_STEP_HZ * (10 * m->bend - 45);
 }
 
+/* a tone Bend took under nothing (see msa_expand()) */
+#define WRAP_HZ 5680.0
+#define WRAP_MIN_VOL 8.0
+
+/* a frequency played at the chip's rate, folded under half of it */
+static double fold_hz(double hz) {
+  hz = fmod(hz, CHIP_RATE);
+  if (hz < 0)
+    hz += CHIP_RATE;
+  return hz > CHIP_RATE / 2 ? CHIP_RATE - hz : hz;
+}
+
+
 /* the voicing frequency for a Pitch setting. the chip counts each voicing
  * period in whole ticks of a VOICE_TICK_HZ clock: 8000 / Pitch ticks
  * (dividing in whole numbers) and one more. on the second VoxProbe recording,
@@ -5266,6 +5342,7 @@ static void msa_expand(msa *m, const sound *s) {
   }
 
   const double bend_hz = msa_bend_hz(m);
+  bool wrapped[3] = {false, false, false};
 
   m->nsegs = 0;
   for (int i = 0; i < s->nparts; i++) {
@@ -5294,10 +5371,28 @@ static void msa_expand(msa *m, const sound *s) {
     /* M2 doesn't follow Bend: on both units of the fourth VoxProbe recording
      * it is the same at bend 0 and bend 15, its formants within half a hertz
      * of each other over its whole length */
+    /* a tone Bend takes under nothing wraps round: on both units of the
+     * fourth VoxProbe recording, at bend 0 A1's third formant, which starts
+     * at 120Hz, isn't 197Hz lower but mirrored, a line falling from 2.4kHz as
+     * the formant rises, reaching nothing and rising again as the formant
+     * passes 2.5kHz, and its first formant is a steady line near 2.4kHz.
+     * both are the tone WRAP_HZ higher, played at the chip's rate (which
+     * folds it under half that rate), and it stays there as the effect goes
+     * on. a tone of an effect quieter than WRAP_MIN_VOL is one its trace
+     * couldn't read, its frequency borrowed from a neighbour (see contour()),
+     * and doesn't wrap: wrapping those put a line near 2.4kHz into C0, C3
+     * and C7 at bend 0 that neither unit has */
+    /* C8's and C9's gate keeps time with Speed (see c_noise()) */
+    if (s->speed_gate)
+      t.pitch /= scale;
     if (!s->no_bend)
       for (int j = 0; j < 3; j++)
-        if (t.freq[j] > 0)
-          t.freq[j] = fmax2(t.freq[j] + bend_hz, 0);
+        if (t.freq[j] > 0) {
+          if (!s->speech && t.vol[j] > WRAP_MIN_VOL && t.freq[j] + bend_hz < 0)
+            wrapped[j] = true;
+          t.freq[j] = wrapped[j] ? fold_hz(t.freq[j] + bend_hz + WRAP_HZ)
+                                 : fmax2(t.freq[j] + bend_hz, 0);
+        }
     /* Bend moves an effect's noise as well: on both units of the fourth
      * VoxProbe recording C8's and C9's noise moves about 200Hz down at bend 0
      * and 440Hz up at bend 15, as their tones do. it moves as a block, its
