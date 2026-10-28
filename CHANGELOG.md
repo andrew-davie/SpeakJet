@@ -508,7 +508,88 @@ kB.
   each effect's loudest point is 31, so the chip's own integers can't be read
   back from them.
 
+Refitted on a stricter score, with two things the chip does that the library
+didn't. All 752 recorded items 1.219 to 1.178 on the new score. The reference
+samples are regenerated.
+
+- The score (outside the library) now compares spectrograms smoothed over 15
+  ms and 1.5 ERB, so two real chips' noise speckle no longer sets a loose
+  reference; adds each sound's worst 25 ms and how much its level flickers
+  faster than 35 ms; and lets the parts furthest off count most. Sounds whose
+  graphs were plainly unlike the chip's (C8, C9, B6, C6, the voiced stops)
+  now score that way.
+- C8 and C9 are a narrow band of noise swept by the envelope oscillator, not
+  a wide band gated by it: on both units, every 19.5 ms the band climbs from
+  about 650 Hz to 3 kHz over the first 0.42 of the period and falls back over
+  the rest, quieter at the top (`SWEEP_LO_HZ` and the rest, new). C8 is 80
+  ms, 20 ms shorter, as on every recording of both units. With fresh peaking
+  filters, their 30 recordings 1.90 to 1.62, at other bends too.
+- DH, ZH and JH, and BO, are voiced faster than the vowels: on both units DH
+  and ZH at 91 Hz where every vowel is at 87 Hz (`voicing_pitch`, new, a
+  multiple of the voicing pitch). DH and ZH's recordings 1.73 to 1.33.
+- SE and SH are broad hiss on the chip, SH from 1.5 to 4 kHz and SE from 2 to
+  5 kHz. In the library each was two lines: a frequency jittered by a small
+  random amount every sample stays a line about 55 Hz wide. Their noise
+  oscillators now spread much wider (SH's 77.5, SE's 41 with one oscillator
+  at the top of the range) with some broadband noise, at the same loudness as
+  before. SH's 10 recordings 1.15 to 1.03; SE's 66 1.22 to 1.18, every kind
+  of recording better.
+- Lengths refitted for 9 allophones, phrase-final lengths for 4, repeat-copy
+  lengths for 8, and peaking filters for 35 sounds (most of the D effects and
+  several tones), each kept only where no kind of recording came out worse.
+- Checked and not taken up: holding the hiss's random values longer (worse
+  for every hold); starting a sound from silence at its own formants instead
+  of gliding in (the vowels alone better, the same vowels in connected groups
+  worse by as much); playing BE, EB, OB and DE from their measured voicing
+  pulses as BO and GE are (closer to the eye, worse on the score until the
+  frames themselves are fitted); per-sound gains (they only help through the
+  oscillators' clamp).
+- Still open: B9's middle is a pulsed tone sweeping 1 kHz to 550 Hz and back
+  under its second burst, which its three-tone trace misses.
+- Checked against every earlier recording the score doesn't use (VoxProbe 1, 2
+  and 3 on both units and the vox_test recording: 973 items, located on each
+  recording by its section markers and its own silences, and checked against
+  hand-located times). Every value fitted here was undone in turn on them:
+  NO's longer length, D2's new peaking filters and DH's shorter length were
+  wrong there (DH's length had been fitted before its pitch; DH alone is now
+  longer only as the last sound, `final_length`). They also showed repeat
+  copies of AW 25% longer on the chip (602 items, every pitch from 0 to 254),
+  and of NO and IH 25 and 30% shorter (`copy_length`). Those 973 items 1.411
+  (921abb1) to 1.224, 453 better by more than 0.1 and 79 worse; the score's
+  752 items 1.1795 to 1.1780.
+- At a low pitch the chip starts each speech sound (not each repeat copy)
+  with a voicing pulse at once, at full level and at the sound's own
+  formants, and restarts the voicing period there (`KICK_HZ`, new, below 20
+  Hz): AW at pitch 0 is that one pulse, at pitch 5 a pulse and another 200 ms
+  later, as on both units. The library faded the first pulse in and kept the
+  period running, so it played a faint pulse and the next one early. Those
+  items 2.46 to 2.32 (pitch under 32), every other recording unchanged; a
+  higher threshold made the recordings worse.
+- Still open, from the same recordings: under pitch 12 the chip starts with
+  two pulses 7 ms apart and, at pitch 0 to 4, sounds again about 155 ms in
+  (where the first AW of a repeat would end if it were longer; not settled);
+  AW repeated is the same length at every pitch on the chip (a second copy
+  as long as the sound, a third at the manual's 70 ms; made a rule for every
+  sound this was worse, so AW's copies are a compromise); the robots match
+  less well at Bend 0 and 15 (1.3 to 1.4 against 0.3 to 0.6 between the
+  units), at the default pitch too (1.0 against 0.5); at pitch 40 and under
+  the two units already differ by 1.0 to 1.8, so the score says little there.
+  VoxRecord's first two takes (one clipped, one 12 dB noisier) can't be used.
+- Checked and not taken up: thinning the traces and frames again with a looser
+  allowance (0.05 a sound) saved only 6% of their points, so they keep the
+  accuracy they have. Nor rules in place of traces: D0 to D11 as the DTMF
+  pairs (the chip's are 0.2 to 1% sharp: 704, 772, 857, 949 and 1215, 1343,
+  1480 Hz, all 162 to 166 ms) on one shared envelope, 217 knots to about 40
+  numbers, is 0.12 worse with each digit's peaking filters refitted and 0.29
+  with one set for all, so each digit keeps its trace; dropping the robots'
+  and other effects' weak traced tones (under volume 6 or 10) is worse for
+  every effect; the diphthongs' frames as straight glides between their end
+  targets (the loosest thinning) cost 0.09 to 1.4 per sound, so the chip's
+  pulse-by-pulse steps stay.
+
 text2speakjet:
+
+- Its lengths follow the refitted `allophone_length` and `final_length`.
 
 - Its length estimate applies `final_length`; its lengths are the library's
   `allophone_length`.
