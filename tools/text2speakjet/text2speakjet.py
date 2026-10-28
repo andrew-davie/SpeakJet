@@ -247,9 +247,34 @@ CHIP_CLOSURE_MS = {165: 12.7, 170: 51.5, 172: 7.6, 173: 3.3, 174: 29.8, 182: 56.
                    192: 121.1, 194: 37.4, 195: 60.7, 196: 105.5, 197: 29.2, 198: 83.4, 199: 70.0}
 
 
+# CHIP_REFIT_LENGTH multiplies each allophone's length (refit_length) and
+# CHIP_FINAL_LENGTH multiplies it again when it is the last sound before a
+# pause or the end and isn't repeated (final_length).
+CHIP_REFIT_LENGTH = [
+    1, 1, 1.4, 1.05, 1.4875, 1.4, 1, 1.2375, 1,
+    1.2, 1.2, 1, 1, 0.95, 1.0375, 0.8875, 0.9625, 1,
+    1.0625, 1.1, 1.1375, 1, 1.0875, 1, 1.025, 1.0625, 1,
+    1.1, 1, 1, 1.05, 1.0625, 1, 1.05, 1, 1.0125,
+    1.025, 1.025, 0.9875, 0.9375, 1.175, 1, 1, 0.975, 1.075,
+    1, 0.9625, 1, 0.8375, 0.8875, 1.0875, 1, 1, 0.8125,
+    1.1625, 1, 1, 1, 1, 0.875, 0.825, 1, 0.725,
+    1, 0.9625, 0.825, 1.0375, 0.775, 1.0375, 1.1, 1.0125, 1.0375,
+]
+CHIP_FINAL_LENGTH = [
+    1.25, 1.175, 1, 1.175, 1, 1, 1, 1, 1.25,
+    1, 1, 1.15, 1, 1, 0.9, 1, 1, 1,
+    1, 1.05, 0.9875, 1.1375, 1, 1, 1, 0.9125, 1,
+    1, 1.0375, 1.2375, 0.925, 0.975, 1.0375, 1, 1.025, 1.0625,
+    1, 1, 1.25, 1, 1, 1, 1, 1, 1,
+    1, 0.975, 0.8875, 1.2625, 1.2, 1, 1.075, 1.2125, 1,
+    1, 1, 1, 1, 0.7875, 0.9625, 1, 1, 1,
+    0.6375, 1.05, 1, 1, 1.3, 1, 0.8, 1, 0.925,
+]
+
+
 def chip_length(code):
     """How much longer the chip plays an allophone than the manual's length."""
-    return CHIP_LENGTH[code - 128]
+    return CHIP_LENGTH[code - 128] * CHIP_REFIT_LENGTH[code - 128]
 
 
 def speed_factor(speed):
@@ -263,12 +288,15 @@ def estimate_ms(codes):
     total = 0.0
     scale = 1.0
     paused = 0.0        # pause since the last sound, which a stop's closure takes in
+    repeat = 0
     i = 0
     while i < len(codes):
         c = codes[i]
         if c in ARG_NAME:
             if c == 21 and i + 1 < len(codes):
                 speed = codes[i + 1]
+            elif c == 26 and i + 1 < len(codes):
+                repeat = codes[i + 1]
             elif c == 30 and i + 1 < len(codes):
                 total += codes[i + 1] * 10 + CHIP_DELAY_EXTRA_MS
             i += 2
@@ -286,7 +314,9 @@ def estimate_ms(codes):
             if c < 200:
                 if c >= NO_SLOW_FROM and scale == SLOW_SCALE:
                     scale = 1.0
-                total += DURATION[c] * scale * chip_length(c) * speed_factor(speed)
+                final = (i + 1 >= len(codes) or codes[i + 1] <= 6) and repeat <= 1
+                total += (DURATION[c] * scale * chip_length(c) * speed_factor(speed)
+                          * (CHIP_FINAL_LENGTH[c - 128] if final else 1.0))
                 if c in CHIP_CLOSURE_MS:
                     closure = CHIP_CLOSURE_MS[c] * scale * speed_factor(speed)
                     if closure > CHIP_MIN_CLOSURE_MS:
@@ -295,6 +325,7 @@ def estimate_ms(codes):
                 total += CHIP_EFFECT_MS[c - 200] * speed_factor(speed)
             scale = 1.0
             paused = 0.0
+            repeat = 0
         i += 1
     return total
 

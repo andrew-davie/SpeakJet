@@ -397,7 +397,34 @@ consonants, shaped"). The reference samples are regenerated.
   to 0.869 and 4.78 to 2.61 dB, ED 4.30 to 1.87 dB, BO 2.28 to 1.12 dB, ZZ
   1.95 to 1.11 dB, KO 0.850 to 0.870. Man Goes Down within 0.002.
 
+Lengths, levels and shaping refitted on every recording of both units at once,
+VoxRecord's connected groups included: the library given each recording's own
+background, both measured by the same rule (length, level over time,
+time-frequency picture after alignment, timing within the sound, sideways
+spectral shifts, whole-sound spectrum, pitch), each against how closely the
+two units agree. A fit was kept only where no kind of recording came out
+worse. 752 items, against the two units' own agreement: 1.09 to 0.93 overall,
+the allophones alone 0.81 to 0.49, the effects alone 1.05 to 0.94, the
+connected groups 1.08 to 0.97, Man Goes Down 1.34 to 1.27. The reference
+samples are regenerated.
+
+- A sound that is the last before a pause or the end, and isn't repeated, has
+  a length of its own (`final_length`): on the chip a vowel played last is
+  longer than inside a phrase (IY and AW 1.25 times, EH 1.18) and TT and FF
+  shorter (0.64, 0.79), which no single length fitted both ways.
+- 46 allophones' lengths (`refit_length`): the vowels played alone were about
+  20% short (EY and AX 1.4 times, AY 1.49, OH 1.24) and the voiceless
+  fricatives long (TS and SO 0.83, SE 0.88, TH 0.73). The framed sounds too
+  (OG 0.81, ED 0.84, ZZ 0.94, ZH 1.18; EG 1.21 times when last).
+- 8 allophones' levels where they sit beside others (`refit_gain_db`): HE +5.8
+  dB, NE -6.4, ZZ +4.3, EK -4.9.
+- The peaking filters shape 98 sounds (`sound_eq`, was `consonant_eq`), 45 of
+  them effects: R2 0.99 to 0.58, A3 0.96 to 0.58, A8 1.02 to 0.72, R5 1.20 to
+  0.92, D6 1.08 to 0.77; WH 0.58 to 0.17, EYRR 1.51 to 1.18, SH 1.16 to 0.96.
+
 text2speakjet:
+
+- Its length estimate applies `refit_length` and `final_length`.
 
 - Its length estimate follows the changes above: Slow skips the voiceless
   consonants, a pause shortens a following stop's closure, C1 is 302 ms and
