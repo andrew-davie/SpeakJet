@@ -387,6 +387,16 @@ samples are regenerated.
   tones: the VoxRecord effects 5.99 to 4.36 dB, the DTMF tones 6.4 to 10.2 dB
   to 2.7 to 7.5 dB. The speech is unchanged.
 
+The consonants are shaped after the oscillators (see docs/design.md, "The
+consonants, shaped"). The reference samples are regenerated.
+
+- Peaking filters half an octave apart from 180 Hz to 3.6 kHz shape 19
+  consonants' spectra to the chip's, with broadband noise under TU, KO and EK
+  and each kept at its own level (`consonant_eq`, `synth_eq()`). Fitted to the
+  VoxRecord recording; on the fourth VoxProbe recording, left out, GO 0.839
+  to 0.869 and 4.78 to 2.61 dB, ED 4.30 to 1.87 dB, BO 2.28 to 1.12 dB, ZZ
+  1.95 to 1.11 dB, KO 0.850 to 0.870. Man Goes Down within 0.002.
+
 text2speakjet:
 
 - Its length estimate follows the changes above: Slow skips the voiceless

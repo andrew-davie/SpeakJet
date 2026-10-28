@@ -1390,6 +1390,54 @@ Left open:
 - JH and EB repeated: the two units match each other only 0.64 and 0.47
   (clicks of their own), so these can't be fitted.
 
+### The consonants, shaped
+
+The voiceless fricatives and stops played alone already match the chip as
+well as the two units match each other (0.84 to 0.88, against 0.84 to 0.89):
+noise is random, so no two takes line up frame by frame. What was left was
+their spectra, 4 to 7 dB off, and that turned out to be one shape per sound.
+On both units of the VoxRecord recording each consonant's whole-sound
+spectrum differs from this library's by much the same curve every time;
+taken away, what is left is no more than the units differ from each other:
+
+| | off by | with the shape taken away | unit against unit |
+|---|---|---|---|
+| GO | 5.4 dB | 0.7 dB | 1.5 dB |
+| ED | 4.2 dB | 0.9 dB | 1.8 dB |
+| SE | 5.2 dB | 1.3 dB | 2.0 dB |
+| SH | 5.9 dB | 1.7 dB | 1.9 dB |
+| TU | 5.0 dB | 0.7 dB | 1.4 dB |
+
+The oscillators can't make those shapes, so the output is shaped after them:
+ten peaking filters half an octave apart from 180 Hz to 3.6 kHz (`synth_eq()`),
+with gains for each consonant (`consonant_eq`) that travel with its frames and
+glide into the next sound. Where the chip's hiss is broader than oscillators 4
+and 5 make (SH's runs flat from 100 Hz to 2 kHz, 15 dB above this library's),
+broadband noise rides on those oscillators as well. The gains were fitted to
+the VoxRecord recording only, a few rounds of measuring the curve and moving
+each filter by most of it; then an overall gain puts each sound back at its
+own level, which had been fitted among the vowels. Without that SE came out 5
+dB louder and lost 3 to 5 points next to AW and in Man Goes Down.
+
+Checked on what was left out (the fourth VoxProbe recording, Man Goes Down):
+
+| | before | now |
+|---|---|---|
+| GO | 0.839, 4.78 dB | 0.869, 2.61 dB |
+| ED | 0.821, 4.30 dB | 0.838, 1.87 dB |
+| OD | 0.831, 2.53 dB | 0.838, 1.34 dB |
+| BO | 0.775, 2.28 dB | 0.791, 1.12 dB |
+| ZZ, ZH, DH (pitch 40) | 1.95, 2.33, 3.40 dB | 1.11, 1.85, 2.26 dB |
+| KO (six noise sequences) | 0.850, 4.79 dB | 0.870, 4.35 dB |
+| BE EH, EH DE | 0.874, 0.895 | 0.885, 0.905 |
+| the game's phrases | | within 0.002 |
+
+Left without: CH, SO, TT and OK fitted to nothing; EB, SH, TS and KE came out
+worse on the fourth VoxProbe recording; and SE, its spectrum 5.4 to 2.0 dB,
+lost 3 to 5 points of spectrogram match on every recording. A hiss's match
+moves 2 to 4 points with the random sequence alone, so the noisy ones were
+judged on the mean of six.
+
 ## What isn't known, and what isn't emulated
 
 ### Unknown
