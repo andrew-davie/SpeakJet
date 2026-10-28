@@ -422,6 +422,31 @@ samples are regenerated.
   them effects: R2 0.99 to 0.58, A3 0.96 to 0.58, A8 1.02 to 0.72, R5 1.20 to
   0.92, D6 1.08 to 0.77; WH 0.58 to 0.17, EYRR 1.51 to 1.18, SH 1.16 to 0.96.
 
+The open items from that refit worked through, on the same score. 752
+items: 0.93 to 0.87; the effects alone 0.94 to 0.82; the fourth VoxProbe's
+repeats 1.11 to 0.94 and, at pitch 40, 1.24 to 0.65; Man Goes Down 1.267 to
+1.265. No sound is worse by more than 0.05. The reference samples are
+regenerated.
+
+- Effects start sharply (`sharp_onsets`, new): on both units the chip brings
+  D1, D5, B3 and R3 from the background to within 5 dB in a millisecond,
+  where the traces (5 ms frames) ramped up over 5 to 10 ms. 41 effects, each
+  with its own threshold; the buzzes and the C series keep their gradual
+  starts. The VoxRecord effects 0.94 to 0.82.
+- Repeat copies have lengths of their own (`copy_length`, new; the manual's
+  length before): many are shorter on the chip (DO 0.7 times, ZZ 0.69, EB
+  0.51). LO 1.14 to 0.25, ZZ 1.44 to 0.87, DO 1.24 to 0.91. 28 sounds.
+- 11 lengths and 4 phrase-final lengths refined (OWIY last 1.15 times longer).
+- Checked and not taken up: a static nonlinearity at the output for the chip's
+  sum and difference tones (R3 has 361 + 2 x 734 Hz at -23 dB; worse
+  overall, the effects too); a DC step behind the onset clicks of A9, B0, B1,
+  B2 (helps some, harms others); a glide between repeat copies (no change). The
+  "ghost" tone 20 Hz from each library tone was the analysis window, not the
+  library.
+- Still open: SH, UW, UX and BE are about 15% shorter on both units in the
+  fourth VoxProbe than in VoxRecord with the same codes, which no one length
+  fits.
+
 text2speakjet:
 
 - Its length estimate applies `refit_length` and `final_length`.

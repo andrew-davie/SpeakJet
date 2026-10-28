@@ -491,6 +491,8 @@ typedef struct sound {
 
   /* the sound doesn't follow the Bend control (see msa_expand()) */
   bool no_bend;
+  /* the copies' length when repeated, against the manual's (see copy_length) */
+  double copy_length;
 
   /* Slow doesn't lengthen the sound (see msa_expand()) */
   bool no_slow;
@@ -982,20 +984,20 @@ static const double allophone_length[] = {
  * level, fitted where sounds sit next to each other */
 static const double refit_length[] = {
     1, 1, 1.4, 1.05, 1.4875, 1.4, 1, 1.2375, 1,
-    1.2, 1.2, 1, 1, 0.95, 1.0375, 0.8875, 0.9625, 1,
-    1.0625, 1.1, 1.1375, 1, 1.0875, 1, 1.025, 1.0625, 1,
-    1.1, 1, 1, 1.05, 1.0625, 1, 1.05, 1, 1.0125,
-    1.025, 1.025, 0.9875, 0.9375, 1.175, 1, 1, 0.975, 1.075,
-    1, 0.9625, 1, 0.8375, 0.8875, 1.0875, 1, 1, 0.8125,
-    1.1625, 1, 1, 1, 1, 0.875, 0.825, 1, 0.725,
-    1, 0.9625, 0.825, 1.0375, 0.775, 1.0375, 1.1, 1.0125, 1.0375,
+    1.2, 1.2, 1, 1, 0.95, 1.0375, 0.8875, 0.9625, 0.9875,
+    1.0625, 1.1, 1.1375, 0.9375, 1.0331, 1, 1.025, 1.0492, 1,
+    1.1, 0.875, 0.8, 1.05, 1.0625, 1, 1.05, 1, 1.0125,
+    1.025, 1.025, 0.9875, 0.8906, 1.175, 1, 1, 0.975, 1.075,
+    1, 0.9625, 1, 0.8375, 0.8875, 1.0875, 1, 1, 0.8328,
+    1.1625, 1, 0.975, 1, 1, 0.875, 0.8353, 1, 0.725,
+    1, 0.9625, 0.825, 1.0375, 0.775, 1.0375, 1.1, 1.0125, 0.9856,
 };
 static const double final_length[] = {
     1.25, 1.175, 1, 1.175, 1, 1, 1, 1, 1.25,
-    1, 1, 1.15, 1, 1, 0.9, 1, 1, 1,
+    1, 1, 1.15, 1, 1, 0.9, 1.025, 0.9375, 1,
     1, 1.05, 0.9875, 1.1375, 1, 1, 1, 0.9125, 1,
-    1, 1.0375, 1.2375, 0.925, 0.975, 1.0375, 1, 1.025, 1.0625,
-    1, 1, 1.25, 1, 1, 1, 1, 1, 1,
+    1, 1.1931, 1.2375, 0.925, 0.975, 1.0375, 1, 1.025, 1.0625,
+    1, 1, 1.2656, 1, 1, 1, 1, 1, 1,
     1, 0.975, 0.8875, 1.2625, 1.2, 1, 1.075, 1.2125, 1,
     1, 1, 1, 1, 0.7875, 0.9625, 1, 1, 1,
     0.6375, 1.05, 1, 1, 1.3, 1, 0.8, 1, 0.925,
@@ -1009,6 +1011,23 @@ static const double refit_gain_db[] = {
     0, -3, 0, 0, 0, 0, 0, 0, 0,
     0, 5.8125, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, -4.875, 0, 0, 0,
+};
+/* the copies after the first, when a sound is repeated, as a multiple of the
+ * manual's length (see msa_expand()), fitted the same way on the fourth
+ * VoxProbe recording's repeats (five of each diphthong and voiced stop, ten of
+ * each at pitch 40) and VoxRecord's: on the chip many copies are shorter than
+ * the manual says (LO and DO 0.75 and 0.7 times, ZZ 0.69, EB 0.51), which
+ * left the copies drifting out of step: LO 1.14 to 0.25, ZZ 1.44 to 0.87, DO
+ * 1.24 to 0.91 */
+static const double copy_length[] = {
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 0.9875, 0.925, 1,
+    0.75, 1, 1, 1.0625, 1, 0.9625, 1, 0.9125, 1,
+    0.8625, 1.075, 1, 0.8875, 0.9625, 1.0875, 0.9125, 1.05, 0.925,
+    0.9375, 0.9375, 1, 0.6875, 0.975, 0.7625, 0.7625, 0.825, 0.5125,
+    0.8, 1, 0.7, 1, 1.1, 0.925, 0.9875, 1, 0.8125,
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
 };
 /* REFIT-END */
 
@@ -5314,6 +5333,86 @@ static void sound_shaping(sound *s, int code) {
   }
 }
 
+/* the chip starts most tones at once: on both units of the VoxRecord
+ * recording D1, D5, B3 and R3 come up from the background to within 5dB in a
+ * millisecond, where their traces (5ms frames) ramp up over 5 to 10ms. so the
+ * effects below start sharply: the parts before the first whose summed volume
+ * reaches the given fraction of the sound's loudest are silent, and that part
+ * is reached at once (its glide 0), the sound's length unchanged. the fraction
+ * is each effect's own, fitted on every recording of both units and kept only
+ * where none came out worse; the rest (the buzzes, the C series' gradual
+ * starts, R1) keep their ramps. the VoxRecord effects 0.936 to 0.819 */
+static const struct {
+  short code;
+  double fraction;
+} sharp_onsets[] = {
+    {201, 0.5} /* R1 */,
+    {202, 0.125} /* R2 */,
+    {203, 0.5} /* R3 */,
+    {204, 0.2} /* R4 */,
+    {205, 0.1} /* R5 */,
+    {206, 0.3} /* R6 */,
+    {207, 0.2} /* R7 */,
+    {208, 0.2} /* R8 */,
+    {211, 0.05} /* A1 */,
+    {212, 0.5} /* A2 */,
+    {213, 0.7} /* A3 */,
+    {214, 0.7} /* A4 */,
+    {216, 0.3} /* A6 */,
+    {217, 0.2} /* A7 */,
+    {218, 0.05} /* A8 */,
+    {219, 0.2} /* A9 */,
+    {220, 0.2} /* B0 */,
+    {221, 0.7} /* B1 */,
+    {222, 0.5} /* B2 */,
+    {223, 0.7} /* B3 */,
+    {224, 0.5} /* B4 */,
+    {225, 0.7} /* B5 */,
+    {226, 0.3} /* B6 */,
+    {227, 0.5} /* B7 */,
+    {228, 0.2} /* B8 */,
+    {229, 0.3} /* B9 */,
+    {235, 0.05} /* C5 */,
+    {236, 0.025} /* C6 */,
+    {239, 0.5} /* C9 */,
+    {240, 0.2} /* D0 */,
+    {242, 0.7} /* D2 */,
+    {243, 0.475} /* D3 */,
+    {244, 0.05} /* D4 */,
+    {245, 0.025} /* D5 */,
+    {246, 0.05} /* D6 */,
+    {247, 0.2} /* D7 */,
+    {248, 0.5} /* D8 */,
+    {249, 0.7} /* D9 */,
+    {250, 0.1} /* D10 */,
+    {251, 0.2} /* D11 */,
+    {254, 0.7} /* M2 */,
+};
+
+static void sharp_onset(sound *s, int code) {
+  for (int k = 0; k < (int)(sizeof(sharp_onsets) / sizeof(sharp_onsets[0])); k++) {
+    if (sharp_onsets[k].code != code)
+      continue;
+    double loudest = 0;
+    for (int i = 0; i < s->nparts; i++) {
+      double v = 0;
+      for (int j = 0; j < 5; j++)
+        v += s->parts[i].target.vol[j];
+      loudest = fmax2(loudest, v);
+    }
+    for (int i = 0; i < s->nparts; i++) {
+      double v = 0;
+      for (int j = 0; j < 5; j++)
+        v += s->parts[i].target.vol[j];
+      s->parts[i].glide_ms = 0;
+      if (v >= sharp_onsets[k].fraction * loudest)
+        break;
+      for (int j = 0; j < 5; j++)
+        s->parts[i].target.vol[j] = 0;
+    }
+  }
+}
+
 static bool lookup(uint8_t code, sound *s) {
   memset(s, 0, sizeof(*s));
   if (code >= 128 && code < 128 + NUM_ALLOPHONES) {
@@ -5325,10 +5424,13 @@ static bool lookup(uint8_t code, sound *s) {
       for (int j = 0; j < 5; j++)
         s->parts[i].target.vol[j] *= g;
     sound_shaping(s, code);
+    s->copy_length = copy_length[code - 128];
     s->no_slow = code >= 182; /* the voiceless consonants (see msa_expand()) */
   } else if (code >= 200 && code < 200 + NUM_EFFECTS) {
     effect(s, code);
+    sharp_onset(s, code);
     sound_shaping(s, code);
+    s->copy_length = 1;
     s->no_bend = code == 254; /* M2 (see msa_expand()) */
   } else
     return false;
@@ -5680,7 +5782,7 @@ static void msa_expand(msa *m, const sound *s) {
     sg->target = t;
     sg->jump = false;
 
-    const double copy_ms = p->ms * copy_scale;
+    const double copy_ms = p->ms * copy_scale * s->copy_length;
     double copy_glide = p->glide_ms * copy_scale;
     if (p->glide_ms == AUTO_GLIDE)
       copy_glide = fmin2(fmax2(copy_ms * 0.35, 20), 50);
