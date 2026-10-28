@@ -447,6 +447,26 @@ regenerated.
   fourth VoxProbe than in VoxRecord with the same codes, which no one length
   fits.
 
+A4 and C7, whose spectrograms were plainly unlike the chip's, rebuilt. The
+reference samples are regenerated.
+
+- A4 is not a sine: on the chip its tone carries its third harmonic, exactly
+  three times its frequency all the way up, 10 to 14 dB under it, with no
+  fifth, gone as it nears 4 kHz (`third_harmonics`, new, played on oscillator
+  2). The noise under it is not there on the chip and is gone. 1.33 to 1.00.
+  No other effect has a harmonic to speak of.
+- C7 is one tone that sweeps up from 500 Hz to 2.7 kHz and drops back five
+  times in 300 ms, faster each time. Its 5 to 20 ms trace had smoothed that
+  into a wave under 1 kHz with three tones where the chip has one; it is traced
+  again every 2 ms, with its own peaking filters. All 13 recordings of both
+  units, at other pitches and bends too, 1.33 to 1.04.
+- B9 and C4 traced again the same way (B9's three tones, C4's one, their
+  pulsing and noise kept): B9 1.83 to 1.43, C4 1.30 to 1.05, every kind of
+  recording better. The same was tried on A1, A3, C0, C2, C3 and C6 and was
+  worse for each, so they keep their traces: A1 and A3 are buzzes, which a
+  tone trace loses, and the C series' pulsing is better served by the traces
+  they have.
+
 text2speakjet:
 
 - Its length estimate applies `refit_length` and `final_length`.
