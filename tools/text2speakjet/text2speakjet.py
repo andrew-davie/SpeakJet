@@ -228,15 +228,23 @@ CHIP_LENGTH = [
     2.23, 1.17, 1.77, 2.07, 2.78, 1.12, 2.44, 1.40, 2.40, 2.46, 1.40, 1.40,
 ]
 CHIP_EFFECT_MS = [
-    82, 86, 95, 96, 83, 89, 93, 97, 91, 92, 341, 1008, 958, 573,
+    82, 86, 95, 96, 83, 89, 93, 97, 91, 92, 341, 978, 958, 573,
     253, 559, 197, 590, 276, 256, 178, 394, 403, 310, 379, 166, 171, 163,
-    322, 333, 248, 333, 253, 253, 268, 343, 308, 423, 103, 88, 164, 164,
+    322, 333, 248, 302, 253, 253, 268, 343, 308, 423, 103, 88, 164, 164,
     166, 164, 165, 164, 164, 163, 164, 165, 162, 164, 1200, 300, 558,
 ]
 CHIP_DELAY_EXTRA_MS = 12
 FAST_SCALE = 0.65
 SLOW_SCALE = 1.35
 CHIP_PAUSE_MS = [14, 107, 203, 645, 25, 43, 70]
+# Slow doesn't lengthen the voiceless consonants (codes 182 and up). A pause
+# before a stop takes the place of that much of its closure, which keeps
+# CHIP_MIN_CLOSURE_MS (msa_closure()). CHIP_CLOSURE_MS is each stop's closure
+# at the default speed.
+NO_SLOW_FROM = 182
+CHIP_MIN_CLOSURE_MS = 20
+CHIP_CLOSURE_MS = {165: 12.7, 170: 51.5, 172: 7.6, 173: 3.3, 174: 29.8, 182: 56.6, 191: 65.8,
+                   192: 121.1, 194: 37.4, 195: 60.7, 196: 105.5, 197: 29.2, 198: 83.4, 199: 70.0}
 
 
 def chip_length(code):
@@ -254,6 +262,7 @@ def estimate_ms(codes):
     speed = DEFAULT_SPEED
     total = 0.0
     scale = 1.0
+    paused = 0.0        # pause since the last sound, which a stop's closure takes in
     i = 0
     while i < len(codes):
         c = codes[i]
@@ -266,6 +275,7 @@ def estimate_ms(codes):
             continue
         if c <= 6:
             total += CHIP_PAUSE_MS[c] * speed_factor(speed)
+            paused += CHIP_PAUSE_MS[c] * speed_factor(speed)
         elif c == 7:
             scale = FAST_SCALE
         elif c == 8:
@@ -274,10 +284,17 @@ def estimate_ms(codes):
             speed = DEFAULT_SPEED
         elif c in DURATION:
             if c < 200:
+                if c >= NO_SLOW_FROM and scale == SLOW_SCALE:
+                    scale = 1.0
                 total += DURATION[c] * scale * chip_length(c) * speed_factor(speed)
+                if c in CHIP_CLOSURE_MS:
+                    closure = CHIP_CLOSURE_MS[c] * scale * speed_factor(speed)
+                    if closure > CHIP_MIN_CLOSURE_MS:
+                        total -= closure - max(closure - paused, CHIP_MIN_CLOSURE_MS)
             else:
                 total += CHIP_EFFECT_MS[c - 200] * speed_factor(speed)
             scale = 1.0
+            paused = 0.0
         i += 1
     return total
 

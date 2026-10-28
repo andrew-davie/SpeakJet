@@ -1114,19 +1114,189 @@ that neither unit has. A tone now holds still while it is silent.
 | bend 15 | 46.0% 6.21 | 48.3% 6.08 |
 | VoxRecord, unit B | 85.1% 1.58 | 85.1% 1.57 |
 
-Still open, with what was measured:
+### A1, R8, R9, C0 and M2
 
-- **R8 and R9.** Their high tone moves with Bend exactly (R8 3102 Hz to 2903
-  and 3541); their low tone moves the full range from bend 0 to bend 15 but
-  starts about 126 Hz lower than on the VoxRecord recording, as M2's formants
-  do. Not modelled.
-- **A1.** Its trace is wrong even at the default: on both recordings the chip
-  plays a steady formant near 200 Hz and a straight sweep from about 200 Hz
-  to 2.5 kHz over a second, where the trace has three wandering formants. At
-  bend 0 the sweep turns back at 1.1 kHz; at bend 15 a steady 570 Hz part
-  dominates. Needs tracing again.
-- **C0's sweep** bottoms out at about 200 Hz at bend 0 and 405 Hz at bend 15
-  rather than following Bend all the way down.
+The four items left open above, measured again on the same recordings. Fitted
+as before (default, pitch 60, bend 0 and VoxRecord), with pitch 150, the
+speeds, bend 15 and the first VoxProbe recording left out. Only A1, R8 and R9
+change; speech and every other effect are unchanged to the bit.
+
+**A1** was traced from the strongest peak in each frame, which jumps from one
+part of the sound to another. Read instead from the peaks of its harmonics
+every 25 ms, A1 is three formants on both units of both recordings, within
+10 Hz of each other. One holds at 207 Hz. One rises from 720 to 1645 Hz. The
+third rises faster, from about 120 to 2870 Hz, and crosses the second near
+300 ms. Pitch 60 and 150 and the two speeds play the same formants. At bend 15
+all three are about 440 Hz higher. A1 now plays these three formants, with
+the levels fitted to the harmonics' peaks at the default pitch only:
+
+| A1 | before | now |
+|---|---|---|
+| default, both recordings (fitted) | 33% 7.2 dB | 92% 1.1 dB |
+| pitch 60 and 150, bend 15, speeds (left out) | 30% 7.4 | 93% 1.3 |
+| first VoxProbe recording, pitch 60/88/150, speed 60/127 (left out) | 36% 7.3 | 91% 1.1 |
+| bend 0 | 31% 6.4 | 21% 3.5 |
+
+At bend 0 the chip plays something else. The second formant moves 197 Hz down
+as Bend says. The third is mirrored: it falls as about 2.5 kHz less its
+default rise, which with the second makes the X the spectrogram shows. A line
+also holds near 2.4 kHz. A3, measured the same way, simply moves (about -210
+and +430 Hz). That is one setting of one effect, with nothing to say what
+bends 1 to 4 do, so it isn't modelled.
+
+**R8 and R9** pulse. Their low tone near 650 Hz is restarted at a rate that
+follows Pitch and ignores Bend. Its lines are 306, 333 and 380 Hz apart at
+pitch 60, 88 and 150, on both units. The rate is half the tone's own
+frequency, and it falls with the tone: R9's goes 333 to 296 Hz over its first
+40 ms as the tone falls 667 to 609 Hz. Bend moves the tone but not the rate.
+So at bend 0 the strongest line is the rate itself, near 330 Hz, and at
+bend 15 it is the third line, near 1 kHz. That is the low tone that read
+126 Hz lower than on VoxRecord. Their high tone (3.1 and 3.4 kHz) is steady
+and moves with Bend. R8 and R9 now restart oscillators 1 to 3 at half the
+loudest tone's frequency, moved with Pitch, using 0.7 of the voicing's fade
+(fitted). The high tone is on oscillator 4. R9's noise floor and noise refit
+go, since the pulses make that energy. Either side of half the frequency, 10
+Hz off fitted 3 to 5 points worse. Pitch 150 suggests the rate rises 0.86 Hz
+for each hertz of the voicing, not 1, but that made R8 worse.
+
+| | R8 before | R8 now | R9 before | R9 now |
+|---|---|---|---|---|
+| pitch 60, bend 0, VoxRecord (fitted) | 55% 5.2 dB | 86% 2.3 | 52% 3.9 | 86% 2.8 |
+| pitch 150, bend 15, speeds (left out) | 61% 4.9 | 77% 2.8 | 34% 7.1 | 67% 3.2 |
+
+R9 on VoxRecord alone goes from 85% and 1.1 dB to 87% and 2.6 dB; pitch 150
+is still the weakest (42 to 54% for R9 on the two units, 36 to 46% for R8).
+
+All effect items, floor-matched:
+
+| | before | now |
+|---|---|---|
+| default | 66.0% 2.77 dB | 70.8% 2.27 dB |
+| pitch 60 and 150 | 56.0% 3.86 | 62.5% 3.31 |
+| bend 0 | 53.7% 4.40 | 61.8% 3.62 |
+| bend 15 | 51.8% 5.50 | 64.0% 3.99 |
+| speeds 90 and 127 | 57.8% 3.85 | 67.2% 2.89 |
+| VoxRecord, unit B | 84.9% 1.62 | 86.2% 1.52 |
+
+**C0** is one tone gated at the voicing rate. It sweeps down about 27 Hz/ms
+from 2.1 kHz and then holds. Read through the gate's lines, it holds near
+210 Hz at the default, 205 Hz at bend 0 and 420 Hz at bend 15, on both units.
+That fits a sweep that runs on to about 0 Hz, plus Bend, never going below
+about 205 Hz. A1's steady formant (207 Hz, 590 Hz at bend 15) fits the same
+floor. Two things were tried. A clean re-trace of the one tone took the
+default from 64 to 77% and bend 15 from 6.3 to 2.4 dB, but made its
+whole-spectrum match worse everywhere (0.8 to 1.7 dB) and bend 0 worse (70 to
+47%). Adding a 205 Hz floor for effects' tones mended bend 0 but lost the
+default's gain, since the chip's tail after the sweep is weaker than a held
+tone. Neither was a clean improvement, so C0 is unchanged.
+
+**M2**'s different starts come from the sound before it. Each M2 rises about
+434 Hz and comes back, starting from the formants that some earlier sound
+left. Here, A3 at bend 15 ends at 1887 to 1899 Hz (0 dB) and 2787 to 2802 Hz
+(-5 dB) with a weak line near 290 Hz. M2 then starts at 1936 to 1952 Hz (0 dB)
+and 2842 to 2853 Hz (-5 dB) with a weak low line. The gap is A3's last 25 ms
+of rise. Four M1s, a Bend reset and a Pitch change in between don't disturb
+it. On the first VoxProbe recording M2 follows A1 and starts where A1 ends.
+On VoxRecord it starts with A1's end F2 and F3 and their levels, but not
+A1's F1. That contradicts any simple rule, because A2 and A3 play after A1
+there without setting M2's start. Which sounds set the formants M2 starts
+from isn't settled, so M2 keeps the VoxRecord trace.
+
+### Man Goes Down
+
+Two AtariVoxes recorded playing Man Goes Down (2004), and the same game run in
+Gopher2600 with this library, which says "man goes down", "may the fruit be
+with you", C1 at speed 62 and pitch 212, and "you suck" (IYUW SE SE UX UX UX,
+pause 1, EK). Unlike the probe recordings this is connected speech with Slow,
+Bend, Pitch and pauses mixed in. The game picks its second phrase by whether
+the frame counter is odd when fire is pressed: the odd one is the recorded
+"may the fruit be with you", the even one "run, run, run".
+
+**One scorer for every recording.** The earlier comparisons band-passed both
+sides to 150 Hz - 4 kHz before matching them frame by frame, so nothing above
+4 kHz ever counted in a fit (the full-band output stage was checked on whole
+spectra only). Everything here is scored one way, on all three sets of
+recordings (both units of the fourth VoxProbe recording, VoxRecord, Man Goes
+Down): a 150 Hz high pass and nothing else, bands a sixth of an octave wide
+from 150 Hz to 16 kHz, 20 ms frames every 5 ms. The library is scaled to the
+chip's level with the chip's background taken out, and that background added
+to it, so both are measured alike. The match is the correlation of the two
+frame-by-band levels in dB, floored 40 dB under each one's loudest, at the
+best alignment within 30 ms; the spectrum error is over the whole item, floored
+50 dB under its loudest, in the bands where the chip is 6 dB over its
+background, and reported below and above 4 kHz too. The two units agree with
+each other at 88 to 97% depending on the section.
+
+**C1 is voiced, with its own pitch.** At speed 62 every line of C1 is a whole
+multiple of a pitch that steps a voicing tick at a time: 24 ticks (333 Hz) for
+40 ms, up to 14 (570 Hz) by 80 ms, then down a tick every few milliseconds to
+40 (200 Hz), the same on both units within 4 Hz. The fourth VoxProbe recording
+plays the same sweep at pitch 60, 88 and 150 (a tick or two faster at 150) and
+at both bends, so the Pitch control doesn't move it. Over its last 200 ms one
+line rises from 2.0 to 2.9 kHz (3.35 kHz at bend 15) straight across the
+harmonics, a sine the voicing doesn't restart: the manual's envelope control
+chooses which oscillators it envelopes, and here oscillator 3 runs free
+(`frame.free_osc`). The old trace had followed the loudest harmonic as a tone
+under broad noise, which at speed 62 was noise and 4.3 dB too loud against the
+speech. C1 is now the measured pitch and three formants every 1.9 ms
+(`c1_points`), the formants and volumes fitted to Man Goes Down and the fourth
+VoxProbe recording's default and bend 15, and the level to the game's first
+phrase:
+
+| C1 (both units) | before | now |
+|---|---|---|
+| Man Goes Down, speed 62 pitch 212 (fitted) | 0.60, 4.7 dB, +4.3 dB loud | 0.85, 2.8 dB, level |
+| default (fitted) | 0.81 | 0.81 |
+| bend 15 (fitted) | 0.78, 3.3 dB | 0.80, 2.5 dB |
+| pitch 150 (left out) | 0.74 | 0.77 |
+| bend 0 (left out) | 0.73, 5.4 dB | 0.78, 3.0 dB |
+| VoxRecord (left out) | 0.813 | 0.817 |
+| pitch 60 (left out) | 0.81 | 0.79 |
+
+**Slow doesn't lengthen the voiceless consonants.** The vox_test recording
+already had a slow SE 1.11 times and a slow TH 0.95 times its usual length.
+In the game Slow SE Slow SE is 200 ms, Slow TT's burst 20 ms and Slow Slow TH
+50 ms on both units, where stretching them by Slow as the vowels are made
+them 290, 60 and 70 ms; the vowels, DH and GO do stretch. Codes 182 and up
+now ignore Slow (`sound.no_slow`).
+
+**A pause takes the place of a stop's closure.** UX, pause 1, EK leaves
+140 ms between the UX and EK's burst on both units, where the pause (107 ms)
+and EK's closure (105 ms) one after the other made 226 ms; after TT, pause 1,
+BE's voicing starts as the pause ends. So a pause before a stop now shortens
+its closure by the pause's length, keeping 20 ms (`msa_closure()`,
+`MIN_CLOSURE_MS`), which gives the 140 ms. After a sound the closure is all
+there, as AW TT on the fourth VoxProbe recording has it.
+
+**Framed sounds join.** The sounds played from the chip's frames were measured
+alone, so their first and last frames are the voicing rising from silence and
+dying away; between OWWW and ZZ that left a 25 to 35 ms gap the chip doesn't
+have. After a voiced sound, and before another sound, those frames now take
+the level of the nearest frame at 0.7 of the sound's loudest (`msa_join()`).
+
+**ZZ and ZH hiss.** Their frames are the voicing alone, measured when nothing
+above 4 kHz was compared. Both units have hiss at 3.5 to 4.5 kHz, 7 to 8 dB
+over what the voicing gives, at pitch 40 on the fourth VoxProbe recording and
+in the game. Oscillators 4 and 5 now add it, half enveloped and following each
+frame's level, fitted to the VoxProbe items (`framed_hiss`).
+
+Before and after, both units, full band:
+
+| | before | now |
+|---|---|---|
+| "man goes down" | 0.82, 1.6 dB | 0.83, 1.3 dB |
+| "may the fruit be with you" | 0.75 | 0.875 |
+| C1 | 0.60, 4.7 dB | 0.85, 2.8 dB |
+| "you suck" | 0.63 | 0.875 |
+| ZZ, ZH at pitch 40 (VoxProbe 4) | 0.61, 3.8 dB; 0.77, 5.2 dB | 0.64, 1.9 dB; 0.82, 2.4 dB |
+| ZZ, ZH (VoxRecord, left out) | 0.93, 3.5 dB; 0.91, 3.7 dB | 0.94, 2.3 dB; 0.92, 1.8 dB |
+
+Every other item on the three recordings is unchanged or moves by less than
+0.02 and 0.3 dB. Left open: in "may the fruit be with you" IY IY is about
+70 ms long and WW 80 ms short (the chip glides into WW over about 80 ms), and
+TT's burst and aspiration are about 40 ms long, alone too; in "man goes down"
+GO OWWW is about 65 ms short and OWWW's third formant 6 dB strong; C1 is a
+tick or two slow at pitch 150.
 
 ## What isn't known, and what isn't emulated
 
@@ -1137,8 +1307,8 @@ The manual doesn't say, so these are guesses (described above):
 | | What the library does |
 |---|---|
 | The oscillator settings behind each allophone | Built from published formant measurements of English speech; only the formants that two sets of measurements of the chip agree on are from the chip, and no volumes are |
-| The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants; C2, C4 and C6 pulse at the voicing rate plus a measured offset, C0 and C3 are gated at a fitted rate |
-| How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties |
+| The sound effects' waveforms | Traced from a recording: up to three sines, noise, or a buzz through three formants; C1 voiced at its own measured pitch with oscillator 3 free; C2, C4 and C6 pulse at the voicing rate plus a measured offset, R8 and R9 at half their tone (both following Pitch), C0 and C3 are gated at a fitted rate; A1 at bend 0 and M2's carried-over start aren't modelled |
+| How one sound joins the next | Glides over 35% of a sound, held to 20 to 50 ms; a 10 ms ramp into a pause; a 15 ms ramp to silence when the buffer empties; a pause shortens a following stop's closure and framed sounds keep their level between sounds (both measured in one game only) |
 | The synthesizer's details | Distortion as random frequency modulation; the arithmetic behind the chip's voicing count at the 12 settings that differ from 8000 / Pitch + 1; whether a pulse starts each sound |
 | What Soft (18) does | Ignored; it is a real command (see PhraseALator above), but nothing describes its effect |
 

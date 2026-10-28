@@ -326,8 +326,54 @@ unchanged to the bit. The reference samples are regenerated.
   to 3.5 to 4.5 dB), bend 0 4.58 to 4.35 dB, the pitches 3.78 to 3.71 dB; the
   VoxRecord recording unchanged.
 
+The open items from that, worked through (see docs/design.md, "A1, R8, R9,
+C0 and M2"). Effects only; speech is unchanged to the bit. The reference
+samples are regenerated.
+
+- A1 is traced again as three formants: steady at 207 Hz, 720 to 1645 Hz, and
+  a faster one from about 120 to 2870 Hz that crosses it near 300 ms. Its old
+  trace had followed the strongest peak from part to part. Fitted at the
+  default only: everywhere else 30 to 93% and 7.4 to 1.3 dB, on the first
+  VoxProbe recording 36 to 91% and 7.3 to 1.1 dB. Bend 0, where the chip
+  mirrors the fast formant, isn't modelled.
+- R8 and R9 pulse: their low tone restarts at half its own frequency, moved
+  with Pitch, so its lines follow Pitch and stay put under Bend (the "126 Hz
+  lower" low tone). Their steady high tone moves to oscillator 4 and R9 loses
+  its noise. On the items left out (pitch 150, bend 15, the speeds) R8 61 to
+  77% and 4.9 to 2.8 dB, R9 34 to 67% and 7.1 to 3.2 dB.
+- All effect items, floor-matched: default 66.0 to 70.8% and 2.77 to 2.27 dB,
+  the pitches 56.0 to 62.5% and 3.86 to 3.31, bend 0 53.7 to 61.8% and 4.40 to
+  3.62, bend 15 51.8 to 64.0% and 5.50 to 3.99, the speeds 57.8 to 67.2% and
+  3.85 to 2.89; VoxRecord unit B 84.9 to 86.2%.
+- C0 and M2 are measured but unchanged: C0's sweep holds at about 205 Hz
+  (420 Hz at bend 15), and M2 starts from the formants an earlier sound left
+  (A3's end on this recording, A1's on the first VoxProbe recording).
+
+Two AtariVoxes recorded playing Man Goes Down, compared with the game run in
+Gopher2600 on this library, scored on every recording at full band (see
+docs/design.md, "Man Goes Down"). The reference samples are regenerated.
+
+- One scorer for all recordings, 150 Hz to 16 kHz: the frame-by-frame
+  comparisons had cut everything above 4 kHz.
+- C1 is voiced at its own pitch, which sweeps a voicing tick at a time from
+  333 to 570 to 200 Hz whatever the Pitch control, through three formants,
+  with oscillator 3 running free of the voicing (new `frame.free_osc`). In the
+  game 0.60 to 0.85 and 4.3 dB too loud to level; the default unchanged; left
+  out, bend 0 0.73 to 0.78 and 5.4 to 3.0 dB, pitch 150 0.74 to 0.77, pitch 60
+  0.81 to 0.79.
+- Slow doesn't lengthen the voiceless consonants (codes 182 and up).
+- A pause before a stop shortens its closure by the pause, keeping 20 ms.
+- Sounds played from the chip's frames keep their level between two sounds
+  instead of dying away and rising again.
+- ZZ and ZH have hiss at 3.5 to 4.5 kHz.
+- The game's four phrases: 0.82 to 0.83, 0.75 to 0.875, 0.60 to 0.85, 0.63 to
+  0.875. Everything else unchanged or better, but C1 at pitch 60.
+
 text2speakjet:
 
+- Its length estimate follows the changes above: Slow skips the voiceless
+  consonants, a pause shortens a following stop's closure, C1 is 302 ms and
+  A1 978 ms.
 - Its length estimate uses the library's Speed curve, lengths, pause lengths
   and effect lengths, lengthens pauses and effects with Speed, and counts
   Delay.
