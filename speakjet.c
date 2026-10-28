@@ -283,17 +283,19 @@ static double synth_random(synth *s) {
 #define SKIRT_FOLLOW 0.995
 
 /* the consonants' shaping (see consonant_eq): EQ_BANDS peaking filters half
- * an octave apart, each made again when the gain asked of it moves by more
- * than EQ_STEP_DB, then the overall gain */
+ * an octave apart, each made again whenever the gain asked of it changes,
+ * then the overall gain. not when it has moved some step: compilers that fuse
+ * a multiply and an add (clang on arm64) and those that don't (gcc on x86)
+ * differ in a gliding gain's last bit, which moved the sample a step was
+ * crossed on, and the filters carried that on, 21 apart in the pangram */
 #define EQ_BANDS 10
 #define EQ_Q 1.0
-#define EQ_STEP_DB 0.02
 static const double eq_hz[EQ_BANDS] = {180, 250, 355, 500, 710, 1000, 1410, 2000, 2830, 3600};
 
 static double synth_eq(synth *s, const frame *f, double x) {
   for (int k = 0; k < EQ_BANDS; k++) {
     double *c = s->eq_co[k];
-    if (!s->eq_ready || fabs(f->eq[k] - s->eq_db[k]) > EQ_STEP_DB) {
+    if (!s->eq_ready || f->eq[k] != s->eq_db[k]) {
       s->eq_db[k] = f->eq[k];
       const double a = pow(10, s->eq_db[k] / 40);
       const double w = 2 * SJ_PI * eq_hz[k] / CHIP_RATE;
