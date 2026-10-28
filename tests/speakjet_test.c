@@ -105,10 +105,8 @@ static void test_phrase_length(void) {
   const double got = (double)n * 1000 / SJ_SAMPLE_RATE;
   /* the last sound is phrase-final (see final_length) */
   const double want =
-      70.0 * allophone_length[183 - 128] * refit_length[183 - 128] +
-      (70.0 + TRANSITION_MS) * refit_length[135 - 128] +
-      99 * allophone_length[199 - 128] * refit_length[199 - 128] * final_length[199 - 128] +
-      AUTO_SILENCE_MS;
+      70.0 * allophone_length[183 - 128] + 70.0 * allophone_length[135 - 128] +
+      99 * allophone_length[199 - 128] * final_length[199 - 128] + AUTO_SILENCE_MS;
   if (fabs(got - want) > 1)
     FAIL("phrase played for %.0fms, expected about %.0fms", got, want);
   sj_free(sj);

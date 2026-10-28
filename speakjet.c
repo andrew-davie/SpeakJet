@@ -50,22 +50,11 @@ typedef enum { ENV_SAW, ENV_SINE, ENV_TRIANGLE, ENV_SQUARE, ENV_VOICE } envelope
 static double on_grid(double hz) { return floor(hz / FREQ_STEP_HZ + 0.5) * FREQ_STEP_HZ; }
 
 /* the chip's voicing fade: the level of the formant oscillators after each
- * voicing pulse, every VOICE_FADE_STEP_MS from the pulse, in between in a
- * straight line, and after the last nothing (see ENV_VOICE in synth_sample()).
- * measured from the waveforms of the third VoxProbe recording, where at pitch
- * 40 each pulse stands alone and about 24 of them were averaged, on 18 vowels,
- * nasals and liquids on two AtariVoxes. each pulse was fitted as three sines
- * starting together, times one envelope shared by every sound, through one
- * output filter (see CHIP_RATE); the envelope and the filter were solved for
- * along with each sound's frequencies and amplitudes. that leaves 1/470 of the
- * pulses' energy unexplained (-26.7dB), against 1/28 for the straight 8ms ramp
- * first used. the fade starts at full level, dips to about 0.7 within half
- * a millisecond and comes back to about 0.8 (the onset shapes the whole
- * spectrum: smoothing it into a flat start costs the single pulses 1.8dB),
- * holds to 2ms, falls almost in a straight line and is gone by 7.5ms. fitted to either unit alone it fits the other within 0.2dB,
- * and fitted the same way to pulses this library makes it gives back this
- * library's own envelope, so the method doesn't shape it. Volume and Bend don't
- * change it, and nor does Pitch from 25 to 60 */
+ * voicing pulse, every VOICE_FADE_STEP_MS, straight lines in between, nothing
+ * after the last (see ENV_VOICE in synth_sample()). measured from single
+ * pulses at pitch 40 on two units: full level, a dip to 0.7 within half a
+ * millisecond, back to 0.8, held to 2ms, then a near straight fall to nothing
+ * by 7.5ms. Volume, Bend and Pitch don't change it */
 #define VOICE_FADE_STEP_MS 0.25
 static const double voice_fade[] = {
     1.000, 0.807, 0.701, 0.892, 0.787, 0.800, 0.756, 0.734,
@@ -76,20 +65,10 @@ static const double voice_fade[] = {
 };
 #define VOICE_FADE_N ((int)(sizeof(voice_fade) / sizeof(voice_fade[0])))
 
-/* how long the chip takes to bring a vowel, nasal, liquid or diphthong's
- * voicing up from silence: in a straight line, from nothing to full level.
- * on the VoxRecord recording, both units, the first three voicing periods of
- * the 37 sounds played alone stand at -17, -6.3 and -1.5dB against the rest
- * (medians), which 40ms gives to within 1.4dB; ramping the volumes alone
- * gave -8, -2.7 and 0, because the mixer's limit (MAX_MIXER1) holds the sum
- * of the formants at full level long before the volumes get there. AW MM at
- * eight pitches from 60 to 250 takes about 30ms throughout on both units, so
- * it is a time rather than a number of periods. the voiced stops and
- * fricatives start as they did: the ramp on them made both units match them
- * worse. the nasals come up faster: measured from where they rise out of the
- * recording's background (which, being quieter sounds, they sit nearer to),
- * both units have them within 3dB of full level by the second period. 25ms
- * fits them best (40ms 90.7%, 25ms 91.4%) */
+/* how long the chip takes to bring voicing up from silence, in a straight
+ * line: vowels, liquids and diphthongs ONSET_MS, nasals NASAL_ONSET_MS. a
+ * time, not a number of periods (the same at every pitch). voiced stops and
+ * fricatives have none */
 #define ONSET_MS 40.0
 #define NASAL_ONSET_MS 25.0
 
@@ -182,30 +161,14 @@ static frame lerp(const frame *a, const frame *b, double t) {
 }
 
 /* synth is the 5-channel synthesizer */
-/* the chip's output. it makes its samples at CHIP_RATE, not the manual's
- * 8192 a second: on both units of the VoxRecord recording every steady tone
- * has a mirror image at the rate less the tone (B7's 3915Hz at 4124Hz, 1dB
- * down), which puts the rate at 8040Hz on one unit and 8015Hz on the other
- * (their clocks differ by the same 0.3 percent as their pitches), the same as
- * their voicing ticks. each sample is held until the next, so the images
- * repeat above that, around each multiple of the rate, at the levels holding
- * gives, up to 23kHz on the recordings, and a smooth analogue low pass after
- * the chip shapes them all.
- *
- * that low pass is measured twice. below 4kHz the voicing pulses of the third
- * VoxProbe recording give it, level and phase, on both units: -1.2dB at 1kHz,
- * -2.8 at 1.5, -5.4 at 2, -8.9 at 2.5, -11.8 at 3 and -14.3 at 3.5kHz against
- * 500Hz, holding included (it agrees within 2 to 3dB with the tone sweeps of
- * the VoxRecord recording, -10.8 at 2.9 and -15.8 at 3.6kHz). above 4kHz the
- * images give it: 160 of them from 26 tone effects on both units, each against
- * its own tone, less what holding accounts for (within 2dB of each other):
- * -18dB at 5.5kHz, -23 at 7.5, -27 at 10.5, -33 at 15.5 and -38 at 23.5kHz. it
- * includes whatever the AtariVox and the recorder add.
- *
- * so here the chip's samples are held, each output sample is the average of
- * what is held over its time, and output_sos (a filter at SJ_SAMPLE_RATE,
- * fitted to both measurements, within 0.3dB RMS below 4kHz and 1.6dB above)
- * is the low pass. the level at 500Hz is the one the output had before */
+/* the chip's output. it makes its samples at CHIP_RATE (measured from the
+ * mirror images of steady tones; the units' clocks differ by 0.3%), holds each
+ * until the next, and an analogue low pass shapes the result, images and all.
+ * here the samples are held the same way, each output sample is the average of
+ * what is held over its time, and output_sos is that low pass (measured from
+ * the voicing pulses below 4kHz and from the images above: -5.4dB at 2kHz, -14
+ * at 3.5kHz, -18 at 5.5kHz, -38 at 23.5kHz), whatever the AtariVox and
+ * recorder add included */
 #define CHIP_RATE 8028.0
 
 #define OUTPUT_SECTIONS 3
@@ -271,23 +234,16 @@ static double synth_random(synth *s) {
   return (double)(int32_t)s->noise / SJ_MAX_INT32;
 }
 
-/* the chip's output has a floor of noise under whatever it plays: on both
- * units of the VoxRecord recording a pure tone (the DTMF tones, B3, R3 and
- * the rest) sits on noise from 100Hz to 3kHz 40 to 55dB under it, above the
- * recording's background, which this library's clean tones left out, every
- * band between the tones counting as missing. here white noise follows the
- * output's level (over about 25ms) SKIRT_DB under it: the effects of the
- * VoxRecord recording 5.94 to 4.57dB with their spectrogram match within a
- * tenth of a point, and the speech unchanged (it hides under the harmonics) */
+/* the chip's output has a floor of noise under whatever it plays, 40 to 55dB
+ * under a pure tone. here white noise follows the output's level (over about
+ * 25ms) SKIRT_DB under it */
 #define SKIRT_DB (-24.0)
 #define SKIRT_FOLLOW 0.995
 
-/* the consonants' shaping (see sound_eq): EQ_BANDS peaking filters half
- * an octave apart, each made again whenever the gain asked of it changes,
- * then the overall gain. not when it has moved some step: compilers that fuse
- * a multiply and an add (clang on arm64) and those that don't (gcc on x86)
- * differ in a gliding gain's last bit, which moved the sample a step was
- * crossed on, and the filters carried that on, 21 apart in the pangram */
+/* the sounds' shaping (see sound_eq): EQ_BANDS peaking filters half an octave
+ * apart, then an overall gain. a filter is made again whenever its gain
+ * changes at all, not when it has moved some step, so that compilers that do
+ * and don't fuse a multiply and an add give the same samples */
 #define EQ_BANDS 10
 #define EQ_Q 1.0
 static const double eq_hz[EQ_BANDS] = {180, 250, 355, 500, 710, 1000, 1410, 2000, 2830, 3600};
@@ -460,7 +416,7 @@ static double synth_sample(synth *s, const frame *f, double master) {
 /* tables.go                                                                */
 /* ======================================================================== */
 
-/* the most parts any sound has (a traced effect: see fx2_points) */
+/* the most parts any sound has (a traced effect: see fx_knots) */
 #define MAX_PARTS 256
 
 /* part is one stage of a sound: the synthesizer glides from wherever it is to
@@ -512,64 +468,19 @@ typedef struct sound {
   bool stop;
 } sound;
 
-/* the chip's lengths for speech sounds, measured from a recording of a real
- * SpeakJet playing Alex Herbert's vox_test ROM (2004), compared sound by sound
- * with this library playing the same codes. at the default speed the steady
- * sounds (vowels, nasals, liquids, fricatives) last about 1.5 times the
- * manual's length (EH 2.07, IH 1.6, NGE 1.43, and SE 1.67, TH 1.42, NE 1.14
- * when slow), diphthongs about 1.2 times (EYIY 1.0, IHWW 1.5, and OHIY 1.2,
- * AXRR 1.3 when fast), and voiceless stops what the manual gives (TT 1.0). at
- * speed 127 the same steady and stop lengths and the speed curve below give
- * the recording's syllable length to within a few milliseconds. the stops and
- * affricates still use these; the other allophones now have their own lengths
- * from a later recording (see allophone_length) */
+/* the lengths the stops and affricates are built with, against the manual's:
+ * steady sounds about 1.5 times, diphthongs 1.2 times, stops as given (from a
+ * recording of a real SpeakJet). the other allophones have their own (see
+ * allophone_length) */
 #define STEADY_LENGTH 1.5
 #define DIPHTHONG_LENGTH 1.2
 #define STOP_LENGTH 1.0
 
-/* formant targets. frequencies are approximate values for an adult male
- * speaker, from published measurements of English vowels and consonants,
- * except where two independent measurements of the real chip agree.
- *
- * measured on the chip: where two independent measurements of a sound's
- * formant agree, it is set to their mean. they agree when they are within 10%
- * of each other or within 88Hz (the spacing of the voice's harmonics at the
- * default pitch, about as finely as a formant can be read from a recording).
- * the measurements are the openFPGA-7800 AtariVox engine's, read from
- * recordings of games speaking (docs/ATARIVOX.md, MIT licence), and those
- * behind Stella's SpeakJet engine (feature/speakjet branch). formants where the
- * two disagree, or that only one of them measured, keep their published
- * values:
- *
- *   OW: F1 F2      AX: F1 F2 F3   RR: F1 F2 F3   UX: F1 F2   IH: F1 F2 F3
- *   MM: F1 F3      EY: F1 F2 F3   EH: F1 F2      AW: F2
- *
- * the third take of the VoxRecord recording (see msa_speed_factor()), whose
- * vowels barely clip, confirms AX, UX, EH, EY, IH, OW, UH, LO and RR to
- * within about 5% (formants read by linear prediction, the same way on the
- * recording and on this library's own output, so that the method's errors
- * cancel). it corrects five: AW F1 (590 to 695Hz), UW F1 and F2 (300 to 380,
- * 870 to 1065), AY F1 and F2 (660 to 710, 1720 to 1660), OH F1 and F2 (730
- * to 690, 1090 to 1150) and WW F1 and F2 (300 to 495, 650 to 765). IY
- * can't be read this way. the nasals (MM among them) are fitted to its
- * spectra instead (see allophone()).
- *
- * the second VoxProbe recording then measured the oscillators directly: at
- * pitch 40 each voicing pulse stands alone, a few milliseconds of the three
- * formant sines starting together, so their frequencies can be fitted to the
- * waveform itself. IY, IH, EY, EH, AY (but its weak F3), AX, UX, OH, AW, OW,
- * UH, UW, LE, WW, RR and MM take those frequencies (NE and NO were worse with
- * them on both recordings, and keep theirs). the biggest changes: IY F3 3010
- * to 2539Hz, LE F2 1300 to 970, WW F1 495 to 385, MM F1 396 to 257. with them
- * the sustained sounds of the first VoxProbe recording (not used to measure
- * them) go from 4.5 to 3.7dB of the chip's spectra.
- *
- * the third VoxProbe recording measures them again, on two units, with the
- * chip's own fade and output filter (see voice_fade): IY, IH, EY, EH, AY, AX,
- * UX, OH, AW, OW, UH, UW, LE, WW, RR, MM, NE and NO are those, the mean of
- * both units (unit B's clock is 0.29% slow), which agree within a few hertz.
- * F1 and F2 of all 18 are whole multiples of about 88.4Hz less 3.5Hz, within
- * 2.2Hz RMS */
+/* formant targets in Hz. the vowels, nasals and liquids are the chip's,
+ * measured from single voicing pulses on two units with the chip's fade and
+ * output filter (see voice_fade): their F1 and F2 are whole multiples of about
+ * 88.4Hz less 3.5Hz. the rest are published values for an adult male speaker,
+ * or the mean of two independent measurements of the chip where they agree */
 typedef struct formants {
   double f[3];
 } formants;
@@ -631,22 +542,10 @@ static frame voiced_frame(formants f, double v1, double v2, double v3) {
   return r;
 }
 
-/* the chip doesn't restart all three formant sines at the same phase: fitted
- * to the single pulses of the third VoxProbe recording with the chip's fade
- * and output filter (see voice_fade), each sound's second and third formants
- * start at their own phase against the first, the same on both units (IH's
- * 0.13 and 0.17 of a cycle ahead, MM's 0.25 and 0.27, IY's 0.92 and 0.93). they
- * shape the dips between the formants: restarting all three together, as
- * first assumed here, leaves those dips up to 10dB too deep (IY, MM, NE) and
- * the single pulses 4.5dB from the chip's rather than 2.0. formant_phases
- * gives a voiced frame those phases. but measured at pitch 40, they don't all
- * hold at speaking pitch: against the VoxRecord recording at the default
- * pitch (background removed, unit B and unit A's unclipped sounds) and the
- * first VoxProbe recording at pitches 88 and 60 (which nothing here was
- * fitted to), IY, EY, EH, AY, AX, UX, OH, AW and MM match better without
- * theirs (IY 85 to 91% and 3.2 to 2.0dB, and 3.4 to 2.2dB on VoxProbe), so
- * those restart together; OW, UH, UW, NGE, NGO, NE, LE, WW and RR keep
- * theirs */
+/* the chip doesn't restart all three formant sines at the same phase: each
+ * sound's second and third formants start at their own phase against the first
+ * (as fractions of a cycle). only the sounds that match the chip better with
+ * them at speaking pitch have them */
 static frame formant_phases(frame f, double p2, double p3) {
   f.phase0[1] = p2;
   f.phase0[2] = p3;
@@ -716,15 +615,9 @@ static frame hush(frame f, double db) {
   return f;
 }
 
-/* how much quieter the chip's noise is than the levels first chosen here.
- * measured from the vox_test recording (see sound.length) by comparing each
- * noise sound's level against the vowel beside it, on the chip and here. on
- * the chip hiss sits 16 to 23dB under the vowels; here it was level with them.
- * the corrections: SE 23dB, CH (the SH frame) 16.4dB, TH 11.8dB, FF 13.7dB,
- * stop bursts 19.5dB (TT 23dB, KE 16dB) and aspiration 14.5dB (TT). sounds the
- * recording doesn't have take the mean of the fricatives that it does. the
- * voiceless fricatives now have these levels built into their frames (see
- * frSE()) */
+/* how much quieter the chip's noise is than levels first chosen here: hiss
+ * sits 16 to 23dB under the vowels beside it. the fricatives have their levels
+ * in their frames (see frSE()); these are for the bursts and aspiration */
 #define FRICATIVE_DB 17.0
 #define BURST_DB 19.5
 #define ASPIRATION_DB 14.5
@@ -836,21 +729,10 @@ static void affricate(sound *s, const stop *st, frame fric, double fric_ms) {
   add_part(s, fric_ms, 5, fric);
 }
 
-/* frames for the fricatives SE, SO and SH. the noise of the voiceless
- * fricatives (here and HE, HO, WH, FF and TH below) is shaped to the VoxRecord
- * recording (see msa_speed_factor()). HE, HO and WH have their spectra on the
- * chip, measured in third octaves from 250Hz to 4kHz in three takes, fitted
- * through the output filter here. SE, SO, SH, FF and TH, like the stops and
- * affricates (see STOPN()), were fitted further, as whole sounds: each was
- * played here from a set of values, which a search (differential evolution)
- * moved to bring its spectrogram closest to the chip's in the first and third
- * takes together, and its length to the chip's. two takes rather than one,
- * because on the hiss sounds the chip's own takes match each other only 30 to
- * 70%, so fitting one fits that take's noise. the chip's hiss is narrow bands,
- * peaked where these were broad: SE and SO at 3 to 4kHz, SH at 2.5 to  3.2kHz,
- * HE and HO around 1 to 1.5kHz, WH at 0.6 to 0.9kHz. their levels are set by
- * allophone_gain_db. all of them were then fitted again to both units at once
- * (see STOPN()) */
+/* the noise frames of the voiceless fricatives, fitted as whole sounds to both
+ * units: the chip's hiss is narrow bands (SE and SO at 3 to 4kHz, SH at 2.5 to
+ * 3.2kHz, HE and HO around 1 to 1.5kHz, WH at 0.6 to 0.9kHz). their levels are
+ * set by allophone_gain_db */
 static frame frSE(void) { return noise_frame(lAlveolar, 3629.7, 2609.1, 25.87, 5.78, 33.4); }
 static frame frSO(void) { return noise_frame(lAlveolarBak, 2953.5, 3580, 17.5, 30.41, 27.3); }
 static frame frSH(void) { return noise_frame(lPalatal, 3605.7, 2502.8, 17.72, 22.59, 44.4); }
@@ -860,35 +742,10 @@ static frame frZH(void) {
 }
 
 /* stop descriptions: duration, closure, burst, voiced, locus, burst
- * frequencies, burst volumes, aspiration frequencies. STOP() gives a stop the
- * first noise widths, aspiration volumes and voicing (see stop), and STOPN()
- * gives them too. the stops that use STOPN() (BE, EB, OB, ED, OD, TT, TU, KE,
- * EK and OK) and the affricates (CH, JH and TS) were fitted as whole sounds to
- * the VoxRecord recording (see frSE()). the chip's bursts and aspiration are
- * narrower noise than first chosen here (TT and TU hiss at 2.6 to 3.9kHz,
- * which the first values spread from 1 to 2kHz), its voiced stops' loci differ
- * from the published ones, and EB, OB, ED and OD last 25 to 35ms on the chip,
- * not 10. a closure that is silent can't be measured from a sound played
- * alone, so those keep the length they had (35 to 42ms, 7ms for ED and OD),
- * and TT's comes from the connected groups (see allophone_length). the other
- * stops' burst and aspiration frequencies were scaled together (by 0.5 to
- * 1.15) to bring each spectrum closest to the recording's third take; most of
- * the chip's bursts are lower than first chosen here (PE and PO by half).
- *
- * all of them but BE, BO, DO, ED, OD, GE, GO, EG and OG (which are played from
- * the chip's frames: see vf_points) and TT were then fitted again, with the
- * output filter measured from the voicing pulses (see CHIP_RATE), to both
- * units' VoxRecord recordings at once: the spectrogram, the spectrum and the
- * level over time, each unit's level compared down to its own background, so
- * that a part the chip doesn't play costs as much as one it plays wrongly
- * (the first fit had put faint tails and tones at the background's level,
- * where they cost nothing). each keeps the length it had (see
- * allophone_length), which comes from the connected groups; fitted to the
- * sounds alone the lengths came out shorter, and connected speech went from
- * 21 to 60ms out. TT keeps its values, which the connected groups fix: its
- * refit made groups ending in TT 100ms short. with these KE went from 54 to
- * 74% spectrogram match and 11.3 to 4.2dB, KO 55 to 81%, EK 71 to 88%, OK 68
- * to 86%, DE 44 to 86%, JH 49 to 80% and CH 65 to 75% */
+ * frequencies, burst volumes, aspiration frequencies (STOPN() also the noise
+ * widths, aspiration volumes and voicing). fitted as whole sounds to both
+ * units, each keeping the length it has (see allophone_length): a closure that
+ * is silent can't be measured from a sound alone */
 #define STOP(ms_, cl_, bu_, vo_, lo_, bf0, bf1, bv0, bv1, af0, af1)            \
   STOPN(ms_, cl_, bu_, vo_, lo_, bf0, bf1, bv0, bv1, af0, af1, 255, 230, 10, 8, \
         8, 1)
@@ -917,81 +774,28 @@ static const char *const allophone_names[] = {
 #define NUM_ALLOPHONES                                                         \
   ((int)(sizeof(allophone_names) / sizeof(allophone_names[0])))
 
-/* how much longer than the manual's length the chip plays the vowels,
- * nasals, liquids and diphthongs (codes 128 to 164): a fixed time, rather
- * than a multiple of the length. repeating a sound on the chip (the VoxProbe
- * recording) adds just the manual's length for each extra copy (AW 70ms; IY,
- * UW and MM six times are one of them and five times 70ms, to within 6ms),
- * so the first copy is the manual's length and a fixed time more. 28ms
- * matches the VoxRecord recording's third take nearly as well as a length
- * fitted to each of the 37 sounds did: sounds played alone within 13ms on
- * average (13ms before), the 30 connected groups within 15ms (13ms). it is
- * stretched by Speed with the rest of the sound */
-#define TRANSITION_MS 28.0
-
 /* LENGTH-TABLE-BEGIN */
-/* how much longer the chip plays each allophone than the manual's length, at
- * the default speed, fitted to the VoxRecord recording's third take in two
- * steps. first each allophone was played on its own and its audible length on
- * the chip, from where it rises out of silence to where it falls back, was
- * matched here measured the same way. but strung together the chip gives
- * sounds longer slots than that (MM IY MM: 320ms on the chip, 235 here), so
- * then one multiplier for each class was fitted to 30 connected groups (AW
- * MM at eight pitches, AW SE at eight bends, TT AW EYIY SE at five speeds,
- * and nine syllables such as HE OH TT and MM IY MM): vowels 0.92, nasals
- * 1.32, diphthongs 1.10, voiceless fricatives 1.14, stops and affricates 1.40
- * (on the class length). that takes the groups from 6% short to within 1%
- * (16ms on average; 22ms when each is left out of the fit), at the cost of
- * sounds played alone running 13ms long on average. the liquids and voiced
- * fricatives, which no group has, keep their first-step lengths.
- *
- * the stops, the affricates and the voiceless fricatives SE, SO, SH, FF and TH
- * that were fitted as whole sounds (see frSE()) have their lengths from that
- * fit instead, matched to each played alone, with TT and SE also fitted to the
- * connected groups. that takes the groups to within 2% (12ms on average).
- * TS is 190ms, measured from both units
- *
- * the vowels, nasals, liquids and diphthongs (codes 128 to 164) are 0 here:
- * they are the manual's length and TRANSITION_MS more */
+/* how much longer the chip plays each allophone than the manual's length (what
+ * its parts add up to), at the default speed, measured and fitted on both
+ * units, alone and in connected groups. the framed sounds (see vf_points) are
+ * the measured length already, so theirs is near 1 */
 static const double allophone_length[] = {
-    0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
-    0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
-    0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
-    0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
-    0.00, 0.8686, 0.84, 0.99, 0.88, 0.88, 1.63, 1.40, 2.67,
-    3.27, 1.40, 1.40, 3.74, 3.16, 1.40, 1.40, 1.40, 1.40,
-    2.4090, 1.17, 1.15, 1.11, 1.49, 2.80, 2.23, 1.17, 1.77,
-    2.07, 2.78, 1.117647, 2.44, 1.40, 2.40, 2.46, 1.40, 1.40,
+    1.4, 1, 1.96, 1.47, 2.0825, 1.96, 1.4, 1.7325, 1.4,
+    1.68, 1.68, 1.4, 1.4, 1.33, 1.0375, 1.2425, 1.3475, 1.3825,
+    1.0625, 1.54, 1.5925, 0.9375, 1.177734, 1, 1.025, 1.0492, 1.169697,
+    1.254, 0.875, 0.921081, 1.05, 1.0625, 1, 1.05, 1, 1.0125,
+    1.025, 0.890315, 0.8295, 0.8906, 1.175, 1, 1.63, 0.975, 2.87025,
+    3.27, 1.3475, 1, 0.8375, 0.8875, 1.0875, 1, 1, 0.8328,
+    2.800463, 1.17, 1.12125, 1.11, 1.49, 2.45, 1.862719, 1.17, 1.28325,
+    2.07, 2.67575, 0.922059, 2.5315, 1.085, 2.49, 2.706, 1.4175, 1.37984,
 };
 /* LENGTH-TABLE-END */
 
 /* REFIT-BEGIN */
-/* each allophone's length and level refitted on every recording of both
- * AtariVoxes (VoxRecord's sounds alone and its connected groups, the fourth
- * VoxProbe, Man Goes Down), the library given each recording's own background
- * and both measured by the same rule: length, level over time, the
- * time-frequency picture after alignment, timing inside the sound, sideways
- * shifts of the spectrum, the whole-sound spectrum and pitch, each against how
- * closely the two units agree with each other. each sound's fit was kept only
- * where no kind of recording came out worse.
- *
- * refit_length multiplies the length above. final_length multiplies it again
- * when the sound is the last before a pause or the end and isn't repeated: on
- * the chip a vowel played last is longer than the same vowel inside a phrase
- * (IY 1.25, AW 1.25, EH 1.18 times) and TT and FF shorter (0.64, 0.79), which
- * no one length fitted both ways (IY alone wanted 1.125 times, Man Goes Down
- * and the VoxProbe groups shorter). refit_gain_db is in dB on the sound's
- * level, fitted where sounds sit next to each other */
-static const double refit_length[] = {
-    1, 1, 1.4, 1.05, 1.4875, 1.4, 1, 1.2375, 1,
-    1.2, 1.2, 1, 1, 0.95, 1.0375, 0.8875, 0.9625, 0.9875,
-    1.0625, 1.1, 1.1375, 0.9375, 1.0331, 1, 1.025, 1.0492, 1,
-    1.1, 0.875, 0.8, 1.05, 1.0625, 1, 1.05, 1, 1.0125,
-    1.025, 1.025, 0.9875, 0.8906, 1.175, 1, 1, 0.975, 1.075,
-    1, 0.9625, 1, 0.8375, 0.8875, 1.0875, 1, 1, 0.8328,
-    1.1625, 1, 0.975, 1, 1, 0.875, 0.8353, 1, 0.725,
-    1, 0.9625, 0.825, 1.0375, 0.775, 1.0375, 1.1, 1.0125, 0.9856,
-};
+/* final_length multiplies an allophone's length when it is the last before a
+ * pause or the end and isn't repeated: on the chip a vowel played last is
+ * longer than inside a phrase (IY and AW 1.25 times) and TT and FF shorter
+ * (0.64, 0.79) */
 static const double final_length[] = {
     1.25, 1.175, 1, 1.175, 1, 1, 1, 1, 1.25,
     1, 1, 1.15, 1, 1, 0.9, 1.025, 0.9375, 1,
@@ -1002,23 +806,9 @@ static const double final_length[] = {
     1, 1, 1, 1, 0.7875, 0.9625, 1, 1, 1,
     0.6375, 1.05, 1, 1, 1.3, 1, 0.8, 1, 0.925,
 };
-static const double refit_gain_db[] = {
-    2.4375, 0, 0, 0, 0, 0, 0, 3.1875, 0,
-    0, 0, 0, -2.0625, -6.375, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 4.3125, 0, 0, 0, 0, 0,
-    0, -3, 0, 0, 0, 0, 0, 0, 0,
-    0, 5.8125, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, -4.875, 0, 0, 0,
-};
 /* the copies after the first, when a sound is repeated, as a multiple of the
- * manual's length (see msa_expand()), fitted the same way on the fourth
- * VoxProbe recording's repeats (five of each diphthong and voiced stop, ten of
- * each at pitch 40) and VoxRecord's: on the chip many copies are shorter than
- * the manual says (LO and DO 0.75 and 0.7 times, ZZ 0.69, EB 0.51), which
- * left the copies drifting out of step: LO 1.14 to 0.25, ZZ 1.44 to 0.87, DO
- * 1.24 to 0.91 */
+ * manual's length (see msa_expand()): on the chip many are shorter than the
+ * manual says (DO 0.7 times, ZZ 0.69, EB 0.51) */
 static const double copy_length[] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 0.9875, 0.925, 1,
@@ -1031,41 +821,28 @@ static const double copy_length[] = {
 };
 /* REFIT-END */
 
-/* how much louder (in dB) the chip plays each allophone than the oscillator
- * volumes here give, against AW. fitted to the VoxRecord recording's third
- * take, whose vowels barely clip: each allophone's level (where it is
- * within 20dB of its loudest) was matched to the recording's, measured the
- * same way, relative to AW. the vowels needed little; the nasals, liquids and
- * hiss were too loud here (the hiss levels were set from an earlier, clipped
- * recording, which made the vowels read quiet) and BE, BO, PE and PO too
- * quiet */
+/* how much louder (in dB) the chip plays each allophone than its oscillator
+ * volumes give: against AW on its own, and refitted where sounds sit next to
+ * each other */
 static const double allophone_gain_db[] = {
-    1.1, 2.0, 2.0, 1.2, 2.0, 1.7, 1.3, 0.8, 0.0,
-    -1.8, -1.9, -1.3, -3.9, -4.6, -4.5, -4.5, -4.7, -4.2,
-    -3.2, -4.2, 0.4, 0.3, 0.8, 0.2, -0.5, -1.1, 1.2,
-    0.5, -0.7, 0.9, 0.4, -0.9, -1.0, -0.2, -1.6, -0.6,
-    -3.0, -11.3, -2.1, 1.7, -2.2, -3.3, 5.9, 6.3, -2.6,
-    2.7, 2.9, 3.0, -4.6, -8.6, -0.4, -0.5, 1.7, 2.1,
-    -15.5, -32.3, -31.1, -29.8, -26.3, -15.9, -17.6, -16.6, -26.8,
-    -2.1, -3.3, -26.4, 1.5, -3.0, 2.5, -3.8, 6.4, 5.9,
+    3.54, 0, 2, 1.2, 2, 1.7, 1.3, 3.99, 0,
+    -1.8, -1.9, -1.3, -5.96, -10.97, 0, -4.5, -4.7, -4.2,
+    0, -4.2, 0.4, 0, 0.8, 0, 0, 0, 1.2,
+    0.5, 0, 0.9, 0, 0, 0, 0, 0, 0,
+    0, -11.3, -2.1, 4.31, 0, 0, 5.9, 0, -2.6,
+    2.7, -0.1, 0, 0, 0, 0, 0, 0, 0,
+    -15.5, -26.49, -31.1, -29.8, -26.3, -15.9, -17.6, -16.6, -26.8,
+    -2.1, -3.3, -26.4, 1.5, -3, -2.38, -3.8, 6.4, 5.9,
 };
 
 /* VF-BEGIN */
-/* some voiced sounds are played as the chip plays them, frame by frame. at
- * the default pitch each voicing pulse of the VoxRecord recording stands
- * alone (the fade is over long before the next pulse), so each pulse of every
- * voiced sound alone was fitted as three formant sines with the chip's fade
- * and output filter (see voice_fade), on both units, and the two units'
- * pulses paired and averaged. each point is a pulse: its time after the one
- * before, the glide to it, the three frequencies and their volumes (an
- * absolute level: AW's first formant is 24). a formant too weak to measure
- * takes the frequency it has where it is strongest. these are the sounds
- * whose recordings this brings closer on both units: the diphthongs, which
- * move between their formants in steps rather than one straight line, the
- * voiced fricatives, which on the chip are mostly voicing, and voiced stops
- * such as BO and GE, which are a voice bar and then a short vowel-like
- * release with no noise burst to speak of. their length is the one measured,
- * not stretched (see allophone_length) */
+/* voiced sounds played as the chip plays them, frame by frame: each point is a
+ * voicing pulse fitted as three formant sines with the chip's fade and output
+ * filter (see voice_fade), the two units averaged: its time after the one
+ * before, the glide to it, the three frequencies and their volumes (AW's first
+ * formant is 24). for the diphthongs (which move in steps), the voiced
+ * fricatives (mostly voicing) and voiced stops such as BO and GE (a voice bar,
+ * then a short vowel-like release) */
 typedef struct vf_point {
   float ms, glide;
   float freq[3];
@@ -1074,114 +851,44 @@ typedef struct vf_point {
 
 static const vf_point vf_points[] = {
     {1.00, 1.00, {352, 1750, 2524}, {10.64, 7.00, 4.52}}, /* IH */
-    {11.18, 11.18, {351, 1767, 2486}, {21.55, 16.20, 9.46}}, /* IH */
-    {11.54, 11.54, {347, 1772, 2475}, {23.65, 18.11, 10.93}}, /* IH */
-    {11.46, 11.46, {348, 1771, 2471}, {23.66, 18.01, 11.14}}, /* IH */
-    {11.44, 11.44, {347, 1771, 2471}, {23.64, 18.06, 11.16}}, /* IH */
-    {11.46, 11.46, {347, 1766, 2483}, {23.65, 18.16, 10.79}}, /* IH */
-    {11.41, 11.41, {347, 1772, 2474}, {23.59, 18.04, 10.94}}, /* IH */
-    {11.46, 11.46, {346, 1770, 2471}, {22.77, 17.49, 10.08}}, /* IH */
-    {11.56, 11.56, {346, 1772, 2477}, {15.41, 12.37, 6.42}}, /* IH */
-    {12.69, 12.69, {348, 1751, 2497}, {5.84, 5.68, 2.93}}, /* IH */
+    {79.95, 79.95, {346, 1770, 2471}, {22.77, 17.49, 10.08}}, /* IH */
+    {24.25, 24.25, {348, 1751, 2497}, {5.84, 5.68, 2.93}}, /* IH */
     {11.50, 11.50, {348, 1751, 2497}, {5.84, 5.68, 2.93}}, /* IH */
     {1.00, 1.00, {251, 1149, 2596}, {0.81, 0.23, 0.25}}, /* NO */
     {12.39, 12.39, {254, 1116, 2604}, {7.53, 1.69, 3.23}}, /* NO */
-    {11.41, 11.41, {251, 1142, 2601}, {9.26, 2.04, 4.02}}, /* NO */
-    {11.44, 11.44, {253, 1154, 2596}, {9.10, 2.01, 4.29}}, /* NO */
-    {11.44, 11.44, {251, 1146, 2620}, {9.21, 2.01, 4.02}}, /* NO */
-    {11.44, 11.44, {253, 1149, 2590}, {9.21, 2.08, 3.99}}, /* NO */
-    {11.46, 11.46, {253, 1154, 2599}, {9.20, 2.04, 4.05}}, /* NO */
+    {57.19, 57.19, {253, 1154, 2599}, {9.20, 2.04, 4.05}}, /* NO */
     {11.52, 11.52, {260, 1157, 2555}, {6.99, 1.31, 2.92}}, /* NO */
     {11.50, 11.50, {260, 1157, 2555}, {6.99, 1.31, 2.92}}, /* NO */
     {1.00, 1.00, {442, 875, 2394}, {4.79, 5.02, 0.42}}, /* LO */
-    {12.53, 12.53, {446, 875, 2465}, {9.33, 10.33, 1.45}}, /* LO */
-    {11.46, 11.46, {446, 875, 2458}, {9.32, 10.31, 1.50}}, /* LO */
-    {11.44, 11.44, {447, 876, 2459}, {9.34, 10.37, 1.51}}, /* LO */
-    {11.44, 11.44, {447, 875, 2463}, {9.28, 10.33, 1.46}}, /* LO */
-    {11.44, 11.44, {447, 876, 2394}, {9.30, 10.39, 1.70}}, /* LO */
-    {11.46, 11.46, {447, 874, 2390}, {9.30, 10.28, 1.61}}, /* LO */
-    {11.39, 11.39, {443, 869, 2450}, {5.54, 6.05, 0.56}}, /* LO */
+    {58.31, 58.31, {447, 876, 2394}, {9.30, 10.39, 1.70}}, /* LO */
+    {22.85, 22.85, {443, 869, 2450}, {5.54, 6.05, 0.56}}, /* LO */
     {11.50, 11.50, {443, 869, 2450}, {5.54, 6.05, 0.56}}, /* LO */
     {1.00, 1.00, {358, 1336, 2487}, {3.97, 2.40, 2.83}}, /* IYRR */
     {12.15, 12.15, {234, 2208, 2552}, {12.00, 8.04, 6.25}}, /* IYRR */
-    {11.56, 11.56, {248, 2199, 2522}, {14.79, 10.39, 8.21}}, /* IYRR */
-    {11.50, 11.50, {251, 2123, 2494}, {15.21, 9.36, 8.26}}, /* IYRR */
-    {11.50, 11.50, {262, 2061, 2441}, {15.28, 8.68, 8.73}}, /* IYRR */
-    {11.48, 11.48, {256, 2048, 2441}, {16.38, 8.91, 7.61}}, /* IYRR */
-    {11.07, 11.07, {279, 1936, 2295}, {16.90, 9.59, 8.69}}, /* IYRR */
-    {11.47, 11.47, {289, 1906, 2259}, {16.36, 10.86, 6.08}}, /* IYRR */
-    {11.49, 11.49, {311, 1860, 2226}, {16.03, 10.48, 6.62}}, /* IYRR */
-    {11.56, 11.56, {324, 1790, 2259}, {15.30, 11.65, 3.39}}, /* IYRR */
-    {10.02, 10.02, {351, 1712, 2441}, {16.56, 12.69, 2.11}}, /* IYRR */
-    {11.46, 11.46, {358, 1692, 2412}, {18.58, 14.54, 2.78}}, /* IYRR */
-    {12.40, 12.40, {369, 1646, 2441}, {16.97, 13.38, 1.59}}, /* IYRR */
-    {11.48, 11.48, {375, 1591, 2441}, {16.78, 13.13, 1.71}}, /* IYRR */
-    {11.60, 11.60, {396, 1510, 2441}, {16.18, 12.84, 1.04}}, /* IYRR */
-    {12.36, 12.36, {398, 1471, 2503}, {13.98, 11.22, 2.27}}, /* IYRR */
-    {11.62, 11.62, {417, 1396, 2334}, {11.07, 8.89, 2.40}}, /* IYRR */
-    {11.55, 11.55, {439, 1330, 2441}, {10.25, 9.06, 1.20}}, /* IYRR */
-    {9.13, 9.13, {425, 1336, 2441}, {17.90, 15.13, 1.72}}, /* IYRR */
-    {11.73, 11.73, {429, 1322, 2441}, {10.24, 9.55, 1.29}}, /* IYRR */
-    {11.50, 11.50, {429, 1322, 2441}, {10.24, 9.55, 1.29}}, /* IYRR */
+    {148.59, 148.59, {396, 1510, 2441}, {16.18, 12.84, 1.04}}, /* IYRR */
+    {67.89, 67.89, {429, 1322, 2441}, {10.24, 9.55, 1.29}}, /* IYRR */
     {1.00, 1.00, {532, 1502, 2368}, {12.05, 7.97, 5.86}}, /* AXRR */
-    {11.89, 11.89, {530, 1501, 2374}, {23.40, 15.20, 10.74}}, /* AXRR */
-    {11.78, 11.78, {525, 1500, 2347}, {26.63, 16.67, 12.24}}, /* AXRR */
-    {11.48, 11.48, {520, 1490, 2295}, {26.49, 16.89, 12.04}}, /* AXRR */
-    {11.40, 11.40, {514, 1474, 2250}, {26.24, 16.54, 10.32}}, /* AXRR */
-    {11.49, 11.49, {507, 1468, 2426}, {25.00, 16.61, 6.10}}, /* AXRR */
-    {11.54, 11.54, {502, 1461, 2230}, {24.25, 16.01, 10.16}}, /* AXRR */
-    {11.45, 11.45, {499, 1446, 2138}, {23.77, 16.42, 8.41}}, /* AXRR */
-    {11.48, 11.48, {493, 1437, 2084}, {23.02, 16.27, 7.66}}, /* AXRR */
-    {11.45, 11.45, {486, 1427, 2042}, {23.00, 16.12, 6.56}}, /* AXRR */
-    {11.46, 11.46, {483, 1414, 1959}, {21.75, 15.30, 6.74}}, /* AXRR */
-    {11.48, 11.48, {476, 1408, 1933}, {21.41, 15.09, 6.00}}, /* AXRR */
+    {58.04, 58.04, {507, 1468, 2426}, {25.00, 16.61, 6.10}}, /* AXRR */
+    {68.86, 68.86, {476, 1408, 1933}, {21.41, 15.09, 6.00}}, /* AXRR */
     {11.46, 11.46, {468, 1384, 1943}, {21.36, 14.98, 5.50}}, /* AXRR */
     {11.50, 11.50, {463, 1377, 2347}, {19.81, 15.16, 2.10}}, /* AXRR */
-    {11.46, 11.46, {456, 1373, 2347}, {19.87, 15.25, 2.11}}, /* AXRR */
-    {11.44, 11.44, {449, 1358, 2347}, {19.37, 14.87, 2.31}}, /* AXRR */
-    {11.44, 11.44, {447, 1355, 2347}, {18.55, 15.28, 2.04}}, /* AXRR */
-    {10.89, 10.89, {435, 1340, 2347}, {19.49, 16.07, 0.90}}, /* AXRR */
-    {11.48, 11.48, {433, 1334, 2347}, {15.41, 13.03, 0.82}}, /* AXRR */
-    {12.06, 12.06, {436, 1324, 2347}, {7.40, 6.72, 0.73}}, /* AXRR */
-    {11.50, 11.50, {436, 1324, 2347}, {7.40, 6.72, 0.73}}, /* AXRR */
+    {45.23, 45.23, {435, 1340, 2347}, {19.49, 16.07, 0.90}}, /* AXRR */
+    {35.04, 35.04, {436, 1324, 2347}, {7.40, 6.72, 0.73}}, /* AXRR */
     {1.00, 1.00, {726, 930, 2530}, {7.32, 6.79, 2.55}}, /* AWRR */
-    {12.36, 12.36, {708, 964, 2486}, {19.98, 17.80, 5.78}}, /* AWRR */
-    {11.40, 11.40, {694, 981, 2460}, {22.75, 21.26, 6.22}}, /* AWRR */
-    {11.48, 11.48, {676, 1003, 2397}, {22.60, 20.86, 6.42}}, /* AWRR */
-    {11.42, 11.42, {662, 1025, 2350}, {22.83, 20.99, 6.31}}, /* AWRR */
-    {11.42, 11.42, {646, 1047, 2345}, {22.62, 21.16, 6.17}}, /* AWRR */
-    {11.40, 11.40, {631, 1066, 2247}, {23.13, 20.87, 6.14}}, /* AWRR */
-    {11.54, 11.54, {615, 1090, 2207}, {22.91, 20.36, 5.74}}, /* AWRR */
-    {11.36, 11.36, {599, 1110, 2164}, {23.02, 20.37, 5.53}}, /* AWRR */
-    {12.73, 12.73, {590, 1127, 2130}, {20.81, 17.55, 5.24}}, /* AWRR */
-    {11.42, 11.42, {582, 1139, 2148}, {17.76, 15.72, 4.41}}, /* AWRR */
-    {11.44, 11.44, {563, 1178, 2094}, {17.64, 15.89, 3.77}}, /* AWRR */
-    {11.44, 11.44, {547, 1195, 1971}, {17.72, 15.93, 4.21}}, /* AWRR */
+    {23.76, 23.76, {694, 981, 2460}, {22.75, 21.26, 6.22}}, /* AWRR */
+    {115.65, 115.65, {547, 1195, 1971}, {17.72, 15.93, 4.21}}, /* AWRR */
     {11.41, 11.41, {529, 1233, 2229}, {18.15, 15.80, 4.08}}, /* AWRR */
-    {11.44, 11.44, {511, 1247, 2153}, {18.10, 15.97, 2.93}}, /* AWRR */
-    {11.48, 11.48, {492, 1283, 2168}, {18.16, 15.73, 4.00}}, /* AWRR */
-    {11.39, 11.39, {470, 1305, 2388}, {18.57, 15.85, 2.19}}, /* AWRR */
-    {12.54, 12.54, {453, 1308, 2382}, {13.33, 10.73, 4.80}}, /* AWRR */
-    {11.42, 11.42, {448, 1321, 2405}, {11.59, 9.75, 2.80}}, /* AWRR */
-    {10.25, 10.25, {446, 1318, 2397}, {9.51, 9.62, 0.97}}, /* AWRR */
-    {11.50, 11.50, {446, 1318, 2397}, {9.51, 9.62, 0.97}}, /* AWRR */
+    {80.02, 80.02, {446, 1318, 2397}, {9.51, 9.62, 0.97}}, /* AWRR */
     {1.00, 1.00, {519, 910, 2400}, {1.06, 0.89, 0.85}}, /* OWRR */
     {12.89, 12.89, {562, 865, 2400}, {6.87, 7.72, 0.86}}, /* OWRR */
     {9.68, 9.68, {529, 883, 2427}, {16.52, 20.16, 4.58}}, /* OWRR */
-    {11.48, 11.48, {522, 910, 2391}, {18.00, 21.92, 5.28}}, /* OWRR */
-    {11.49, 11.49, {519, 937, 2315}, {18.26, 21.88, 5.42}}, /* OWRR */
-    {13.48, 13.48, {524, 950, 2400}, {11.75, 13.56, 7.44}}, /* OWRR */
+    {36.45, 36.45, {524, 950, 2400}, {11.75, 13.56, 7.44}}, /* OWRR */
     {10.74, 10.74, {520, 993, 2313}, {14.28, 16.08, 2.91}}, /* OWRR */
     {11.34, 11.34, {517, 1024, 2400}, {14.71, 16.57, 1.08}}, /* OWRR */
-    {11.43, 11.43, {508, 1050, 2511}, {14.71, 16.30, 1.96}}, /* OWRR */
-    {11.44, 11.44, {497, 1083, 2555}, {14.91, 15.93, 3.20}}, /* OWRR */
-    {11.29, 11.29, {486, 1113, 2619}, {15.74, 16.09, 3.04}}, /* OWRR */
-    {11.38, 11.38, {484, 1147, 2584}, {17.47, 16.34, 3.30}}, /* OWRR */
-    {11.56, 11.56, {479, 1170, 2583}, {17.39, 16.17, 2.47}}, /* OWRR */
-    {11.37, 11.37, {473, 1205, 2528}, {17.05, 15.93, 1.88}}, /* OWRR */
-    {11.44, 11.44, {464, 1236, 2379}, {17.32, 15.97, 2.06}}, /* OWRR */
-    {11.49, 11.49, {456, 1269, 2518}, {17.10, 15.56, 2.35}}, /* OWRR */
-    {11.25, 11.25, {451, 1305, 2583}, {17.41, 15.90, 1.92}}, /* OWRR */
+    {22.87, 22.87, {497, 1083, 2555}, {14.91, 15.93, 3.20}}, /* OWRR */
+    {34.23, 34.23, {479, 1170, 2583}, {17.39, 16.17, 2.47}}, /* OWRR */
+    {22.81, 22.81, {464, 1236, 2379}, {17.32, 15.97, 2.06}}, /* OWRR */
+    {22.74, 22.74, {451, 1305, 2583}, {17.41, 15.90, 1.92}}, /* OWRR */
     {12.62, 12.62, {450, 1322, 2482}, {12.43, 11.20, 4.01}}, /* OWRR */
     {9.59, 9.59, {449, 1316, 2400}, {11.05, 9.98, 1.70}}, /* OWRR */
     {13.29, 13.29, {450, 910, 2400}, {5.79, 5.13, 0.38}}, /* OWRR */
@@ -1190,24 +897,13 @@ static const vf_point vf_points[] = {
     {13.15, 13.15, {551, 871, 2461}, {5.79, 6.16, 1.14}}, /* OWIY */
     {12.23, 12.23, {552, 904, 2543}, {10.17, 12.25, 4.25}}, /* OWIY */
     {11.38, 11.38, {534, 917, 2503}, {11.71, 13.00, 7.05}}, /* OWIY */
-    {10.49, 10.49, {518, 1006, 2427}, {14.37, 16.32, 4.82}}, /* OWIY */
-    {11.50, 11.50, {498, 1081, 2428}, {14.59, 15.80, 5.49}}, /* OWIY */
-    {11.38, 11.38, {478, 1156, 2393}, {15.07, 15.69, 5.67}}, /* OWIY */
+    {33.37, 33.37, {478, 1156, 2393}, {15.07, 15.69, 5.67}}, /* OWIY */
     {11.38, 11.38, {457, 1231, 2424}, {16.43, 15.58, 3.73}}, /* OWIY */
     {10.81, 10.81, {436, 1308, 2429}, {14.99, 13.52, 7.32}}, /* OWIY */
-    {11.43, 11.43, {418, 1380, 2456}, {18.27, 16.19, 7.37}}, /* OWIY */
-    {12.54, 12.54, {417, 1443, 2457}, {14.70, 12.58, 5.85}}, /* OWIY */
-    {11.27, 11.27, {390, 1537, 2517}, {15.50, 12.45, 6.37}}, /* OWIY */
-    {11.38, 11.38, {380, 1597, 2595}, {16.72, 12.66, 4.93}}, /* OWIY */
-    {10.52, 10.52, {367, 1665, 2473}, {18.91, 15.11, 8.64}}, /* OWIY */
-    {11.42, 11.42, {357, 1724, 2461}, {18.40, 14.76, 9.17}}, /* OWIY */
-    {12.86, 12.86, {336, 1809, 2522}, {16.10, 13.08, 7.15}}, /* OWIY */
-    {11.21, 11.21, {311, 1893, 2554}, {16.15, 10.91, 6.30}}, /* OWIY */
-    {11.31, 11.31, {294, 1946, 2548}, {16.52, 10.38, 7.09}}, /* OWIY */
-    {11.87, 11.87, {260, 2042, 2536}, {16.66, 9.22, 7.40}}, /* OWIY */
-    {11.43, 11.43, {243, 2092, 2561}, {16.16, 8.68, 8.00}}, /* OWIY */
-    {11.39, 11.39, {245, 2198, 2536}, {15.07, 9.97, 8.38}}, /* OWIY */
-    {11.52, 11.52, {232, 2231, 2561}, {14.13, 8.52, 7.00}}, /* OWIY */
+    {46.62, 46.62, {380, 1597, 2595}, {16.72, 12.66, 4.93}}, /* OWIY */
+    {34.80, 34.80, {336, 1809, 2522}, {16.10, 13.08, 7.15}}, /* OWIY */
+    {45.82, 45.82, {243, 2092, 2561}, {16.16, 8.68, 8.00}}, /* OWIY */
+    {22.91, 22.91, {232, 2231, 2561}, {14.13, 8.52, 7.00}}, /* OWIY */
     {12.68, 12.68, {249, 2232, 2545}, {7.17, 5.18, 3.47}}, /* OWIY */
     {11.50, 11.50, {249, 2232, 2545}, {7.17, 5.18, 3.47}}, /* OWIY */
     {1.00, 1.00, {595, 1732, 2592}, {1.13, 0.41, 0.39}}, /* IYEH */
@@ -1215,118 +911,52 @@ static const vf_point vf_points[] = {
     {10.56, 10.56, {263, 2190, 2496}, {13.73, 10.61, 7.87}}, /* IYEH */
     {12.67, 12.67, {255, 2169, 2526}, {16.77, 10.04, 8.61}}, /* IYEH */
     {11.47, 11.47, {262, 2146, 2592}, {17.51, 10.52, 8.76}}, /* IYEH */
-    {11.04, 11.04, {310, 2081, 2510}, {17.74, 10.01, 9.51}}, /* IYEH */
-    {11.46, 11.46, {347, 2055, 2518}, {19.26, 10.71, 10.32}}, /* IYEH */
-    {11.41, 11.41, {377, 1999, 2592}, {19.86, 9.44, 11.70}}, /* IYEH */
-    {11.46, 11.46, {410, 1944, 2592}, {19.88, 9.37, 10.56}}, /* IYEH */
-    {11.05, 11.05, {433, 1944, 2461}, {22.43, 12.88, 9.16}}, /* IYEH */
-    {11.50, 11.50, {464, 1901, 2444}, {23.21, 13.24, 8.47}}, /* IYEH */
-    {11.41, 11.41, {494, 1840, 2477}, {23.16, 12.84, 8.85}}, /* IYEH */
-    {11.46, 11.46, {524, 1793, 2512}, {22.79, 12.85, 7.46}}, /* IYEH */
-    {11.38, 11.38, {549, 1771, 2577}, {24.62, 11.59, 9.68}}, /* IYEH */
-    {11.47, 11.47, {575, 1726, 2484}, {24.11, 11.74, 9.96}}, /* IYEH */
-    {11.12, 11.12, {595, 1732, 2392}, {26.14, 15.40, 11.58}}, /* IYEH */
-    {11.33, 11.33, {613, 1687, 2356}, {25.88, 15.32, 10.01}}, /* IYEH */
-    {11.97, 11.97, {613, 1696, 2335}, {18.88, 11.07, 7.06}}, /* IYEH */
-    {13.22, 13.22, {610, 1692, 2342}, {9.04, 5.22, 3.41}}, /* IYEH */
+    {22.50, 22.50, {347, 2055, 2518}, {19.26, 10.71, 10.32}}, /* IYEH */
+    {68.29, 68.29, {524, 1793, 2512}, {22.79, 12.85, 7.46}}, /* IYEH */
+    {45.30, 45.30, {613, 1687, 2356}, {25.88, 15.32, 10.01}}, /* IYEH */
+    {25.19, 25.19, {610, 1692, 2342}, {9.04, 5.22, 3.41}}, /* IYEH */
     {11.50, 11.50, {610, 1692, 2342}, {9.04, 5.22, 3.41}}, /* IYEH */
     {1.00, 1.00, {617, 1681, 2416}, {0.57, 0.38, 0.19}}, /* EHLL */
     {10.47, 10.47, {617, 1681, 2416}, {4.82, 3.19, 2.38}}, /* EHLL */
-    {11.83, 11.83, {618, 1688, 2357}, {17.73, 10.48, 7.59}}, /* EHLL */
-    {12.37, 12.37, {617, 1681, 2353}, {25.21, 14.61, 10.75}}, /* EHLL */
-    {11.51, 11.51, {601, 1607, 2408}, {24.98, 14.31, 10.23}}, /* EHLL */
-    {11.47, 11.47, {587, 1550, 2416}, {24.03, 13.82, 10.94}}, /* EHLL */
-    {12.49, 12.49, {579, 1469, 2454}, {19.73, 12.32, 7.48}}, /* EHLL */
-    {10.43, 10.43, {558, 1414, 2503}, {21.30, 13.43, 8.51}}, /* EHLL */
-    {11.58, 11.58, {545, 1361, 2551}, {19.05, 13.16, 6.49}}, /* EHLL */
-    {11.56, 11.56, {532, 1288, 2466}, {17.32, 12.10, 3.41}}, /* EHLL */
-    {11.43, 11.43, {515, 1227, 2485}, {15.96, 12.00, 4.87}}, /* EHLL */
-    {11.25, 11.25, {498, 1158, 2630}, {14.83, 11.29, 3.62}}, /* EHLL */
-    {11.70, 11.70, {481, 1096, 2580}, {12.90, 11.26, 3.74}}, /* EHLL */
-    {11.59, 11.59, {471, 1037, 2633}, {11.05, 10.59, 3.05}}, /* EHLL */
-    {11.53, 11.53, {457, 971, 2416}, {9.68, 10.34, 1.19}}, /* EHLL */
+    {24.20, 24.20, {617, 1681, 2353}, {25.21, 14.61, 10.75}}, /* EHLL */
+    {91.72, 91.72, {498, 1158, 2630}, {14.83, 11.29, 3.62}}, /* EHLL */
+    {34.82, 34.82, {457, 971, 2416}, {9.68, 10.34, 1.19}}, /* EHLL */
     {11.47, 11.47, {617, 965, 2416}, {5.21, 6.13, 0.49}}, /* EHLL */
     {11.50, 11.50, {617, 965, 2416}, {5.21, 6.13, 0.49}}, /* EHLL */
     {1.00, 1.00, {214, 1118, 2504}, {4.23, 2.83, 2.45}}, /* IYUW */
     {12.44, 12.44, {208, 2176, 2548}, {14.05, 7.71, 5.76}}, /* IYUW */
     {11.08, 11.08, {214, 2208, 2507}, {18.49, 9.82, 8.01}}, /* IYUW */
-    {11.49, 11.49, {242, 2081, 2548}, {15.07, 9.33, 7.62}}, /* IYUW */
-    {11.49, 11.49, {260, 2045, 2552}, {14.67, 8.20, 8.25}}, /* IYUW */
-    {11.02, 11.02, {256, 1926, 2439}, {16.79, 10.54, 7.65}}, /* IYUW */
-    {11.49, 11.49, {265, 1837, 2504}, {15.25, 11.07, 6.06}}, /* IYUW */
+    {22.98, 22.98, {260, 2045, 2552}, {14.67, 8.20, 8.25}}, /* IYUW */
+    {22.51, 22.51, {265, 1837, 2504}, {15.25, 11.07, 6.06}}, /* IYUW */
     {10.23, 10.23, {305, 1767, 2368}, {15.78, 14.49, 7.55}}, /* IYUW */
-    {11.51, 11.51, {303, 1680, 2360}, {16.44, 13.51, 7.94}}, /* IYUW */
-    {13.04, 13.04, {289, 1598, 2419}, {13.28, 9.14, 3.37}}, /* IYUW */
-    {9.99, 9.99, {311, 1523, 2345}, {15.92, 14.61, 5.33}}, /* IYUW */
-    {11.47, 11.47, {319, 1447, 2269}, {15.83, 14.54, 5.28}}, /* IYUW */
-    {12.52, 12.52, {311, 1370, 2225}, {15.07, 12.61, 5.51}}, /* IYUW */
-    {11.55, 11.55, {320, 1273, 2336}, {12.66, 10.78, 2.81}}, /* IYUW */
-    {10.26, 10.26, {333, 1205, 2198}, {13.66, 12.58, 3.89}}, /* IYUW */
-    {11.54, 11.54, {333, 1118, 2321}, {15.55, 14.63, 3.30}}, /* IYUW */
-    {11.46, 11.46, {336, 1064, 2342}, {14.98, 14.53, 3.10}}, /* IYUW */
+    {24.55, 24.55, {289, 1598, 2419}, {13.28, 9.14, 3.37}}, /* IYUW */
+    {55.79, 55.79, {333, 1205, 2198}, {13.66, 12.58, 3.89}}, /* IYUW */
+    {23.00, 23.00, {336, 1064, 2342}, {14.98, 14.53, 3.10}}, /* IYUW */
     {12.12, 12.12, {326, 1062, 2552}, {8.86, 8.49, 0.65}}, /* IYUW */
     {11.50, 11.50, {326, 1062, 2552}, {8.86, 8.49, 0.65}}, /* IYUW */
     {1.00, 1.00, {675, 1207, 2378}, {2.26, 2.07, 1.53}}, /* AXUW */
     {10.99, 10.99, {531, 1504, 2358}, {13.51, 8.71, 6.50}}, /* AXUW */
     {11.64, 11.64, {530, 1500, 2376}, {24.66, 15.78, 11.67}}, /* AXUW */
-    {12.77, 12.77, {546, 1465, 2378}, {22.59, 14.49, 11.76}}, /* AXUW */
-    {11.49, 11.49, {570, 1437, 2385}, {22.55, 15.03, 11.33}}, /* AXUW */
-    {11.47, 11.47, {589, 1397, 2409}, {22.13, 14.82, 10.42}}, /* AXUW */
-    {10.37, 10.37, {605, 1357, 2379}, {25.60, 16.82, 11.24}}, /* AXUW */
-    {11.46, 11.46, {624, 1314, 2389}, {24.82, 16.60, 10.32}}, /* AXUW */
-    {11.47, 11.47, {645, 1280, 2407}, {24.58, 16.61, 10.70}}, /* AXUW */
-    {11.51, 11.51, {663, 1238, 2411}, {23.91, 16.86, 10.89}}, /* AXUW */
-    {11.48, 11.48, {675, 1207, 2415}, {26.24, 18.88, 11.19}}, /* AXUW */
-    {11.88, 11.88, {699, 1180, 2450}, {20.31, 15.66, 8.64}}, /* AXUW */
-    {11.51, 11.51, {683, 1137, 2432}, {23.12, 17.14, 8.71}}, /* AXUW */
-    {11.64, 11.64, {594, 1120, 2423}, {18.48, 14.54, 5.84}}, /* AXUW */
-    {10.82, 10.82, {515, 1090, 2341}, {18.61, 15.28, 3.74}}, /* AXUW */
+    {115.41, 115.41, {683, 1137, 2432}, {23.12, 17.14, 8.71}}, /* AXUW */
+    {22.46, 22.46, {515, 1090, 2341}, {18.61, 15.28, 3.74}}, /* AXUW */
     {11.56, 11.56, {407, 1080, 2511}, {16.19, 13.59, 3.08}}, /* AXUW */
     {11.54, 11.54, {343, 1061, 2378}, {14.28, 13.74, 1.20}}, /* AXUW */
     {11.58, 11.58, {317, 1059, 2378}, {8.03, 7.35, 0.48}}, /* AXUW */
     {11.50, 11.50, {317, 1059, 2378}, {8.03, 7.35, 0.48}}, /* AXUW */
     {1.00, 1.00, {351, 1664, 2435}, {4.35, 2.15, 1.70}}, /* IHWW */
-    {11.70, 11.70, {354, 1762, 2499}, {14.62, 10.95, 6.09}}, /* IHWW */
-    {11.81, 11.81, {348, 1732, 2484}, {19.41, 14.16, 8.04}}, /* IHWW */
-    {11.44, 11.44, {351, 1713, 2435}, {22.44, 17.04, 9.58}}, /* IHWW */
-    {11.46, 11.46, {355, 1664, 2434}, {21.72, 17.43, 9.12}}, /* IHWW */
-    {11.42, 11.42, {358, 1595, 2422}, {21.35, 16.35, 9.22}}, /* IHWW */
-    {11.43, 11.43, {362, 1542, 2378}, {20.12, 16.58, 8.63}}, /* IHWW */
-    {12.44, 12.44, {369, 1463, 2484}, {17.12, 13.04, 3.95}}, /* IHWW */
-    {11.50, 11.50, {376, 1416, 2416}, {15.99, 12.82, 4.15}}, /* IHWW */
-    {11.50, 11.50, {381, 1354, 2439}, {15.07, 12.86, 2.93}}, /* IHWW */
-    {11.55, 11.55, {386, 1290, 2404}, {14.17, 11.95, 3.29}}, /* IHWW */
-    {10.43, 10.43, {380, 1255, 2283}, {16.49, 15.57, 5.75}}, /* IHWW */
-    {12.06, 12.06, {383, 1187, 2443}, {15.61, 14.27, 3.15}}, /* IHWW */
-    {11.45, 11.45, {393, 1129, 2435}, {14.04, 13.58, 2.39}}, /* IHWW */
-    {11.51, 11.51, {398, 1064, 2228}, {13.16, 13.37, 3.76}}, /* IHWW */
+    {34.95, 34.95, {351, 1713, 2435}, {22.44, 17.04, 9.58}}, /* IHWW */
+    {69.75, 69.75, {381, 1354, 2439}, {15.07, 12.86, 2.93}}, /* IHWW */
+    {57.00, 57.00, {398, 1064, 2228}, {13.16, 13.37, 3.76}}, /* IHWW */
     {11.47, 11.47, {408, 1013, 2435}, {12.30, 13.21, 1.68}}, /* IHWW */
-    {11.57, 11.57, {413, 953, 2435}, {11.25, 13.31, 1.71}}, /* IHWW */
-    {11.54, 11.54, {426, 898, 2435}, {10.46, 12.38, 1.98}}, /* IHWW */
-    {12.33, 12.33, {415, 844, 2448}, {8.18, 10.63, 2.46}}, /* IHWW */
-    {11.49, 11.49, {430, 811, 2435}, {6.70, 9.13, 2.27}}, /* IHWW */
+    {46.93, 46.93, {430, 811, 2435}, {6.70, 9.13, 2.27}}, /* IHWW */
     {12.16, 12.16, {351, 802, 2435}, {3.25, 4.83, 1.14}}, /* IHWW */
     {11.50, 11.50, {351, 802, 2435}, {3.25, 4.83, 1.14}}, /* IHWW */
     {1.00, 1.00, {679, 1567, 2175}, {1.02, 0.71, 0.70}}, /* AYWW */
-    {11.71, 11.71, {716, 1647, 2175}, {10.26, 4.78, 1.39}}, /* AYWW */
-    {12.58, 12.58, {712, 1671, 2607}, {19.40, 9.73, 2.08}}, /* AYWW */
-    {11.67, 11.67, {707, 1657, 2377}, {26.18, 12.68, 4.52}}, /* AYWW */
-    {11.55, 11.55, {698, 1609, 2251}, {26.21, 13.45, 6.23}}, /* AYWW */
-    {10.67, 10.67, {679, 1567, 2483}, {28.31, 15.13, 5.04}}, /* AYWW */
-    {11.44, 11.44, {661, 1517, 2467}, {26.91, 14.71, 5.48}}, /* AYWW */
-    {11.47, 11.47, {649, 1452, 2464}, {25.75, 14.36, 4.56}}, /* AYWW */
-    {11.44, 11.44, {633, 1397, 2110}, {24.43, 14.07, 4.74}}, /* AYWW */
-    {11.55, 11.55, {618, 1350, 2115}, {23.02, 14.13, 5.69}}, /* AYWW */
-    {11.46, 11.46, {602, 1293, 2175}, {21.54, 13.92, 6.41}}, /* AYWW */
-    {11.51, 11.51, {589, 1234, 2157}, {19.90, 14.05, 4.93}}, /* AYWW */
-    {11.46, 11.46, {573, 1175, 2170}, {19.05, 12.90, 5.33}}, /* AYWW */
-    {11.54, 11.54, {560, 1116, 2228}, {17.16, 13.35, 4.35}}, /* AYWW */
+    {24.29, 24.29, {712, 1671, 2607}, {19.40, 9.73, 2.08}}, /* AYWW */
+    {68.24, 68.24, {633, 1397, 2110}, {24.43, 14.07, 4.74}}, /* AYWW */
+    {57.52, 57.52, {560, 1116, 2228}, {17.16, 13.35, 4.35}}, /* AYWW */
     {11.47, 11.47, {539, 1067, 2705}, {16.03, 13.33, 2.33}}, /* AYWW */
-    {11.58, 11.58, {527, 1015, 2710}, {14.00, 13.41, 1.93}}, /* AYWW */
-    {11.55, 11.55, {515, 952, 2620}, {12.43, 12.51, 2.33}}, /* AYWW */
-    {12.22, 12.22, {490, 924, 2524}, {9.27, 10.25, 4.21}}, /* AYWW */
-    {11.63, 11.63, {470, 870, 2538}, {7.84, 10.14, 3.79}}, /* AYWW */
-    {11.53, 11.53, {459, 814, 2459}, {7.25, 9.89, 2.54}}, /* AYWW */
+    {58.51, 58.51, {459, 814, 2459}, {7.25, 9.89, 2.54}}, /* AYWW */
     {11.77, 11.77, {679, 791, 2175}, {4.58, 6.03, 1.26}}, /* AYWW */
     {11.50, 11.50, {679, 791, 2175}, {4.58, 6.03, 1.26}}, /* AYWW */
     {1.00, 1.00, {564, 862, 2501}, {6.51, 7.02, 0.82}}, /* OWWW */
@@ -1335,56 +965,32 @@ static const vf_point vf_points[] = {
     {11.46, 11.46, {542, 892, 2501}, {10.05, 12.72, 4.18}}, /* OWWW */
     {11.47, 11.47, {548, 866, 2387}, {9.95, 12.89, 2.26}}, /* OWWW */
     {11.43, 11.43, {519, 869, 2602}, {8.82, 12.02, 2.70}}, /* OWWW */
-    {11.46, 11.46, {518, 844, 2556}, {9.07, 11.88, 3.30}}, /* OWWW */
-    {11.46, 11.46, {520, 832, 2506}, {9.18, 11.78, 3.43}}, /* OWWW */
+    {22.92, 22.92, {520, 832, 2506}, {9.18, 11.78, 3.43}}, /* OWWW */
     {11.46, 11.46, {485, 827, 2543}, {8.68, 11.40, 2.06}}, /* OWWW */
     {11.48, 11.48, {501, 837, 2529}, {8.22, 11.09, 1.07}}, /* OWWW */
     {11.46, 11.46, {487, 824, 2595}, {8.10, 11.03, 3.34}}, /* OWWW */
-    {11.46, 11.46, {476, 823, 2586}, {8.17, 11.09, 3.09}}, /* OWWW */
-    {11.48, 11.48, {468, 818, 2535}, {7.15, 10.09, 2.54}}, /* OWWW */
+    {22.94, 22.94, {468, 818, 2535}, {7.15, 10.09, 2.54}}, /* OWWW */
     {11.47, 11.47, {466, 826, 2584}, {7.05, 9.64, 3.75}}, /* OWWW */
-    {11.44, 11.44, {457, 811, 2496}, {7.20, 9.73, 2.52}}, /* OWWW */
-    {11.43, 11.43, {452, 793, 2494}, {6.41, 8.73, 2.24}}, /* OWWW */
+    {22.87, 22.87, {452, 793, 2494}, {6.41, 8.73, 2.24}}, /* OWWW */
     {12.41, 12.41, {561, 789, 2501}, {2.56, 3.98, 1.02}}, /* OWWW */
     {11.50, 11.50, {561, 789, 2501}, {2.56, 3.98, 1.02}}, /* OWWW */
     {1.00, 1.00, {271, 1499, 2383}, {0.40, 0.24, 0.21}}, /* ZZ */
     {11.45, 11.45, {298, 1491, 2394}, {4.81, 3.49, 3.70}}, /* ZZ */
     {11.39, 11.39, {274, 1499, 2392}, {10.03, 6.86, 7.25}}, /* ZZ */
-    {11.26, 11.26, {270, 1498, 2397}, {10.21, 6.59, 7.12}}, /* ZZ */
-    {11.17, 11.17, {271, 1495, 2391}, {10.54, 6.61, 7.17}}, /* ZZ */
-    {11.14, 11.14, {273, 1500, 2394}, {10.23, 6.74, 7.19}}, /* ZZ */
-    {11.23, 11.23, {270, 1499, 2383}, {10.36, 6.60, 7.31}}, /* ZZ */
-    {11.21, 11.21, {274, 1498, 2392}, {10.26, 6.74, 7.06}}, /* ZZ */
-    {11.42, 11.42, {276, 1508, 2395}, {8.23, 5.19, 5.43}}, /* ZZ */
-    {11.50, 11.50, {276, 1508, 2395}, {8.23, 5.19, 5.43}}, /* ZZ */
+    {78.93, 78.93, {276, 1508, 2395}, {8.23, 5.19, 5.43}}, /* ZZ */
     {1.00, 1.00, {434, 1676, 2563}, {6.69, 4.59, 1.88}}, /* ZH */
-    {10.94, 10.94, {441, 1673, 2540}, {8.29, 5.79, 2.75}}, /* ZH */
-    {10.87, 10.87, {435, 1682, 2447}, {8.14, 5.29, 3.14}}, /* ZH */
-    {11.05, 11.05, {437, 1671, 2488}, {7.92, 5.50, 2.21}}, /* ZH */
-    {11.80, 11.80, {434, 1662, 2551}, {6.39, 3.57, 2.98}}, /* ZH */
-    {10.94, 10.94, {439, 1677, 2500}, {6.58, 4.44, 2.37}}, /* ZH */
-    {11.50, 11.50, {439, 1677, 2500}, {6.58, 4.44, 2.37}}, /* ZH */
+    {67.10, 67.10, {439, 1677, 2500}, {6.58, 4.44, 2.37}}, /* ZH */
     {1.00, 1.00, {282, 1589, 2352}, {3.90, 3.82, 1.28}}, /* DH */
-    {11.36, 11.36, {294, 1581, 2464}, {6.18, 5.96, 2.72}}, /* DH */
-    {11.67, 11.67, {272, 1578, 2420}, {6.64, 5.96, 2.79}}, /* DH */
-    {10.94, 10.94, {269, 1586, 2397}, {6.64, 5.89, 2.13}}, /* DH */
-    {11.87, 11.87, {280, 1592, 2379}, {5.99, 5.85, 1.88}}, /* DH */
-    {10.96, 10.96, {281, 1590, 2372}, {6.12, 5.78, 2.37}}, /* DH */
-    {10.91, 10.91, {265, 1590, 2493}, {5.74, 5.06, 1.14}}, /* DH */
-    {11.12, 11.12, {246, 1598, 2331}, {2.44, 2.02, 0.76}}, /* DH */
-    {11.50, 11.50, {246, 1598, 2331}, {2.44, 2.02, 0.76}}, /* DH */
+    {90.33, 90.33, {246, 1598, 2331}, {2.44, 2.02, 0.76}}, /* DH */
     {1.00, 1.00, {624, 1406, 2392}, {1.19, 0.41, 0.17}}, /* BO */
     {11.12, 11.12, {274, 1406, 2392}, {6.89, 0.33, 0.61}}, /* BO */
     {11.37, 11.37, {271, 1406, 2392}, {7.40, 0.29, 0.72}}, /* BO */
     {11.30, 11.30, {410, 1406, 2392}, {8.53, 1.49, 1.65}}, /* BO */
     {11.87, 11.87, {624, 1406, 2392}, {20.14, 14.98, 7.74}}, /* BO */
-    {11.44, 11.44, {624, 1405, 2394}, {17.24, 12.95, 6.59}}, /* BO */
-    {12.09, 12.09, {622, 1400, 2395}, {8.18, 6.33, 3.09}}, /* BO */
-    {11.50, 11.50, {622, 1400, 2395}, {8.18, 6.33, 3.09}}, /* BO */
+    {35.03, 35.03, {622, 1400, 2395}, {8.18, 6.33, 3.09}}, /* BO */
     {1.00, 1.00, {440, 1486, 2485}, {0.35, 0.29, 0.43}}, /* DO */
     {11.33, 11.33, {263, 1486, 2485}, {4.58, 0.28, 0.59}}, /* DO */
-    {10.16, 10.16, {272, 1486, 2485}, {7.37, 0.36, 0.55}}, /* DO */
-    {11.47, 11.47, {274, 1486, 2485}, {7.52, 0.38, 0.72}}, /* DO */
+    {21.63, 21.63, {274, 1486, 2485}, {7.52, 0.38, 0.72}}, /* DO */
     {12.34, 12.34, {440, 1486, 2485}, {10.49, 7.15, 4.09}}, /* DO */
     {12.41, 12.41, {439, 1486, 2514}, {7.92, 5.46, 2.77}}, /* DO */
     {11.77, 11.77, {440, 1486, 2485}, {1.67, 1.00, 0.26}}, /* DO */
@@ -1405,104 +1011,36 @@ static const vf_point vf_points[] = {
     {1.00, 1.00, {250, 2012, 2386}, {5.66, 0.19, 0.54}}, /* GO */
     {11.45, 11.45, {258, 2012, 2480}, {6.87, 1.03, 0.53}}, /* GO */
     {11.43, 11.43, {264, 1436, 2570}, {6.73, 0.55, 0.82}}, /* GO */
-    {11.47, 11.47, {282, 1718, 2551}, {2.94, 0.62, 0.37}}, /* GO */
-    {11.50, 11.50, {282, 1718, 2551}, {2.94, 0.62, 0.37}}, /* GO */
+    {22.97, 22.97, {282, 1718, 2551}, {2.94, 0.62, 0.37}}, /* GO */
     {1.00, 1.00, {264, 2117, 2480}, {8.05, 5.10, 1.17}}, /* EG */
     {11.45, 11.45, {258, 2124, 2467}, {5.51, 3.38, 0.63}}, /* EG */
     {11.50, 11.50, {258, 2124, 2467}, {5.51, 3.38, 0.63}}, /* EG */
     {1.00, 1.00, {279, 1314, 2503}, {1.06, 0.51, 0.38}}, /* OG */
     {10.62, 10.62, {279, 1314, 2423}, {7.49, 6.23, 0.95}}, /* OG */
-    {11.44, 11.44, {262, 1319, 2480}, {5.45, 3.96, 0.82}}, /* OG */
-    {11.50, 11.50, {262, 1319, 2480}, {5.45, 3.96, 0.82}}, /* OG */
+    {22.94, 22.94, {262, 1319, 2480}, {5.45, 3.96, 0.82}}, /* OG */
 };
 
 static const struct {
   short first, count;
 } vf_index[] = {
-    {0, 0},
-    {0, 11},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {11, 9},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {20, 9},
-    {0, 0},
-    {0, 0},
-    {29, 21},
-    {0, 0},
-    {50, 21},
-    {71, 21},
-    {92, 21},
-    {0, 0},
-    {0, 0},
-    {113, 24},
-    {0, 0},
-    {137, 20},
-    {157, 17},
-    {174, 19},
-    {193, 19},
-    {212, 22},
-    {234, 22},
-    {256, 18},
-    {0, 0},
-    {0, 0},
-    {274, 10},
-    {284, 7},
-    {291, 9},
-    {0, 0},
-    {300, 8},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {308, 8},
-    {316, 4},
-    {320, 4},
-    {324, 5},
-    {329, 5},
-    {334, 3},
-    {337, 4},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0}
+    {0, 0}, {0, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {4, 5}, {0, 0}, {0, 0}, {0, 0},
+    {9, 4}, {0, 0}, {0, 0}, {13, 4}, {0, 0}, {17, 7},
+    {24, 5}, {29, 14}, {0, 0}, {0, 0}, {43, 13}, {0, 0},
+    {56, 10}, {66, 7}, {73, 11}, {84, 9}, {93, 8}, {101, 8},
+    {109, 15}, {0, 0}, {0, 0}, {124, 4}, {128, 2}, {130, 2},
+    {0, 0}, {132, 6}, {0, 0}, {0, 0}, {0, 0}, {138, 7},
+    {145, 4}, {149, 4}, {153, 5}, {158, 4}, {162, 3}, {165, 3},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
 };
 /* VF-END */
 
-/* the hiss of ZZ and ZH. their frames are the voicing alone, measured where
- * nothing above 4kHz was compared, but both units have hiss at 3.5 to 4.5kHz
- * 20 to 24dB under the voicing's loudest band, 7 to 8dB more than the voicing
- * gives (ZZ and ZH at pitch 40 on the fourth VoxProbe recording, and ZZ in Man
- * Goes Down). here oscillators 4 and 5 give it, half enveloped by the voicing
- * and following each frame's level; their frequencies, width and level are
- * fitted to the fourth VoxProbe recording, where ZZ goes from 3.8 to 1.9dB
- * and ZH 5.2 to 2.4dB (full band). left out, the VoxRecord recording's ZH goes
- * from 3.9 to 1.8dB, and Man Goes Down's ZZ is within 1dB at 3.5 and 4.5kHz */
+/* the hiss of ZZ and ZH: oscillators 4 and 5 at 3.5 to 4.5kHz, about 20dB
+ * under the voicing's loudest band, half enveloped by the voicing and
+ * following each frame's level */
 static const struct {
   short code;
   double n1, n2, db, dist;
@@ -1537,22 +1075,23 @@ static void allophone(sound *s, int code) {
     const vf_point *p = &vf_points[vf_index[code - 128].first];
     s->speech = true;
     s->framed = true;
-    s->length = 1.0;
+    s->length = allophone_length[code - 128];
     for (int i = 0; i < vf_index[code - 128].count; i++)
       add_part(s, p[i].ms, p[i].glide,
                voiced_frame(FM(p[i].freq[0], p[i].freq[1], p[i].freq[2]), p[i].vol[0], p[i].vol[1], p[i].vol[2]));
     for (int i = 0; i < s->nparts; i++)
       s->parts[i].target.onset_ms = onset_ms(code);
     framed_noise(s, code);
+    const double g = pow(10, allophone_gain_db[code - 128] / 20);
+    for (int i = 0; i < s->nparts; i++)
+      for (int j = 0; j < 5; j++)
+        s->parts[i].target.vol[j] *= g;
     return;
   }
   switch (code) {
-  /* the vowels' and liquids' three volumes are the chip's: at pitch 40 on the
-   * third VoxProbe recording each voicing pulse is the three formant sines
-   * alone, and fitting them through the chip's fade and output filter (see
-   * voice_fade) gives each one's amplitude, the mean of both units. some of
-   * these sounds are instead played from the chip's own frames, pulse by
-   * pulse (see vf_points) */
+  /* the vowels' and liquids' three volumes are the chip's, from single voicing
+   * pulses (see voice_fade). some sounds are played from the chip's own frames
+   * instead (see vf_points) */
   case 128: steady(s, 70, voiced_frame(fIY, 24.0, 15.6, 9.8)); break; /* IY */
   case 129: steady(s, 70, formant_phases(voiced_frame(fIH, 24.0, 16.7, 10.0), 0.132, 0.175)); break; /* IH */
   case 130: steady(s, 70, voiced_frame(fEY, 24.0, 14.0, 7.7)); break; /* EY */
@@ -1572,13 +1111,8 @@ static void allophone(sound *s, int code) {
   case 140: steady(s, 70, voiced_frame(FM(266, 1410, 2252), 24.0, 6.3, 1.9)); break; /* MM */
   case 141: steady(s, 70, formant_phases(voiced_frame(FM(262, 1572, 2582), 24.0, 3.6, 7.6), 0.032, 0.965)); break; /* NE */
   case 142: steady(s, 70, formant_phases(voiced_frame(FM(269, 1169, 2590), 24.0, 4.6, 7.3), 0.962, 0.031)); break; /* NO */
-  /* NGE and NGO had no measurement (VoxProbe 3 doesn't play them), but on
-   * the VoxRecord recording both units agree on every harmonic of them to
-   * within 0.5dB RMS. their frequencies, volumes and phases are fitted to
-   * those harmonics, played here: NGE 87.0% to 97.0% and 3.93 to 1.11dB,
-   * NGO 93.1% to 96.2% and 2.98 to 1.83dB. on the chip NGE's second and
-   * third formants are one peak near 2.3kHz, where they had been 2.1 and
-   * 2.7kHz */
+  /* NGE and NGO are fitted to their harmonics on both units: on the chip NGE's
+   * second and third formants are one peak near 2.3kHz */
   case 143: steady(s, 70, formant_phases(voiced_frame(FM(368.334, 2266.3, 2386.423), 22.0, 6.845, 2.093), 0.225, 0.909)); break; /* NGE */
   case 144: steady(s, 70, formant_phases(voiced_frame(FM(374.718, 1491.004, 1938.775), 22.0, 4.018, 9.051), 0.868, 0.994)); break; /* NGO */
   case 145: steady(s, 70, formant_phases(voiced_frame(fLE, 23.3, 24.0, 4.3), 0.945, 0.930)); break; /* LE */
@@ -1640,15 +1174,8 @@ static void allophone(sound *s, int code) {
   case 191: st = STOPN(50, 31.8, 7.11, false, lAlveolar, 2689, 3257, 15.9, 22.1, 3188, 3038, 73, 19, 3.7, 17.4, 0, 0); plosive(s, &st); break; /* TT */
   case 192: st = STOPN(70, 43.56, 26.34, false, lAlveolar, 3361.7, 2605.1, 24.92, 19.05, 2420.8, 2928, 45.6, 56.5, 7.51, 5.36, 0, 0); plosive(s, &st); break; /* TU */
   case 193: { /* TS */
-    /* on both units (the VoxRecord recording) TS is hiss that starts at its
-     * loudest, peaked at 3.5kHz, and dies away: 6dB down 40ms on, 14dB by
-     * 120ms, spreading out to a flat spectrum with a little left at 3.5kHz.
-     * the fit as a stop had it the other way round, a long broad burst into a
-     * short hiss at the end. the hiss here is that fit's, then the same
-     * oscillators spread wide (distortion) and moved up, gliding down to 20dB
-     * under it. against both units this matches 37% (13% before) where they
-     * match each other 35%, its spectrum 3.7dB off (3.5 before, 3.5 between
-     * the two) */
+    /* TS is hiss that starts at its loudest, peaked at 3.5kHz, and dies away
+     * (6dB down at 40ms, 14dB by 120ms), spreading out to a flat spectrum */
     const frame hiss = noise_frame(lAlveolar, 3282.5, 3250.4, 8.04, 19.69, 48.6);
     s->speech = true;
     /* 50, 10, 40 and 90ms (with the glides) at the manual's 170ms: see
@@ -1667,15 +1194,7 @@ static void allophone(sound *s, int code) {
   case 199: st = STOP(99, 50, 9, false, lLabialBack, 300, 720, 12, 9, 600, 1380); plosive(s, &st); break; /* PO */
   default: break;
   }
-  if (allophone_length[code - 128] > 0) {
-    s->length = allophone_length[code - 128];
-  } else {
-    /* the manual's length and TRANSITION_MS more */
-    double ms = 0;
-    for (int i = 0; i < s->nparts; i++)
-      ms += s->parts[i].ms;
-    s->length = (ms + TRANSITION_MS) / ms;
-  }
+  s->length = allophone_length[code - 128];
   const double g = pow(10, allophone_gain_db[code - 128] / 20);
   for (int i = 0; i < s->nparts; i++) {
     for (int j = 0; j < 5; j++)
@@ -1685,20 +1204,6 @@ static void allophone(sound *s, int code) {
 }
 
 /* effect constructors */
-
-/* tone is a plain sine on oscillator 1 (and optionally 2) with no envelope */
-static frame tone(double f1, double f2) {
-  frame t;
-  memset(&t, 0, sizeof(t));
-  t.freq[0] = f1;
-  t.freq[1] = f2;
-  t.vol[0] = 28;
-  if (f2 > 0) {
-    t.vol[0] = 24;
-    t.vol[1] = 24;
-  }
-  return t;
-}
 
 static frame quiet(frame f) {
   for (int i = 0; i < 5; i++)
@@ -1721,59 +1226,15 @@ static void hold(sound *s, double ms, double glide, frame f) {
 /* the manual gives the DTMF tones 95ms, but on the VoxRecord recording (see
  * msa_speed_factor()) all twelve sound for 152 to 154ms, 2.4dB quieter
  * against AW than tone() plays them */
-/* a DTMF tone, its two frequencies in FREQ_STEP_HZ steps: the chip's,
- * measured on the second VoxProbe recording, which are a few hertz from the
- * standard ones (1477Hz is 1468.75) */
-static void dtmf(sound *s, int low, int high) {
-  const frame t = fade(tone(low * FREQ_STEP_HZ, high * FREQ_STEP_HZ), 2.4);
-  hold(s, 150, 3, t);
-  hold(s, 3, 3, quiet(t));
-}
-
-/* the manual describes the sound effects only by name and length. the others
- * here are traced from the third take of the VoxRecord recording (see
- * msa_speed_factor()), which plays each on its own and clips little: every
- * 5ms the level and the sound's kind were measured, and the trace reduced to
- * the points below, between which the sound glides in a straight line. a
- * tone is up to three pure sines (the chip's tones have no harmonics to speak
- * of, 45dB and more down): the strongest peaks, within 15dB of the loudest,
- * that aren't its harmonics (R0 to R9, for example, are three tones each).
- * noise (a flat spectrum) is noise around the frequency. a buzz (a pitch
- * between 40 and 500Hz found by autocorrelation, with six or more peaks) is
- * voiced at that pitch with oscillators 1 to 3 on its three formants, read by
- * linear prediction: A1, A2, A3 and M2 buzz at 87Hz, the default speech
- * pitch, and M2 ("WOW") is a vowel glide. each point is where it is reached
- * (in ms from the start of the sound), its kind, the buzz's pitch, its level
- * in dB (-60 is silence), the three frequencies (0 for none) and the second
- * and third's levels against the first (-60 while a tone that comes and goes
- * is absent, so that it fades rather than sweeping from 0Hz). the levels are the recording's with
- * the output filter's loss at each frequency added back (see CHIP_RATE), as
- * the filter here takes it off again. many effects are nothing like their
- * names suggest, and many differ in length from the manual: A1 and A2 last
- * about a second, and M0 is a 1.2 second tone around 1.8kHz that dies away.
- * the points at the start and end of an effect that were no louder than the
- * recording's background (within 6dB of the first point) are silent: the
- * trace had taken that background for part of the effect, making each one
- * 20 to 50ms too long. the tone effects are traced again in fx2_points.
- *
- * A1 is traced again: its trace had taken the strongest peaks, which jump
- * between its parts. on both units of the VoxRecord and fourth VoxProbe
- * recordings, read from the peaks of its harmonics every 25ms (within 10Hz
- * of each other), it is three formants: one steady at 207Hz, one rising from
- * 720 to 1645Hz and one from about 120 to 2870Hz, faster, crossing the other
- * near 300ms. the same at pitch 60 and 150 and at speeds 90 and 127, and at
- * bend 15 all three 440Hz higher. the levels were fitted to the harmonics'
- * peaks at the default pitch: on the rest, left out (both units of the fourth
- * VoxProbe recording at pitch 60 and 150, bend 15 and speeds 90 and 127), 30
- * to 93% and 7.4 to 1.3dB, and on the first VoxProbe recording, which nothing
- * here was fitted to, 36 to 91% and 7.3 to 1.1dB. at bend 0 the chip plays
- * something else: the second formant moves 197Hz down as it should, but the
- * third is mirrored, falling as 2.5kHz less its rise, and a line holds near
- * 2.4kHz. both are a frequency Bend took under nothing (see msa_expand()):
- * the third formant starts at 120Hz, and the steady line is the first, which
- * read 207Hz off the harmonics but goes under at bend 0 too, so it is put
- * at 175Hz, the lowest that does: every A1 item 91.0 to 94.5% and 1.63 to
- * 1.33dB, bend 0 59 to 82% and 3.8 to 2.3dB */
+/* the effects traced from recordings that are not pure tones (the tone effects
+ * are in fx_knots). each point is where it is reached (ms from the start of
+ * the sound), its kind, a buzz's pitch, its level in dB (-60 is silence), up
+ * to three frequencies (0 for none) and the second and third's levels against
+ * the first. a tone is a pure sine; noise is noise around its frequency; a
+ * buzz is voiced at its pitch with oscillators 1 to 3 on its formants. the
+ * levels have the output filter's loss added back (see CHIP_RATE). A1 is three
+ * formants (steady at 175Hz, rising 720 to 1645Hz, and rising faster from 120
+ * to 2870Hz) */
 enum { FX_TONE, FX_NOISE, FX_BUZZ };
 
 typedef struct fx_point {
@@ -1784,1433 +1245,377 @@ typedef struct fx_point {
 } fx_point;
 
 static const fx_point fx_points[] = {
-    /* R0 */
-    {5, 0, 0, -60.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    {20, 0, 0, -60.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    {25, 0, 0, -9.1, {799, 511, 0}, {0, -15.1, -60.0}},
-    {30, 0, 0, -2.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    {35, 0, 0, 1.4, {799, 511, 0}, {0, -15.1, -60.0}},
-    {40, 0, 0, 3.3, {799, 511, 0}, {0, -15.1, -60.0}},
-    {45, 0, 0, 4.6, {799, 511, 0}, {0, -15.1, -60.0}},
-    {70, 0, 0, 5.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    {95, 0, 0, 2.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    {100, 0, 0, -0.8, {799, 511, 0}, {0, -15.1, -60.0}},
-    {105, 0, 0, -6.5, {799, 511, 0}, {0, -15.1, -60.0}},
-    {110, 0, 0, -12.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    {115, 0, 0, -60.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    {120, 0, 0, -60.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    {125, 0, 0, -60.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    {135, 0, 0, -60.0, {799, 511, 0}, {0, -15.1, -60.0}},
-    /* R1 */
-    {5, 0, 0, -60.0, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {20, 0, 0, -60.0, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {25, 0, 0, -14.8, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {30, 0, 0, -5.2, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {35, 0, 0, -1.6, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {80, 0, 0, 1.9, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {100, 0, 0, -4.4, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {105, 0, 0, -10.8, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {110, 0, 0, -20.4, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {115, 0, 0, -60.0, {1100, 731, 0}, {0, -19.3, -60.0}},
-    {130, 0, 0, -60.0, {1100, 731, 0}, {0, -19.3, -60.0}},
-    /* R2 */
-    {5, 0, 0, -60.0, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {20, 0, 0, -60.0, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {25, 0, 0, -13.7, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {30, 0, 0, -5.5, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {35, 0, 0, -2.5, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {60, 0, 0, 0.1, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {65, 0, 0, -0.2, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {95, 0, 0, -2.9, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {100, 0, 0, -5.5, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {105, 0, 0, -11.7, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {110, 0, 0, -16.4, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {115, 0, 0, -60.0, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {120, 0, 0, -60.0, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {125, 0, 0, -60.0, {1299, 531, 0}, {0, -21.0, -60.0}},
-    {135, 0, 0, -60.0, {1299, 531, 0}, {0, -21.0, -60.0}},
-    /* R3 */
-    {5, 0, 0, -60.0, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {10, 0, 0, -60.0, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {15, 0, 0, -60.0, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {20, 0, 0, -60.0, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {25, 0, 0, -17.0, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {30, 0, 0, -8.1, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {35, 0, 0, -4.4, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {40, 0, 0, -2.6, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {65, 0, 0, -1.5, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {70, 0, 0, -1.5, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {90, 0, 0, -3.2, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {95, 0, 0, -5.0, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {100, 0, 0, -9.3, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {105, 0, 0, -15.1, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {110, 0, 0, -21.9, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {115, 0, 0, -25.8, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {120, 0, 0, -60.0, {1599, 726, 360}, {0, -14.1, -15.2}},
-    {130, 0, 0, -60.0, {1599, 726, 360}, {0, -14.1, -15.2}},
-    /* R4 */
-    {5, 0, 0, -60.0, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {20, 0, 0, -60.0, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {25, 0, 0, -17.0, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {30, 0, 0, -7.5, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {55, 0, 0, -1.4, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {60, 0, 0, -1.6, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {65, 0, 0, -1.5, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {90, 0, 0, -3.2, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {95, 0, 0, -7.3, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {100, 0, 0, -10.4, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {105, 0, 0, -15.2, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {110, 0, 0, -19.1, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {115, 0, 0, -20.6, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {120, 0, 0, -60.0, {1898, 305, 561}, {0, -18.5, -23.3}},
-    {130, 0, 0, -60.0, {1898, 305, 561}, {0, -18.5, -23.3}},
-    /* R5 */
-    {5, 0, 0, -60.0, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {10, 0, 0, -60.0, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {15, 0, 0, -60.0, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {20, 0, 0, -60.0, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {25, 0, 0, -13.1, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {30, 0, 0, -7.0, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {45, 0, 0, -2.1, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {90, 0, 0, -3.5, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {95, 0, 0, -5.2, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {100, 0, 0, -12.5, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {105, 0, 0, -16.5, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {110, 0, 0, -22.1, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {115, 0, 0, -27.2, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {120, 0, 0, -60.0, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {125, 0, 0, -60.0, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    {130, 0, 0, -60.0, {2198, 381, 2667}, {0, -14.3, -18.3}},
-    /* R6 */
-    {5, 0, 0, -60.0, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {10, 0, 0, -60.0, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {15, 0, 0, -60.0, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {20, 0, 0, -21.5, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {25, 0, 0, -16.4, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {30, 0, 0, -11.8, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {35, 0, 0, -9.7, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {40, 0, 0, -1.5, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {65, 0, 0, -0.8, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {70, 0, 0, -0.7, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {80, 0, 0, -0.8, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {85, 0, 0, -8.2, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {100, 0, 0, -14.1, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {105, 0, 0, -18.3, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {110, 0, 0, -20.2, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {115, 0, 0, -27.1, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {120, 0, 0, -60.0, {2498, 314, 546}, {0, -19.0, -22.2}},
-    {125, 0, 0, -60.0, {2498, 314, 546}, {0, -19.0, -22.2}},
-    /* R7 */
-    {5, 0, 0, -60.0, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {10, 0, 0, -60.0, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {15, 0, 0, -60.0, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {20, 0, 0, -9.9, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {25, 0, 0, -5.0, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {30, 0, 0, -2.7, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {50, 0, 0, -0.5, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {55, 0, 0, -0.5, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {60, 0, 0, -0.5, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {70, 0, 0, -0.5, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {80, 0, 0, -0.9, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {85, 0, 0, -1.7, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {95, 0, 0, -5.5, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {100, 0, 0, -8.5, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {105, 0, 0, -13.0, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {110, 0, 0, -16.8, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {115, 0, 0, -17.5, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {120, 0, 0, -60.0, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    {125, 0, 0, -60.0, {2797, 253, 1055}, {0, -17.8, -24.6}},
-    /* R8 */
-    {5, 0, 0, -60.0, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {15, 0, 0, -60.0, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {20, 0, 0, -22.7, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {25, 0, 0, -18.8, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {40, 0, 0, -12.6, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {45, 0, 0, -12.0, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {75, 0, 0, -11.8, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {80, 0, 0, -11.8, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {85, 0, 0, -12.0, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {90, 0, 0, -12.6, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {95, 0, 0, -13.8, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {100, 0, 0, -15.8, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {105, 0, 0, -18.8, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {110, 0, 0, -23.0, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {115, 0, 0, -26.9, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {120, 0, 0, -60.0, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {125, 0, 0, -60.0, {643, 3097, 321}, {0, 10.7, -16.6}},
-    {130, 0, 0, -60.0, {643, 3097, 321}, {0, 10.7, -16.6}},
-    /* R9 */
-    {5, 0, 0, -60.0, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {15, 0, 0, -60.0, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {20, 0, 0, -24.8, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {25, 0, 0, -19.3, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {40, 0, 0, -11.9, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {45, 0, 0, -11.3, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {50, 0, 0, -11.5, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {85, 0, 0, -11.5, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {90, 0, 0, -12.1, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {95, 0, 0, -13.2, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {100, 0, 0, -14.9, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {110, 0, 0, -21.7, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {115, 0, 0, -25.6, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {120, 0, 0, -60.0, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {125, 0, 0, -60.0, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    {130, 0, 0, -60.0, {640, 3397, 1592}, {0, 10.1, -14.2}},
-    /* A0 */
-    {5, 0, 0, -60.0, {239, 1009, 472}, {0, -60.0, -60.0}},
-    {20, 0, 0, -60.0, {239, 1009, 472}, {0, -60.0, -60.0}},
-    {25, 0, 0, -8.0, {239, 1009, 472}, {0, -60.0, -60.0}},
-    {30, 0, 0, -7.0, {175, 1009, 472}, {0, -0.1, -60.0}},
-    {35, 0, 0, -6.8, {175, 1627, 472}, {0, -9.7, -60.0}},
-    {40, 0, 0, -3.1, {175, 1644, 472}, {0, -3.0, -60.0}},
-    {45, 0, 0, -4.0, {233, 1726, 472}, {0, -7.2, -60.0}},
-    {55, 0, 0, -1.6, {233, 1779, 472}, {0, -3.5, -60.0}},
-    {60, 0, 0, -3.7, {163, 1779, 472}, {0, -10.0, -60.0}},
-    {75, 0, 0, -2.9, {163, 1808, 472}, {0, -11.2, -60.0}},
-    {80, 0, 0, -1.2, {175, 1837, 472}, {0, 1.9, -60.0}},
-    {85, 0, 0, -2.5, {181, 1895, 472}, {0, -10.8, -60.0}},
-    {95, 0, 0, -2.1, {181, 1948, 472}, {0, -11.0, -60.0}},
-    {110, 0, 0, -1.0, {198, 1977, 472}, {0, -12.0, -60.0}},
-    {115, 0, 0, -0.8, {204, 1977, 472}, {0, -60.0, -60.0}},
-    {165, 0, 0, -0.8, {245, 1977, 472}, {0, -60.0, -60.0}},
-    {170, 0, 0, 0.6, {251, 157, 472}, {0, -60.0, -60.0}},
-    {220, 0, 0, 0.8, {297, 157, 472}, {0, -60.0, -60.0}},
-    {225, 0, 0, 0.8, {297, 157, 472}, {0, 0.0, -60.0}},
-    {230, 0, 0, 1.0, {309, 449, 472}, {0, -11.9, -60.0}},
-    {235, 0, 0, 1.0, {315, 157, 472}, {0, -9.2, -60.0}},
-    {240, 0, 0, 0.9, {315, 163, 472}, {0, -11.8, -0.0}},
-    {245, 0, 0, 0.9, {321, 163, 478}, {0, -10.1, -11.7}},
-    {315, 0, 0, 1.2, {373, 192, 560}, {0, -13.5, -14.4}},
-    {320, 0, 0, 0.5, {373, 496, 187}, {0, -12.5, -13.6}},
-    {330, 0, 0, -1.5, {356, 496, 157}, {0, -4.9, -10.6}},
-    {335, 0, 0, -2.5, {356, 157, 157}, {0, -10.0, -60.0}},
-    {340, 0, 0, -4.0, {391, 157, 157}, {0, -60.0, -60.0}},
-    {345, 0, 0, -5.1, {391, 157, 157}, {0, -60.0, -60.0}},
-    {350, 0, 0, -7.7, {391, 192, 157}, {0, -60.0, -60.0}},
-    {355, 0, 0, -9.6, {373, 192, 157}, {0, -60.0, -60.0}},
-    {360, 0, 0, -10.8, {362, 192, 157}, {0, 0.0, -60.0}},
-    {365, 0, 0, -15.7, {362, 566, 157}, {0, -10.2, -60.0}},
-    {370, 0, 0, -17.3, {367, 589, 157}, {0, -11.3, -60.0}},
-    {375, 0, 0, -60.0, {367, 636, 157}, {0, -12.5, -60.0}},
-    {380, 0, 0, -60.0, {362, 991, 157}, {0, -13.3, -60.0}},
-    {385, 0, 0, -60.0, {245, 991, 157}, {0, -13.7, -60.0}},
-    {395, 0, 0, -60.0, {239, 991, 157}, {0, -13.0, -60.0}},
     /* A1 */
-    {15, 2, 87, -60.0, {175, 720, 120}, {0, 15.0, -3.0}},
-    {35, 2, 87, -16.1, {175, 720, 120}, {0, 15.0, -3.0}},
-    {60, 2, 87, 4.7, {175, 750, 172}, {0, -5.3, -3.0}},
-    {85, 2, 87, 18.2, {175, 780, 224}, {0, -16.7, -3.0}},
-    {110, 2, 87, 13.5, {175, 809, 293}, {0, -9.0, 0.7}},
-    {135, 2, 87, 7.9, {175, 838, 362}, {0, -9.1, 0.4}},
+    {15, 2, 87, -60, {175, 720, 120}, {0, 15, -3}},
+    {35, 2, 87, -16.1, {175, 720, 120}, {0, 15, -3}},
+    {60, 2, 87, 4.7, {175, 750, 172}, {0, -5.3, -3}},
+    {85, 2, 87, 18.2, {175, 780, 224}, {0, -16.7, -3}},
     {160, 2, 87, 7.9, {175, 868, 428}, {0, -4.3, 3.6}},
-    {185, 2, 87, 5.7, {175, 898, 495}, {0, -2.9, -1.0}},
+    {185, 2, 87, 5.7, {175, 898, 495}, {0, -2.9, -1}},
     {210, 2, 87, 7.6, {175, 929, 567}, {0, -10.8, -6.4}},
     {235, 2, 87, 6.7, {175, 960, 640}, {0, -1.2, -6.9}},
     {260, 2, 87, 8.4, {175, 992, 709}, {0, -11.9, -3.9}},
-    {285, 2, 87, 8.5, {175, 1024, 778}, {0, -3.0, -3.0}},
-    {310, 2, 87, 7.4, {175, 1048, 861}, {0, -3.0, -3.0}},
-    {335, 2, 87, 7.7, {175, 1072, 945}, {0, -3.0, -3.0}},
-    {360, 2, 87, 7.3, {175, 1096, 1028}, {0, -3.0, -3.0}},
-    {385, 2, 87, 6.6, {175, 1120, 1111}, {0, -3.0, -3.0}},
-    {410, 2, 87, 7.6, {175, 1144, 1194}, {0, -3.0, -3.0}},
-    {435, 2, 87, 6.9, {175, 1168, 1278}, {0, -3.0, -3.0}},
-    {460, 2, 87, 7.1, {175, 1191, 1361}, {0, -3.0, -3.0}},
-    {485, 2, 87, 2.9, {175, 1215, 1445}, {0, -3.0, -3.0}},
+    {285, 2, 87, 8.5, {175, 1024, 778}, {0, -3, -3}},
+    {485, 2, 87, 2.9, {175, 1215, 1445}, {0, -3, -3}},
     {510, 2, 87, 2.3, {175, 1239, 1525}, {0, -3.4, -7.7}},
     {535, 2, 87, 1.5, {175, 1263, 1605}, {0, -2.6, -1.4}},
     {560, 2, 87, 2.7, {175, 1295, 1689}, {0, -7.5, -6.1}},
     {585, 2, 87, 3.9, {175, 1327, 1773}, {0, -3.5, -7.6}},
-    {610, 2, 87, 2.0, {175, 1357, 1858}, {0, -3.6, -0.3}},
+    {610, 2, 87, 2, {175, 1357, 1858}, {0, -3.6, -0.3}},
     {635, 2, 87, 4.8, {175, 1388, 1943}, {0, -9.4, -11.3}},
     {660, 2, 87, 2.6, {175, 1418, 2027}, {0, -1.1, -1.2}},
-    {685, 2, 87, 1.7, {175, 1449, 2112}, {0, -5.7, -4.7}},
     {710, 2, 87, 3.3, {175, 1473, 2192}, {0, -5.5, -8.1}},
     {735, 2, 87, 2.6, {175, 1498, 2272}, {0, -5.5, -1.1}},
     {760, 2, 87, 5.4, {175, 1516, 2347}, {0, -7.2, -12.6}},
     {785, 2, 87, 2.8, {175, 1535, 2422}, {0, -3.9, 2.8}},
-    {810, 2, 87, 3.5, {175, 1554, 2497}, {0, -6.5, -9.0}},
-    {835, 2, 87, 2.8, {175, 1573, 2573}, {0, -4.2, -2.2}},
+    {810, 2, 87, 3.5, {175, 1554, 2497}, {0, -6.5, -9}},
     {860, 2, 87, 2.1, {175, 1591, 2648}, {0, -5.8, -2.7}},
     {885, 2, 87, 5.2, {175, 1610, 2723}, {0, -6.8, -12.4}},
     {910, 2, 87, 7.9, {175, 1627, 2797}, {0, -10.4, -7.8}},
-    {975, 2, 87, 6.0, {175, 1668, 2984}, {0, -3.0, -3.0}},
-    /* A2 */
-    {5, 2, 128, -60.0, {165, 1996, 1996}, {0, -0.0, -35.8}},
-    {10, 2, 127, -60.0, {165, 1996, 1996}, {0, -0.1, -36.0}},
-    {15, 2, 153, -60.0, {165, 1996, 1996}, {0, 0.3, -35.9}},
-    {20, 2, 183, -60.0, {165, 1698, 1455}, {0, 36.6, 28.5}},
-    {25, 2, 92, -14.1, {165, 1693, 1455}, {0, 40.4, 29.7}},
-    {30, 2, 87, -11.1, {184, 1689, 1455}, {0, 15.7, 3.9}},
-    {35, 2, 87, -9.8, {186, 1685, 1476}, {0, 15.4, 3.1}},
-    {45, 2, 87, -9.2, {186, 1673, 1497}, {0, 15.1, 4.0}},
-    {55, 2, 87, -9.0, {170, 1658, 1504}, {0, 15.7, 5.0}},
-    {70, 2, 87, -9.5, {162, 1641, 1515}, {0, 15.4, 6.5}},
-    {75, 2, 87, -7.9, {162, 1639, 1497}, {0, 42.4, 31.7}},
-    {80, 2, 87, -9.4, {162, 1635, 1497}, {0, 42.7, 32.0}},
-    {85, 2, 87, -7.9, {162, 1631, 1497}, {0, 42.6, 0.5}},
-    {490, 2, 87, -8.2, {162, 1584, 1497}, {0, 43.2, 0.5}},
-    {495, 2, 87, -7.3, {162, 1374, 1239}, {0, 39.9, 36.9}},
-    {510, 2, 87, -6.7, {162, 1334, 1254}, {0, 39.3, 40.2}},
-    {530, 2, 87, -6.3, {162, 1334, 1254}, {0, 39.3, 40.2}},
-    {535, 2, 87, -6.9, {162, 1212, 1531}, {0, 42.7, 29.1}},
-    {580, 2, 87, -5.4, {162, 1130, 1491}, {0, 45.9, 27.4}},
-    {585, 2, 87, -6.4, {162, 1124, 1491}, {0, 46.2, 0.5}},
-    {620, 2, 87, -6.2, {162, 1048, 1491}, {0, 44.3, 0.5}},
-    {625, 2, 87, -5.5, {162, 1030, 1304}, {0, 43.0, 29.8}},
-    {690, 2, 87, -6.2, {162, 938, 1172}, {0, 38.2, 31.4}},
-    {695, 2, 87, -6.6, {162, 919, 1040}, {0, 37.9, 37.7}},
-    {750, 2, 87, -5.7, {162, 525, 963}, {0, 33.8, 39.1}},
-    {770, 2, 87, -6.0, {162, 525, 963}, {0, 33.8, 39.1}},
-    {775, 2, 87, -6.5, {162, 467, 944}, {0, 34.3, 39.5}},
-    {815, 2, 87, -6.1, {162, 389, 897}, {0, 38.1, 45.2}},
-    {850, 2, 87, -5.1, {162, 317, 865}, {0, 33.5, 42.8}},
-    {860, 2, 87, -5.6, {162, 250, 857}, {0, 32.0, 41.0}},
-    {865, 2, 87, -4.7, {162, 250, 853}, {0, -0.0, 39.4}},
-    {895, 2, 87, -5.1, {162, 250, 845}, {0, -0.0, 34.4}},
-    {955, 2, 87, -7.1, {162, 250, 757}, {0, -0.0, 42.8}},
-    {980, 2, 82, -15.8, {162, 250, 731}, {0, -0.0, 50.7}},
-    {985, 2, 183, -25.5, {162, 250, 731}, {0, -0.0, 50.7}},
-    {990, 2, 181, -60.0, {162, 250, 731}, {0, -0.0, 50.7}},
-    {995, 2, 71, -60.0, {160, 250, 731}, {0, -39.9, -12.7}},
-    {1000, 2, 127, -60.0, {149, 250, 731}, {0, -39.7, -10.4}},
+    {975, 2, 87, 6, {175, 1668, 2984}, {0, -3, -3}},
     /* A3. its buzz was traced at 470 to 490Hz, but on both units of the
      * fourth VoxProbe recording it repeats at the voicing frequency (60.2,
      * 87.1 and 150Hz at pitch 60, 88 and 150), so its buzz is at the default
      * voicing pitch here and follows Pitch: its items match both units
      * better (79 to 80%, 80 to 82%) */
-    {5, 2, 88, -60.0, {576, 977, 1996}, {0, 27.2, 36.5}},
-    {10, 2, 88, -60.0, {576, 980, 2002}, {0, 27.3, 37.5}},
-    {15, 2, 88, -60.0, {576, 990, 2010}, {0, 26.3, 38.0}},
-    {20, 2, 88, -60.0, {576, 990, 2010}, {0, 26.3, 38.0}},
-    {25, 2, 88, -6.5, {577, 990, 2386}, {0, -35.0, -12.1}},
+    {5, 2, 88, -60, {576, 977, 1996}, {0, 27.2, 36.5}},
+    {20, 2, 88, -60, {576, 990, 2010}, {0, 26.3, 38}},
+    {25, 2, 88, -6.5, {577, 990, 2386}, {0, -35, -12.1}},
     {30, 2, 88, -5.5, {577, 978, 2386}, {0, -1.6, -13.1}},
-    {35, 2, 88, -3.9, {577, 978, 2386}, {0, -1.0, -13.9}},
-    {80, 2, 88, -4.6, {578, 1065, 2476}, {0, 1.0, -14.0}},
+    {35, 2, 88, -3.9, {577, 978, 2386}, {0, -1, -13.9}},
+    {80, 2, 88, -4.6, {578, 1065, 2476}, {0, 1, -14}},
     {120, 2, 88, -3.5, {626, 1164, 2491}, {0, 0.2, -15.2}},
     {125, 2, 88, -5.5, {632, 1177, 1852}, {0, 0.1, 3.6}},
     {135, 2, 88, -4.9, {645, 1199, 1852}, {0, -0.1, 2.7}},
-    {365, 2, 88, -9.1, {1121, 1915, 2760}, {0, 3.0, 6.1}},
-    {520, 2, 88, -8.7, {1452, 2357, 3417}, {0, 4.1, 6.0}},
-    {525, 2, 88, -10.9, {1462, 2370, 3440}, {0, 4.3, 6.1}},
+    {520, 2, 88, -8.7, {1452, 2357, 3417}, {0, 4.1, 6}},
     {545, 2, 88, -14.2, {1465, 2382, 3447}, {0, 5.2, 6.6}},
-    {550, 2, 88, -26.0, {1459, 2382, 3431}, {0, 4.0, 6.5}},
-    {555, 2, 88, -60.0, {1304, 2379, 3423}, {0, -21.7, 6.5}},
-    {560, 2, 88, -60.0, {1283, 2184, 3423}, {0, 1.5, -11.8}},
-    {565, 2, 88, -60.0, {1067, 1987, 2980}, {0, 7.8, 15.7}},
-    {570, 2, 88, -60.0, {1011, 1986, 2975}, {0, 9.0, 16.6}},
-    /* A4 */
-    {5, 0, 0, -60.0, {239, 467, 420}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {239, 467, 420}, {0, -13.9, -60.0}},
-    {15, 0, 0, -60.0, {239, 991, 420}, {0, -0.1, -60.0}},
-    {20, 0, 0, -60.0, {239, 467, 420}, {0, -15.0, -60.0}},
-    {25, 0, 0, -60.0, {239, 467, 420}, {0, -13.9, -60.0}},
-    {30, 0, 0, 5.2, {239, 624, 420}, {0, -2.1, -60.0}},
-    {35, 0, 0, 9.6, {222, 624, 420}, {0, -8.7, -60.0}},
-    {40, 0, 0, 11.6, {222, 461, 420}, {0, -12.1, -60.0}},
-    {45, 0, 0, 13.1, {222, 461, 420}, {0, -60.0, -60.0}},
-    {75, 0, 0, 13.9, {338, 461, 420}, {0, -60.0, -60.0}},
-    {115, 0, 0, 14.3, {496, 461, 420}, {0, -60.0, -60.0}},
-    {120, 0, 0, 14.2, {536, 461, 420}, {0, -60.0, -60.0}},
-    {125, 0, 0, 13.9, {601, 210, 420}, {0, -60.0, -60.0}},
-    {145, 0, 0, 12.6, {846, 210, 420}, {0, -60.0, -60.0}},
-    {170, 0, 0, 9.7, {1166, 210, 420}, {0, -60.0, -60.0}},
-    {175, 0, 0, 9.8, {1411, 210, 420}, {0, -60.0, -60.0}},
-    {195, 0, 0, 9.6, {2169, 210, 420}, {0, -60.0, -60.0}},
-    {200, 0, 0, 10.3, {2362, 210, 420}, {0, -5.6, -60.0}},
-    {205, 0, 0, 11.0, {2461, 210, 420}, {0, -9.2, -60.0}},
-    {210, 0, 0, 9.8, {2840, 472, 420}, {0, -14.1, -60.0}},
-    {215, 0, 0, 11.4, {3254, 472, 420}, {0, -24.3, -60.0}},
-    {220, 0, 0, 15.4, {3860, 472, 420}, {0, -19.3, -60.0}},
-    {225, 0, 0, 11.8, {3895, 472, 420}, {0, -60.0, -60.0}},
-    {230, 0, 0, 10.5, {3901, 472, 420}, {0, -60.0, -60.0}},
-    {255, 0, 0, 5.0, {3901, 496, 420}, {0, -60.0, -60.0}},
-    {260, 0, 0, 3.5, {3901, 496, 420}, {0, -31.3, -60.0}},
-    {265, 0, 0, 2.0, {3901, 606, 420}, {0, -30.3, -31.8}},
-    {270, 0, 0, 2.0, {3901, 624, 706}, {0, -28.5, -30.1}},
-    {275, 0, 0, -60.0, {490, 3901, 706}, {0, 16.0, -1.9}},
-    {280, 0, 0, -60.0, {379, 3901, 647}, {0, 11.0, -8.3}},
-    {285, 0, 0, -60.0, {239, 3901, 420}, {0, 7.8, -11.7}},
-    {290, 0, 0, -60.0, {239, 997, 420}, {0, -14.8, -60.0}},
-    {295, 0, 0, -60.0, {239, 991, 420}, {0, -14.5, -60.0}},
-    /* A5 */
-    {5, 0, 0, -60.0, {239, 484, 0}, {0, -60.0, 0.0}},
-    {15, 0, 0, -60.0, {239, 484, 0}, {0, -60.0, 0.0}},
-    {20, 0, 0, -8.3, {636, 484, 0}, {0, -60.0, 0.0}},
-    {35, 0, 0, 0.5, {630, 484, 0}, {0, -60.0, 0.0}},
-    {130, 0, 0, 3.1, {507, 484, 0}, {0, -60.0, 0.0}},
-    {135, 0, 0, 3.1, {169, 484, 0}, {0, -60.0, 0.0}},
-    {140, 0, 0, 3.0, {169, 484, 0}, {0, -0.0, 0.0}},
-    {190, 0, 0, 3.0, {222, 432, 0}, {0, -0.0, 0.0}},
-    {215, 0, 0, 3.5, {257, 408, 0}, {0, -0.5, 0.0}},
-    {220, 0, 0, 3.1, {262, 408, 0}, {0, -60.0, 0.0}},
-    {245, 0, 0, 3.4, {292, 408, 0}, {0, -60.0, 0.0}},
-    {250, 0, 0, 3.9, {327, 408, 0}, {0, -60.0, 0.0}},
-    {260, 0, 0, 4.4, {332, 408, 0}, {0, -60.0, 0.0}},
-    {280, 0, 0, 1.8, {327, 408, 0}, {0, -60.0, 0.0}},
-    {285, 0, 0, 3.0, {303, 408, 0}, {0, -60.0, 0.0}},
-    {325, 0, 0, 3.3, {262, 408, 0}, {0, -60.0, 0.0}},
-    {330, 0, 0, 3.4, {251, 408, 0}, {0, -0.5, 0.0}},
-    {400, 0, 0, 3.0, {169, 490, 0}, {0, -0.7, 0.0}},
-    {405, 0, 0, 2.9, {169, 490, 0}, {0, -15.0, 0.0}},
-    {410, 0, 0, 2.9, {169, 490, 0}, {0, -1.0, 0.0}},
-    {415, 0, 0, 3.0, {507, 490, 0}, {0, -60.0, 0.0}},
-    {510, 0, 0, 0.7, {624, 490, 0}, {0, -60.0, 0.0}},
-    {545, 0, 0, -4.0, {624, 490, 0}, {0, -60.0, 0.0}},
-    {570, 0, 0, -16.9, {618, 490, 0}, {0, -60.0, 0.0}},
-    {575, 0, 0, -60.0, {577, 490, 0}, {0, -60.0, 0.0}},
-    {580, 0, 0, -60.0, {245, 490, 0}, {0, -60.0, 0.0}},
-    {585, 0, 0, -60.0, {239, 490, 0}, {0, -60.0, 0.0}},
-    /* A6 */
-    {5, 0, 0, -60.0, {239, 991, 0}, {0, -60.0, 0.0}},
-    {10, 0, 0, -60.0, {239, 991, 0}, {0, -13.1, 0.0}},
-    {20, 0, 0, -60.0, {239, 991, 0}, {0, -14.7, 0.0}},
-    {25, 0, 0, -60.0, {239, 700, 0}, {0, -11.5, 0.0}},
-    {30, 0, 0, -2.5, {257, 501, 0}, {0, -12.8, 0.0}},
-    {35, 0, 0, 1.1, {262, 501, 0}, {0, -1.8, 0.0}},
-    {40, 0, 0, 2.7, {303, 665, 0}, {0, -5.4, 0.0}},
-    {45, 0, 0, 3.8, {303, 665, 0}, {0, -5.9, 0.0}},
-    {65, 0, 0, 2.9, {513, 1230, 0}, {0, -9.8, 0.0}},
-    {85, 0, 0, 1.3, {729, 1796, 0}, {0, -11.8, 0.0}},
-    {95, 0, 0, 0.8, {799, 1994, 0}, {0, -9.2, 0.0}},
-    {110, 0, 0, 0.5, {799, 2000, 0}, {0, -11.6, 0.0}},
-    {115, 0, 0, 0.5, {799, 2000, 0}, {0, -60.0, 0.0}},
-    {180, 0, 0, -3.9, {799, 2000, 0}, {0, -60.0, 0.0}},
-    {200, 0, 0, -11.2, {799, 2000, 0}, {0, -60.0, 0.0}},
-    {215, 0, 0, -60.0, {799, 2000, 0}, {0, -60.0, 0.0}},
-    {220, 0, 0, -60.0, {245, 2000, 0}, {0, -60.0, 0.0}},
-    {230, 0, 0, -60.0, {227, 2000, 0}, {0, -60.0, 0.0}},
-    /* A7 */
-    {5, 0, 0, -60.0, {239, 373, 770}, {0, -60.0, -60.0}},
-    {20, 0, 0, -60.0, {239, 373, 770}, {0, -60.0, -60.0}},
-    {25, 0, 0, -9.7, {1131, 373, 770}, {0, -60.0, -60.0}},
-    {40, 0, 0, -3.8, {1160, 373, 770}, {0, -60.0, -60.0}},
-    {55, 0, 0, -4.2, {1195, 373, 770}, {0, -60.0, -60.0}},
-    {60, 0, 0, -4.4, {1207, 373, 770}, {0, -13.3, -14.9}},
-    {115, 0, 0, -3.7, {1306, 408, 886}, {0, -0.4, -3.1}},
-    {120, 0, 0, -3.7, {420, 1335, 898}, {0, -0.3, -2.6}},
-    {130, 0, 0, -3.3, {420, 1335, 921}, {0, -2.1, -2.6}},
-    {135, 0, 0, -3.1, {426, 951, 1370}, {0, -2.8, -2.6}},
-    {215, 0, 0, 0.4, {484, 1108, 1528}, {0, -3.5, -13.8}},
-    {220, 0, 0, 0.5, {484, 1120, 1528}, {0, -3.7, -60.0}},
-    {460, 0, 0, 0.3, {805, 1644, 1528}, {0, -4.2, -60.0}},
-    {465, 0, 0, 0.2, {811, 1644, 1528}, {0, 1.1, -60.0}},
-    {470, 0, 0, 0.2, {822, 1644, 1528}, {0, -4.4, -60.0}},
-    {475, 0, 0, 0.1, {828, 1644, 1528}, {0, -60.0, -60.0}},
-    {550, 0, 0, -6.5, {927, 1825, 1528}, {0, -60.0, -60.0}},
-    {555, 0, 0, -7.5, {933, 1825, 1528}, {0, -2.3, -60.0}},
-    {580, 0, 0, -14.7, {962, 1849, 1528}, {0, 0.5, -60.0}},
-    {585, 0, 0, -14.7, {1860, 968, 1528}, {0, -2.5, -60.0}},
-    {595, 0, 0, -20.2, {1860, 927, 1528}, {0, -13.9, -60.0}},
-    {600, 0, 0, -60.0, {1860, 927, 1528}, {0, -60.0, -60.0}},
-    {605, 0, 0, -60.0, {1249, 927, 1528}, {0, -60.0, -60.0}},
-    {610, 0, 0, -60.0, {1090, 927, 1528}, {0, -60.0, -60.0}},
-    {615, 0, 0, -60.0, {245, 927, 1528}, {0, -60.0, -60.0}},
-    {625, 0, 0, -60.0, {239, 927, 1528}, {0, -60.0, -60.0}},
-    /* A8 */
-    {5, 0, 0, -60.0, {239, 997, 0}, {0, -13.8, 0.0}},
-    {20, 0, 0, -60.0, {245, 997, 0}, {0, -13.6, 0.0}},
-    {25, 0, 0, -60.0, {245, 455, 0}, {0, -5.4, 0.0}},
-    {30, 0, 0, -14.3, {245, 426, 0}, {0, -10.5, 0.0}},
-    {35, 0, 0, -11.9, {227, 426, 0}, {0, -60.0, 0.0}},
-    {50, 0, 0, -3.0, {233, 426, 0}, {0, -60.0, 0.0}},
-    {65, 0, 0, 0.6, {344, 426, 0}, {0, -60.0, 0.0}},
-    {80, 0, 0, 2.7, {449, 426, 0}, {0, -60.0, 0.0}},
-    {85, 0, 0, 3.0, {484, 665, 0}, {0, -60.0, 0.0}},
-    {95, 0, 0, 2.1, {501, 665, 0}, {0, -60.0, 0.0}},
-    {125, 0, 0, -5.6, {490, 665, 0}, {0, -60.0, 0.0}},
-    {130, 0, 0, -7.0, {449, 665, 0}, {0, -4.8, 0.0}},
-    {140, 0, 0, -10.9, {303, 665, 0}, {0, -2.9, 0.0}},
-    {145, 0, 0, -13.6, {303, 542, 0}, {0, -5.1, 0.0}},
-    {150, 0, 0, -17.3, {303, 542, 0}, {0, -1.2, 0.0}},
-    {155, 0, 0, -23.0, {239, 542, 0}, {0, -6.7, 0.0}},
-    {160, 0, 0, -27.0, {239, 443, 0}, {0, -2.9, 0.0}},
-    {165, 0, 0, -27.0, {338, 548, 0}, {0, -13.7, 0.0}},
-    {170, 0, 0, -25.3, {338, 548, 0}, {0, -7.5, 0.0}},
-    {175, 0, 0, -18.5, {338, 391, 0}, {0, -11.3, 0.0}},
-    {180, 0, 0, -13.3, {338, 391, 0}, {0, -4.8, 0.0}},
-    {185, 0, 0, -9.5, {338, 548, 0}, {0, -11.8, 0.0}},
-    {190, 0, 0, -6.8, {251, 700, 0}, {0, -6.2, 0.0}},
-    {195, 0, 0, -4.7, {251, 863, 0}, {0, -7.0, 0.0}},
-    {200, 0, 0, -3.1, {251, 863, 0}, {0, -8.2, 0.0}},
-    {205, 0, 0, -1.8, {286, 863, 0}, {0, -8.8, 0.0}},
-    {210, 0, 0, -0.6, {327, 863, 0}, {0, -60.0, 0.0}},
-    {225, 0, 0, 1.5, {443, 863, 0}, {0, -60.0, 0.0}},
-    {235, 0, 0, 1.5, {496, 863, 0}, {0, -60.0, 0.0}},
-    {280, 0, 0, -10.3, {496, 863, 0}, {0, -60.0, 0.0}},
-    {295, 0, 0, -60.0, {490, 863, 0}, {0, -60.0, 0.0}},
-    {300, 0, 0, -60.0, {251, 863, 0}, {0, -60.0, 0.0}},
-    {310, 0, 0, -60.0, {239, 863, 0}, {0, -60.0, 0.0}},
-    /* A9 */
-    {5, 0, 0, -60.0, {233, 2443, 828}, {0, -60.0, -60.0}},
-    {15, 0, 0, -60.0, {239, 2443, 828}, {0, -60.0, -60.0}},
-    {20, 0, 0, -17.3, {245, 2443, 828}, {0, -60.0, -60.0}},
-    {25, 0, 0, -10.2, {1295, 2443, 828}, {0, -60.0, -60.0}},
-    {40, 0, 0, -5.1, {1295, 2443, 828}, {0, -60.0, -60.0}},
-    {85, 0, 0, -4.8, {1248, 2443, 828}, {0, -60.0, -60.0}},
-    {90, 0, 0, -4.7, {1219, 2443, 828}, {0, -1.5, -60.0}},
-    {140, 0, 0, -2.4, {904, 2169, 828}, {0, -3.6, -60.0}},
-    {180, 0, 0, -0.5, {653, 1901, 828}, {0, -5.3, -60.0}},
-    {185, 0, 0, -0.3, {618, 1831, 828}, {0, 2.0, -60.0}},
-    {195, 0, 0, 0.1, {560, 1761, 828}, {0, -5.9, -60.0}},
-    {220, 0, 0, 1.2, {402, 1627, 828}, {0, -6.2, -60.0}},
-    {245, 0, 0, 1.7, {245, 1458, 828}, {0, -6.1, -60.0}},
-    {255, 0, 0, 1.6, {245, 1388, 828}, {0, -5.8, -60.0}},
-    {260, 0, 0, 1.6, {1306, 216, 828}, {0, -0.1, -60.0}},
-    {265, 0, 0, 1.1, {1306, 216, 828}, {0, -0.1, -60.0}},
-    {270, 0, 0, 0.8, {1306, 216, 828}, {0, -11.3, -60.0}},
-    {275, 0, 0, 0.3, {1265, 216, 828}, {0, -3.1, -7.2}},
-    {280, 0, 0, -0.3, {216, 478, 828}, {0, -11.0, -13.2}},
-    {285, 0, 0, -1.0, {216, 513, 921}, {0, -6.6, -13.1}},
-    {290, 0, 0, -1.9, {216, 531, 921}, {0, -9.3, -0.1}},
-    {295, 0, 0, -3.0, {216, 513, 764}, {0, -7.1, -11.8}},
-    {300, 0, 0, -4.1, {216, 624, 764}, {0, -4.6, -6.4}},
-    {310, 0, 0, -7.0, {222, 630, 764}, {0, -7.7, -8.9}},
-    {315, 0, 0, -8.8, {222, 601, 770}, {0, -1.4, -1.5}},
-    {320, 0, 0, -11.1, {356, 630, 863}, {0, -2.8, -5.8}},
-    {325, 0, 0, -14.2, {356, 601, 770}, {0, -1.7, -10.7}},
-    {330, 0, 0, -18.1, {257, 490, 863}, {0, -1.0, -9.0}},
-    {335, 0, 0, -60.0, {257, 490, 863}, {0, -3.3, -5.5}},
-    {340, 0, 0, -60.0, {239, 490, 863}, {0, -10.0, -11.6}},
-    {345, 0, 0, -60.0, {239, 478, 682}, {0, -13.2, -0.1}},
-    {350, 0, 0, -60.0, {233, 478, 682}, {0, -14.8, -60.0}},
-    /* B0 */
-    {5, 0, 0, -60.0, {239, 227, 0}, {0, -60.0, 0.0}},
-    {15, 0, 0, -60.0, {239, 227, 0}, {0, -60.0, 0.0}},
-    {20, 0, 0, -20.1, {245, 227, 0}, {0, -60.0, 0.0}},
-    {25, 0, 0, -7.3, {2583, 227, 0}, {0, -60.0, 0.0}},
-    {40, 0, 0, -2.7, {2595, 227, 0}, {0, -60.0, 0.0}},
-    {135, 0, 0, -2.9, {2595, 227, 0}, {0, -60.0, 0.0}},
-    {185, 0, 0, -15.6, {2595, 227, 0}, {0, -60.0, 0.0}},
-    {190, 0, 0, -18.3, {2595, 227, 0}, {0, -13.9, 0.0}},
-    {195, 0, 0, -20.8, {2595, 455, 0}, {0, -11.8, 0.0}},
-    {200, 0, 0, -60.0, {245, 461, 0}, {0, -11.9, 0.0}},
-    {210, 0, 0, -60.0, {233, 455, 0}, {0, -12.9, 0.0}},
-    /* B1 */
-    {5, 0, 0, -60.0, {239, 0, 0}, {0, 0.0, 0.0}},
-    {20, 0, 0, -60.0, {239, 0, 0}, {0, 0.0, 0.0}},
-    {25, 0, 0, -6.0, {1376, 0, 0}, {0, 0.0, 0.0}},
-    {40, 0, 0, 0.7, {1516, 0, 0}, {0, 0.0, 0.0}},
-    {95, 0, 0, -1.1, {2473, 0, 0}, {0, 0.0, 0.0}},
-    {170, 0, 0, -2.5, {3767, 0, 0}, {0, 0.0, 0.0}},
-    {185, 0, 0, -2.4, {3709, 0, 0}, {0, 0.0, 0.0}},
-    {230, 0, 0, -1.4, {2752, 0, 0}, {0, 0.0, 0.0}},
-    {260, 0, 0, -0.8, {2111, 0, 0}, {0, 0.0, 0.0}},
-    {295, 0, 0, 1.5, {1411, 0, 0}, {0, 0.0, 0.0}},
-    {375, 0, 0, -7.6, {1400, 0, 0}, {0, 0.0, 0.0}},
-    {410, 0, 0, -60.0, {1400, 0, 0}, {0, 0.0, 0.0}},
-    {415, 0, 0, -60.0, {257, 0, 0}, {0, 0.0, 0.0}},
-    {430, 0, 0, -60.0, {239, 0, 0}, {0, 0.0, 0.0}},
-    /* B2 */
-    {5, 0, 0, -60.0, {239, 198, 0}, {0, -60.0, 0.0}},
-    {15, 0, 0, -60.0, {239, 198, 0}, {0, -60.0, 0.0}},
-    {20, 0, 0, -5.8, {1376, 198, 0}, {0, -60.0, 0.0}},
-    {40, 0, 0, 3.4, {1405, 198, 0}, {0, -60.0, 0.0}},
-    {140, 0, 0, 3.3, {1405, 198, 0}, {0, -60.0, 0.0}},
-    {145, 0, 0, 2.8, {1429, 198, 0}, {0, -10.4, 0.0}},
-    {150, 0, 0, 1.9, {1429, 198, 0}, {0, -3.8, 0.0}},
-    {160, 0, 0, 1.7, {1977, 198, 0}, {0, -2.8, 0.0}},
-    {165, 0, 0, 4.7, {2484, 198, 0}, {0, -11.6, 0.0}},
-    {175, 0, 0, 4.3, {2484, 198, 0}, {0, -13.1, 0.0}},
-    {180, 0, 0, 0.3, {1709, 198, 0}, {0, -1.3, 0.0}},
-    {190, 0, 0, 2.3, {1697, 198, 0}, {0, -10.5, 0.0}},
-    {230, 0, 0, 2.9, {1697, 204, 0}, {0, -11.6, 0.0}},
-    {255, 0, 0, 2.9, {1697, 397, 0}, {0, -12.3, 0.0}},
-    {280, 0, 0, 2.9, {1697, 595, 0}, {0, -12.8, 0.0}},
-    {355, 0, 0, -2.4, {1703, 601, 0}, {0, -13.2, 0.0}},
-    {400, 0, 0, -13.2, {1703, 601, 0}, {0, -16.1, 0.0}},
-    {405, 0, 0, -15.7, {1703, 472, 0}, {0, -1.3, 0.0}},
-    {410, 0, 0, -18.7, {1703, 472, 0}, {0, -15.8, 0.0}},
-    {415, 0, 0, -60.0, {1703, 472, 0}, {0, -14.9, 0.0}},
-    {420, 0, 0, -60.0, {1703, 478, 0}, {0, -3.3, 0.0}},
-    {425, 0, 0, -60.0, {356, 478, 0}, {0, -10.6, 0.0}},
-    {430, 0, 0, -60.0, {239, 478, 0}, {0, -4.3, 0.0}},
-    {435, 0, 0, -60.0, {233, 478, 0}, {0, -60.0, 0.0}},
-    /* B3 */
-    {5, 0, 0, -60.0, {239, 490, 0}, {0, -60.0, 0.0}},
-    {15, 0, 0, -60.0, {239, 490, 0}, {0, -60.0, 0.0}},
-    {20, 0, 0, -20.8, {239, 490, 0}, {0, -60.0, 0.0}},
-    {25, 0, 0, -13.8, {595, 490, 0}, {0, 0.0, 0.0}},
-    {30, 0, 0, -11.3, {595, 3096, 0}, {0, 9.4, 0.0}},
-    {130, 0, 0, -7.1, {595, 3096, 0}, {0, 8.2, 0.0}},
-    {135, 0, 0, -4.4, {595, 1423, 0}, {0, -5.2, 0.0}},
-    {140, 0, 0, -2.4, {1394, 601, 0}, {0, -5.9, 0.0}},
-    {255, 0, 0, -0.9, {1394, 601, 0}, {0, -9.9, 0.0}},
-    {310, 0, 0, -12.2, {1400, 601, 0}, {0, -11.6, 0.0}},
-    {325, 0, 0, -21.2, {1394, 589, 0}, {0, -15.1, 0.0}},
-    {330, 0, 0, -60.0, {1394, 589, 0}, {0, -6.9, 0.0}},
-    {335, 0, 0, -60.0, {478, 991, 0}, {0, -4.5, 0.0}},
-    {340, 0, 0, -60.0, {245, 991, 0}, {0, -12.9, 0.0}},
-    {345, 0, 0, -60.0, {239, 991, 0}, {0, -13.8, 0.0}},
-    /* B4 */
-    {5, 0, 0, -60.0, {239, 1551, 0}, {0, -60.0, 0.0}},
-    {20, 0, 0, -60.0, {239, 1551, 0}, {0, -60.0, 0.0}},
-    {25, 0, 0, -9.4, {1819, 1551, 0}, {0, -60.0, 0.0}},
-    {35, 0, 0, -4.1, {1831, 1551, 0}, {0, -60.0, 0.0}},
-    {55, 0, 0, -3.2, {1825, 1551, 0}, {0, -60.0, 0.0}},
-    {60, 0, 0, -2.5, {1825, 1551, 0}, {0, -6.6, 0.0}},
-    {70, 0, 0, -2.2, {1825, 1551, 0}, {0, -5.6, 0.0}},
-    {120, 0, 0, -1.0, {1825, 962, 0}, {0, -2.8, 0.0}},
-    {130, 0, 0, -0.5, {1825, 962, 0}, {0, -2.1, 0.0}},
-    {135, 0, 0, -2.3, {781, 1825, 0}, {0, 1.7, 0.0}},
-    {155, 0, 0, -1.4, {548, 1825, 0}, {0, 0.4, 0.0}},
-    {170, 0, 0, -1.0, {373, 1825, 0}, {0, -0.4, 0.0}},
-    {180, 0, 0, -0.9, {373, 1825, 0}, {0, -0.8, 0.0}},
-    {185, 0, 0, -1.0, {402, 1825, 0}, {0, -0.4, 0.0}},
-    {200, 0, 0, -1.5, {577, 1825, 0}, {0, 0.5, 0.0}},
-    {220, 0, 0, -2.3, {811, 1825, 0}, {0, 1.8, 0.0}},
-    {225, 0, 0, -0.6, {1825, 986, 0}, {0, -2.2, 0.0}},
-    {235, 0, 0, -1.0, {1825, 986, 0}, {0, -2.9, 0.0}},
-    {280, 0, 0, -2.4, {1825, 1510, 0}, {0, -5.4, 0.0}},
-    {290, 0, 0, -2.4, {1825, 1510, 0}, {0, -6.2, 0.0}},
-    {295, 0, 0, -3.0, {1825, 1510, 0}, {0, -60.0, 0.0}},
-    {305, 0, 0, -4.9, {1819, 1510, 0}, {0, -60.0, 0.0}},
-    {310, 0, 0, -5.4, {1825, 1994, 0}, {0, -60.0, 0.0}},
-    {320, 0, 0, -3.3, {1825, 1994, 0}, {0, -60.0, 0.0}},
-    {325, 0, 0, -3.2, {1825, 1994, 0}, {0, -4.9, 0.0}},
-    {360, 0, 0, -8.6, {1825, 1994, 0}, {0, -5.2, 0.0}},
-    {390, 0, 0, -19.7, {1825, 1994, 0}, {0, -6.8, 0.0}},
-    {395, 0, 0, -23.7, {1825, 991, 0}, {0, -2.0, 0.0}},
-    {400, 0, 0, -60.0, {1825, 991, 0}, {0, -2.9, 0.0}},
-    {405, 0, 0, -60.0, {239, 991, 0}, {0, -14.2, 0.0}},
-    {415, 0, 0, -60.0, {239, 991, 0}, {0, -13.8, 0.0}},
-    /* B5 */
-    {5, 0, 0, -60.0, {233, 490, 204}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {239, 490, 204}, {0, -60.0, -60.0}},
-    {15, 0, 0, -60.0, {239, 490, 204}, {0, -0.0, -60.0}},
-    {20, 0, 0, -60.0, {239, 490, 204}, {0, -0.0, -60.0}},
-    {25, 0, 0, -3.3, {951, 501, 204}, {0, -8.9, -60.0}},
-    {30, 0, 0, -0.2, {951, 781, 204}, {0, -12.9, -60.0}},
-    {35, 0, 0, 1.7, {951, 3493, 204}, {0, -0.2, -60.0}},
-    {50, 0, 0, 3.7, {811, 3493, 204}, {0, -0.4, -60.0}},
-    {55, 0, 0, 4.0, {764, 3493, 204}, {0, -60.0, -60.0}},
-    {85, 0, 0, 5.4, {472, 3493, 204}, {0, -60.0, -60.0}},
-    {95, 0, 0, 5.8, {379, 3493, 204}, {0, -60.0, -60.0}},
-    {105, 0, 0, 6.0, {280, 3493, 204}, {0, -60.0, -60.0}},
-    {110, 0, 0, 5.9, {280, 175, 204}, {0, -60.0, -60.0}},
-    {115, 0, 0, 5.5, {280, 175, 204}, {0, -60.0, -60.0}},
-    {120, 0, 0, 19.8, {3493, 175, 204}, {0, -60.0, -60.0}},
-    {130, 0, 0, 17.9, {3499, 175, 204}, {0, -60.0, -60.0}},
-    {155, 0, 0, 13.3, {3499, 175, 204}, {0, -60.0, -60.0}},
-    {160, 0, 0, 12.6, {3499, 175, 204}, {0, -14.5, -60.0}},
-    {165, 0, 0, 11.0, {3499, 175, 204}, {0, -29.1, -60.0}},
-    {170, 0, 0, 8.7, {3499, 181, 204}, {0, -26.1, -29.0}},
-    {175, 0, 0, 7.3, {3499, 233, 472}, {0, -22.0, -24.8}},
-    {180, 0, 0, 3.2, {3499, 461, 472}, {0, -20.1, -20.5}},
-    {185, 0, 0, -13.9, {338, 461, 472}, {0, -4.7, -5.0}},
-    {190, 0, 0, -17.4, {239, 531, 204}, {0, -1.6, -4.1}},
-    {195, 0, 0, -60.0, {239, 986, 204}, {0, -0.1, -60.0}},
-    {200, 0, 0, -60.0, {239, 531, 204}, {0, -13.0, -60.0}},
-    {205, 0, 0, -60.0, {233, 531, 204}, {0, -60.0, -60.0}},
-    /* B6 */
-    {5, 0, 0, -60.0, {239, 367, 0}, {0, -60.0, 0.0}},
-    {15, 0, 0, -60.0, {239, 367, 0}, {0, -60.0, 0.0}},
-    {20, 0, 0, -22.5, {239, 367, 0}, {0, -60.0, 0.0}},
-    {25, 0, 0, -3.7, {3481, 367, 0}, {0, -60.0, 0.0}},
-    {30, 0, 0, -1.5, {3493, 367, 0}, {0, -60.0, 0.0}},
-    {40, 0, 0, 0.9, {3493, 367, 0}, {0, -60.0, 0.0}},
-    {45, 0, 0, -8.1, {1802, 367, 0}, {0, -60.0, 0.0}},
-    {70, 0, 0, -5.5, {1796, 367, 0}, {0, -60.0, 0.0}},
-    {75, 0, 0, 5.3, {3493, 367, 0}, {0, -60.0, 0.0}},
-    {85, 0, 0, 5.2, {3493, 367, 0}, {0, -60.0, 0.0}},
-    {90, 0, 0, -5.6, {1796, 367, 0}, {0, -60.0, 0.0}},
-    {140, 0, 0, -5.0, {1796, 367, 0}, {0, -60.0, 0.0}},
-    {180, 0, 0, -18.6, {1796, 367, 0}, {0, -60.0, 0.0}},
-    {185, 0, 0, -22.4, {1796, 367, 0}, {0, -13.0, 0.0}},
-    {190, 0, 0, -60.0, {251, 467, 0}, {0, -2.1, 0.0}},
-    {195, 0, 0, -60.0, {239, 991, 0}, {0, -13.9, 0.0}},
-    {200, 0, 0, -60.0, {239, 991, 0}, {0, -14.1, 0.0}},
-    {205, 0, 0, -60.0, {239, 467, 0}, {0, -14.9, 0.0}},
-    /* B7 */
-    {5, 0, 0, -60.0, {239, 268, 0}, {0, -60.0, 0.0}},
-    {15, 0, 0, -60.0, {239, 268, 0}, {0, -60.0, 0.0}},
-    {20, 0, 0, -23.5, {239, 268, 0}, {0, -60.0, 0.0}},
-    {25, 0, 0, -4.6, {2892, 268, 0}, {0, -60.0, 0.0}},
-    {40, 0, 0, 0.7, {2898, 268, 0}, {0, -60.0, 0.0}},
-    {60, 0, 0, 0.4, {2898, 268, 0}, {0, -60.0, 0.0}},
-    {70, 0, 0, -2.9, {2898, 268, 0}, {0, -60.0, 0.0}},
-    {80, 0, 0, -12.4, {2898, 268, 0}, {0, -60.0, 0.0}},
-    {85, 0, 0, -1.3, {3895, 268, 0}, {0, -60.0, 0.0}},
-    {125, 0, 0, 2.6, {3895, 268, 0}, {0, -60.0, 0.0}},
-    {160, 0, 0, -3.4, {3895, 268, 0}, {0, -60.0, 0.0}},
-    {165, 0, 0, -4.9, {3895, 268, 0}, {0, -31.7, 0.0}},
-    {170, 0, 0, -6.7, {3895, 379, 0}, {0, -17.6, 0.0}},
-    {175, 0, 0, -26.2, {422, 414, 0}, {0, -4.2, 0.0}},
-    {180, 0, 0, -60.0, {391, 997, 0}, {0, -0.4, 0.0}},
-    {185, 0, 0, -60.0, {373, 997, 0}, {0, -4.3, 0.0}},
-    {190, 0, 0, -60.0, {274, 1003, 0}, {0, -10.1, 0.0}},
-    {195, 0, 0, -60.0, {239, 997, 0}, {0, -0.1, 0.0}},
-    {200, 0, 0, -60.0, {239, 997, 0}, {0, -60.0, 0.0}},
-    /* B8 */
-    {5, 0, 0, -60.0, {239, 0, 0}, {0, 0.0, 0.0}},
-    {15, 0, 0, -60.0, {239, 0, 0}, {0, 0.0, 0.0}},
-    {20, 0, 0, -17.3, {245, 0, 0}, {0, 0.0, 0.0}},
-    {25, 0, 0, -9.5, {2053, 0, 0}, {0, 0.0, 0.0}},
-    {35, 0, 0, -5.9, {2053, 0, 0}, {0, 0.0, 0.0}},
-    {150, 0, 0, -4.2, {1481, 0, 0}, {0, 0.0, 0.0}},
-    {220, 0, 0, -3.7, {1324, 0, 0}, {0, 0.0, 0.0}},
-    {290, 0, 0, -5.5, {1300, 0, 0}, {0, 0.0, 0.0}},
-    {320, 0, 0, -13.1, {1300, 0, 0}, {0, 0.0, 0.0}},
-    {340, 0, 0, -60.0, {1271, 0, 0}, {0, 0.0, 0.0}},
-    {345, 0, 0, -60.0, {239, 0, 0}, {0, 0.0, 0.0}},
-    {355, 0, 0, -60.0, {227, 0, 0}, {0, 0.0, 0.0}},
+    {550, 2, 88, -26, {1459, 2382, 3431}, {0, 4, 6.5}},
+    {555, 2, 88, -60, {1304, 2379, 3423}, {0, -21.7, 6.5}},
+    {570, 2, 88, -60, {1011, 1986, 2975}, {0, 9, 16.6}},
     /* B9: traced again from unit B's VoxRecord recording every 2ms (8ms
      * windows), its three strongest tones followed by continuity, with its own
      * peaking filters (see sound_eq): all 14 recordings of both units 1.83 to
      * 1.43, the other pitches and bends 1.83 to 1.45 */
-    {2, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {4, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {6, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {8, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {12, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {14, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {16, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {18, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {20, 0, 0, -24.7, {1943, 266, 0}, {0, -25.8, -60.0}},
+    {2, 0, 0, -60, {0, 0, 0}, {0, -60, -60}},
+    {18, 0, 0, -60, {0, 0, 0}, {0, -60, -60}},
+    {20, 0, 0, -24.7, {1943, 266, 0}, {0, -25.8, -60}},
     {22, 0, 0, -10.1, {2690, 1822, 883}, {0, -0.6, -12.3}},
-    {24, 0, 0, -3.1, {2703, 1807, 889}, {0, -0.3, -12.0}},
     {26, 0, 0, -0.8, {2707, 1805, 893}, {0, 0.2, -12.1}},
-    {28, 0, 0, -0.4, {2708, 1806, 901}, {0, 0.2, -12.3}},
-    {30, 0, 0, -0.3, {2707, 1806, 904}, {0, 0.1, -12.4}},
-    {32, 0, 0, -0.5, {2708, 1806, 906}, {0, 0.3, -12.2}},
-    {34, 0, 0, -0.6, {2709, 1805, 904}, {0, 0.5, -12.1}},
-    {36, 0, 0, -0.6, {2710, 1806, 903}, {0, 0.5, -12.3}},
-    {38, 0, 0, -0.5, {2711, 1808, 902}, {0, 0.4, -12.3}},
-    {40, 0, 0, -0.4, {2709, 1807, 903}, {0, 0.4, -12.2}},
-    {42, 0, 0, -0.5, {2708, 1805, 903}, {0, 0.4, -12.1}},
-    {44, 0, 0, -0.5, {2708, 1804, 901}, {0, 0.4, -12.3}},
-    {46, 0, 0, -0.5, {2708, 1805, 902}, {0, 0.4, -12.4}},
-    {48, 0, 0, -0.4, {2709, 1808, 903}, {0, 0.4, -12.4}},
-    {50, 0, 0, -0.4, {2711, 1806, 904}, {0, 0.4, -12.3}},
-    {52, 0, 0, -0.6, {2713, 1807, 902}, {0, 0.5, -12.1}},
-    {54, 0, 0, -0.5, {2711, 1809, 905}, {0, 0.5, -12.1}},
-    {56, 0, 0, -0.4, {2710, 1806, 905}, {0, 0.3, -12.4}},
-    {58, 0, 0, -0.3, {2708, 1805, 904}, {0, 0.2, -12.6}},
-    {60, 0, 0, -0.4, {2709, 1806, 904}, {0, 0.2, -12.4}},
-    {62, 0, 0, -0.5, {2709, 1807, 900}, {0, 0.3, -12.3}},
-    {64, 0, 0, -0.5, {2710, 1807, 903}, {0, 0.4, -12.3}},
-    {66, 0, 0, -0.4, {2708, 1806, 904}, {0, 0.4, -12.2}},
-    {68, 0, 0, -0.4, {2708, 1806, 901}, {0, 0.3, -12.2}},
-    {70, 0, 0, -0.5, {2710, 1805, 903}, {0, 0.3, -12.1}},
-    {72, 0, 0, -0.6, {2709, 1804, 905}, {0, 0.4, -12.1}},
-    {74, 0, 0, -0.5, {2708, 1806, 903}, {0, 0.4, -12.1}},
-    {76, 0, 0, -0.9, {2701, 1806, 898}, {0, 0.4, -12.1}},
     {78, 0, 0, -5.1, {2669, 1795, 840}, {0, 0.5, -12.3}},
-    {80, 0, 0, -60.0, {2669, 761, 1033}, {0, -60.0, -60.0}},
-    {82, 0, 0, -60.0, {2669, 856, 1033}, {0, -60.0, -60.0}},
-    {84, 0, 0, -60.0, {2669, 858, 1033}, {0, -60.0, -60.0}},
-    {86, 0, 0, -60.0, {2669, 845, 301}, {0, -60.0, -60.0}},
-    {88, 0, 0, -60.0, {2669, 737, 260}, {0, -60.0, -60.0}},
-    {90, 0, 0, -60.0, {2669, 704, 260}, {0, -60.0, -60.0}},
-    {92, 0, 0, -60.0, {2669, 765, 260}, {0, -60.0, -60.0}},
-    {94, 0, 0, -60.0, {2669, 773, 260}, {0, -60.0, -60.0}},
-    {96, 0, 0, -60.0, {2669, 760, 260}, {0, -60.0, -60.0}},
-    {98, 0, 0, -60.0, {2669, 753, 242}, {0, -60.0, -60.0}},
+    {80, 0, 0, -60, {2669, 761, 1033}, {0, -60, -60}},
+    {98, 0, 0, -60, {2669, 753, 242}, {0, -60, -60}},
     {100, 0, 0, -39.5, {628, 995, 809}, {0, 5.8, 4.9}},
-    {102, 0, 0, -20.6, {627, 995, 809}, {0, -60.0, -60.0}},
-    {104, 0, 0, -11.9, {666, 995, 809}, {0, -60.0, -60.0}},
-    {106, 0, 0, -11.6, {672, 995, 809}, {0, -60.0, -60.0}},
-    {108, 0, 0, -17.3, {657, 995, 809}, {0, -60.0, -60.0}},
-    {110, 0, 0, -27.8, {624, 995, 134}, {0, -60.0, -26.4}},
-    {112, 0, 0, -32.9, {551, 995, 134}, {0, -60.0, -60.0}},
-    {114, 0, 0, -16.8, {549, 995, 134}, {0, -60.0, -60.0}},
-    {116, 0, 0, -10.8, {569, 995, 134}, {0, -60.0, -60.0}},
-    {118, 0, 0, -12.3, {569, 995, 134}, {0, -60.0, -60.0}},
-    {120, 0, 0, -19.4, {548, 995, 134}, {0, -60.0, -60.0}},
+    {104, 0, 0, -11.9, {666, 995, 809}, {0, -60, -60}},
+    {110, 0, 0, -27.8, {624, 995, 134}, {0, -60, -26.4}},
+    {112, 0, 0, -32.9, {551, 995, 134}, {0, -60, -60}},
+    {116, 0, 0, -10.8, {569, 995, 134}, {0, -60, -60}},
+    {120, 0, 0, -19.4, {548, 995, 134}, {0, -60, -60}},
     {122, 0, 0, -13.9, {3756, 2499, 454}, {0, 2.4, -17.5}},
-    {124, 0, 0, -5.4, {3781, 2502, 1220}, {0, 2.7, -18.0}},
-    {126, 0, 0, -60.0, {3781, 2510, 507}, {0, -60.0, -60.0}},
-    {128, 0, 0, -60.0, {3781, 2513, 520}, {0, -60.0, -60.0}},
-    {130, 0, 0, -60.0, {3781, 2514, 527}, {0, -60.0, -60.0}},
-    {132, 0, 0, -2.8, {3813, 2512, 517}, {0, 2.6, -19.0}},
+    {124, 0, 0, -5.4, {3781, 2502, 1220}, {0, 2.7, -18}},
+    {126, 0, 0, -60, {3781, 2510, 507}, {0, -60, -60}},
+    {130, 0, 0, -60, {3781, 2514, 527}, {0, -60, -60}},
+    {132, 0, 0, -2.8, {3813, 2512, 517}, {0, 2.6, -19}},
     {134, 0, 0, -2.8, {3815, 2512, 406}, {0, 2.6, -35.6}},
     {136, 0, 0, -2.8, {3813, 2514, 344}, {0, 2.6, -24.4}},
-    {138, 0, 0, -60.0, {3813, 2511, 505}, {0, -60.0, -60.0}},
-    {140, 0, 0, -60.0, {3813, 2510, 521}, {0, -60.0, -60.0}},
+    {138, 0, 0, -60, {3813, 2511, 505}, {0, -60, -60}},
+    {140, 0, 0, -60, {3813, 2510, 521}, {0, -60, -60}},
     {142, 0, 0, -2.6, {3810, 2511, 525}, {0, 2.3, -12.8}},
     {144, 0, 0, -2.6, {3810, 2512, 521}, {0, 2.4, -22.8}},
     {146, 0, 0, -2.7, {3810, 2512, 713}, {0, 2.5, -29.6}},
     {148, 0, 0, -2.7, {3812, 2514, 478}, {0, 2.5, -16.7}},
-    {150, 0, 0, -60.0, {3812, 2513, 511}, {0, -60.0, -60.0}},
-    {152, 0, 0, -60.0, {3812, 2513, 523}, {0, -60.0, -60.0}},
+    {150, 0, 0, -60, {3812, 2513, 511}, {0, -60, -60}},
+    {152, 0, 0, -60, {3812, 2513, 523}, {0, -60, -60}},
     {154, 0, 0, -2.8, {3814, 2513, 523}, {0, 2.6, -14.9}},
     {156, 0, 0, -2.7, {3811, 2513, 506}, {0, 2.5, -26.6}},
     {158, 0, 0, -2.8, {3812, 2513, 176}, {0, 2.7, -36.5}},
     {160, 0, 0, -3.4, {3816, 2502, 506}, {0, 2.1, -12.8}},
-    {162, 0, 0, -60.0, {3816, 2502, 516}, {0, -60.0, -60.0}},
-    {164, 0, 0, -60.0, {3816, 2502, 527}, {0, -60.0, -60.0}},
-    {166, 0, 0, -60.0, {3816, 2502, 541}, {0, -60.0, -60.0}},
-    {168, 0, 0, -60.0, {3816, 184, 539}, {0, -60.0, -60.0}},
-    {170, 0, 0, -60.0, {3816, 184, 527}, {0, -60.0, -60.0}},
-    {172, 0, 0, -60.0, {3816, 184, 586}, {0, -60.0, -60.0}},
-    {174, 0, 0, -60.0, {3816, 184, 611}, {0, -60.0, -60.0}},
-    {176, 0, 0, -60.0, {3816, 184, 628}, {0, -60.0, -60.0}},
-    {178, 0, 0, -60.0, {3816, 184, 639}, {0, -60.0, -60.0}},
-    {180, 0, 0, -60.0, {3816, 272, 620}, {0, -60.0, -60.0}},
-    {182, 0, 0, -60.0, {3816, 272, 620}, {0, -60.0, -60.0}},
-    {184, 0, 0, -60.0, {3816, 272, 689}, {0, -60.0, -60.0}},
-    {186, 0, 0, -60.0, {3816, 272, 710}, {0, -60.0, -60.0}},
-    {188, 0, 0, -60.0, {3816, 272, 722}, {0, -60.0, -60.0}},
-    {190, 0, 0, -60.0, {3816, 272, 718}, {0, -60.0, -60.0}},
+    {162, 0, 0, -60, {3816, 2502, 516}, {0, -60, -60}},
+    {190, 0, 0, -60, {3816, 272, 718}, {0, -60, -60}},
     {192, 0, 0, -36.4, {511, 695, 872}, {0, 4.9, 6.7}},
-    {194, 0, 0, -60.0, {511, 750, 872}, {0, -60.0, -60.0}},
-    {196, 0, 0, -60.0, {511, 790, 872}, {0, -60.0, -60.0}},
-    {198, 0, 0, -60.0, {511, 809, 872}, {0, -60.0, -60.0}},
-    {200, 0, 0, -60.0, {511, 823, 872}, {0, -60.0, -60.0}},
-    {202, 0, 0, -60.0, {511, 823, 853}, {0, -60.0, -60.0}},
-    {204, 0, 0, -60.0, {511, 823, 870}, {0, -60.0, -60.0}},
-    {206, 0, 0, -60.0, {511, 823, 877}, {0, -60.0, -60.0}},
+    {194, 0, 0, -60, {511, 750, 872}, {0, -60, -60}},
+    {206, 0, 0, -60, {511, 823, 877}, {0, -60, -60}},
     {208, 0, 0, -11.4, {892, 3494, 1794}, {0, 7.6, 10.1}},
-    {210, 0, 0, -12.8, {905, 3504, 1806}, {0, 10.4, 12.7}},
-    {212, 0, 0, -12.6, {908, 3505, 1807}, {0, 10.3, 12.5}},
-    {214, 0, 0, -12.6, {900, 3504, 1806}, {0, 10.3, 12.5}},
-    {216, 0, 0, -12.5, {902, 3502, 1806}, {0, 10.2, 12.5}},
-    {218, 0, 0, -12.5, {904, 3501, 1805}, {0, 10.2, 12.5}},
-    {220, 0, 0, -12.8, {904, 3503, 1805}, {0, 10.4, 12.7}},
-    {222, 0, 0, -12.8, {902, 3504, 1807}, {0, 10.6, 12.8}},
-    {224, 0, 0, -12.9, {904, 3503, 1806}, {0, 10.6, 12.9}},
-    {226, 0, 0, -12.9, {902, 3505, 1807}, {0, 10.5, 12.9}},
-    {228, 0, 0, -12.8, {902, 3506, 1808}, {0, 10.5, 12.8}},
-    {230, 0, 0, -12.9, {906, 3505, 1807}, {0, 10.6, 12.8}},
-    {232, 0, 0, -12.9, {903, 3503, 1806}, {0, 10.6, 12.8}},
-    {234, 0, 0, -13.0, {901, 3504, 1807}, {0, 10.6, 12.9}},
-    {236, 0, 0, -12.9, {905, 3505, 1808}, {0, 10.5, 12.8}},
-    {238, 0, 0, -12.6, {903, 3507, 1808}, {0, 10.3, 12.6}},
-    {240, 0, 0, -12.6, {905, 3508, 1808}, {0, 10.3, 12.5}},
-    {242, 0, 0, -12.8, {906, 3508, 1809}, {0, 10.5, 12.7}},
-    {244, 0, 0, -12.9, {902, 3506, 1808}, {0, 10.5, 12.8}},
-    {246, 0, 0, -12.8, {902, 3507, 1808}, {0, 10.4, 12.8}},
-    {248, 0, 0, -12.6, {906, 3507, 1809}, {0, 10.4, 12.6}},
-    {250, 0, 0, -12.6, {905, 3505, 1807}, {0, 10.4, 12.6}},
-    {252, 0, 0, -12.7, {902, 3503, 1807}, {0, 10.5, 12.7}},
-    {254, 0, 0, -12.9, {903, 3502, 1806}, {0, 10.6, 12.9}},
-    {256, 0, 0, -13.0, {905, 3503, 1805}, {0, 10.8, 12.9}},
-    {258, 0, 0, -13.3, {901, 3505, 1807}, {0, 11.0, 13.1}},
-    {260, 0, 0, -13.2, {904, 3509, 1809}, {0, 10.9, 13.1}},
-    {262, 0, 0, -12.9, {904, 3504, 1808}, {0, 10.6, 12.8}},
-    {264, 0, 0, -13.0, {900, 3503, 1806}, {0, 10.7, 12.9}},
-    {266, 0, 0, -15.1, {900, 3507, 1807}, {0, 12.8, 15.0}},
-    {268, 0, 0, -21.2, {896, 3506, 1807}, {0, 18.9, 21.0}},
-    {270, 0, 0, -60.0, {896, 3504, 1807}, {0, -60.0, -60.0}},
-    {272, 0, 0, -60.0, {896, 3503, 1806}, {0, -60.0, -60.0}},
-    {274, 0, 0, -60.0, {896, 3506, 1807}, {0, -60.0, -60.0}},
-    {276, 0, 0, -20.0, {886, 3504, 1808}, {0, 16.2, 18.2}},
-    {278, 0, 0, -19.9, {891, 3503, 1808}, {0, 15.5, 17.5}},
+    {264, 0, 0, -13, {900, 3503, 1806}, {0, 10.7, 12.9}},
+    {268, 0, 0, -21.2, {896, 3506, 1807}, {0, 18.9, 21}},
+    {270, 0, 0, -60, {896, 3504, 1807}, {0, -60, -60}},
+    {274, 0, 0, -60, {896, 3506, 1807}, {0, -60, -60}},
+    {276, 0, 0, -20, {886, 3504, 1808}, {0, 16.2, 18.2}},
     {280, 0, 0, -26.8, {868, 3505, 1807}, {0, 21.7, 23.8}},
-    {282, 0, 0, -60.0, {868, 3507, 1808}, {0, -60.0, -60.0}},
-    {284, 0, 0, -60.0, {868, 3508, 1808}, {0, -60.0, -60.0}},
-    {286, 0, 0, -60.0, {868, 3510, 1808}, {0, -60.0, -60.0}},
-    {288, 0, 0, -26.7, {897, 3506, 1807}, {0, 18.0, 20.7}},
-    {290, 0, 0, -26.1, {910, 3503, 1807}, {0, 16.5, 19.2}},
+    {282, 0, 0, -60, {868, 3507, 1808}, {0, -60, -60}},
+    {286, 0, 0, -60, {868, 3510, 1808}, {0, -60, -60}},
+    {288, 0, 0, -26.7, {897, 3506, 1807}, {0, 18, 20.7}},
     {292, 0, 0, -32.3, {936, 3503, 1808}, {0, 21.4, 24.2}},
-    {294, 0, 0, -60.0, {936, 3504, 1807}, {0, -60.0, -60.0}},
-    {296, 0, 0, -60.0, {936, 3507, 1809}, {0, -60.0, -60.0}},
-    {298, 0, 0, -60.0, {936, 3510, 1807}, {0, -60.0, -60.0}},
+    {294, 0, 0, -60, {936, 3504, 1807}, {0, -60, -60}},
+    {298, 0, 0, -60, {936, 3510, 1807}, {0, -60, -60}},
     {300, 0, 0, -42.2, {754, 3505, 1809}, {0, 24.2, 26.5}},
-    {302, 0, 0, -46.2, {655, 3498, 1806}, {0, 25.0, 27.1}},
-    {304, 0, 0, -42.0, {815, 454, 1815}, {0, -8.3, 17.6}},
-    {306, 0, 0, -60.0, {815, 359, 1815}, {0, -60.0, -60.0}},
-    {308, 0, 0, -60.0, {815, 330, 1815}, {0, -60.0, -60.0}},
-    {310, 0, 0, -60.0, {815, 330, 1815}, {0, -60.0, -60.0}},
-    {312, 0, 0, -60.0, {815, 330, 1815}, {0, -60.0, -60.0}},
-    {314, 0, 0, -60.0, {815, 330, 1815}, {0, -60.0, -60.0}},
-    {316, 0, 0, -60.0, {815, 204, 1815}, {0, -60.0, -60.0}},
-    {319, 0, 0, -60.0, {815, 204, 1815}, {0, -60.0, -60.0}},
+    {302, 0, 0, -46.2, {655, 3498, 1806}, {0, 25, 27.1}},
+    {304, 0, 0, -42, {815, 454, 1815}, {0, -8.3, 17.6}},
+    {306, 0, 0, -60, {815, 359, 1815}, {0, -60, -60}},
+    {319, 0, 0, -60, {815, 204, 1815}, {0, -60, -60}},
     /* C0 */
-    {5, 0, 0, -60.0, {239, 991, 1545}, {0, -14.9, -60.0}},
-    {15, 0, 0, -60.0, {239, 991, 1545}, {0, -14.9, -60.0}},
-    {20, 0, 0, -60.0, {239, 991, 1545}, {0, -0.1, -60.0}},
-    {25, 0, 0, -4.2, {2315, 991, 1545}, {0, -5.4, -60.0}},
-    {30, 0, 0, -3.9, {2315, 2058, 1545}, {0, -14.2, -60.0}},
-    {35, 0, 0, -0.8, {2315, 2058, 1545}, {0, -16.1, -60.0}},
-    {40, 0, 0, -2.1, {2058, 2058, 1545}, {0, -2.2, -60.0}},
-    {45, 0, 0, -2.7, {2053, 2058, 1545}, {0, 0.0, -2.6}},
-    {55, 0, 0, -4.0, {1790, 1767, 2327}, {0, -13.5, -10.6}},
-    {70, 0, 0, -1.1, {1528, 1767, 2327}, {0, -11.8, -9.0}},
-    {75, 0, 0, -1.0, {1265, 1767, 2327}, {0, -3.5, -4.9}},
+    {5, 0, 0, -60, {239, 991, 1545}, {0, -14.9, -60}},
+    {20, 0, 0, -60, {239, 991, 1545}, {0, -0.1, -60}},
+    {25, 0, 0, -4.2, {2315, 991, 1545}, {0, -5.4, -60}},
+    {30, 0, 0, -3.9, {2315, 2058, 1545}, {0, -14.2, -60}},
+    {35, 0, 0, -0.8, {2315, 2058, 1545}, {0, -16.1, -60}},
+    {40, 0, 0, -2.1, {2058, 2058, 1545}, {0, -2.2, -60}},
+    {45, 0, 0, -2.7, {2053, 2058, 1545}, {0, 0, -2.6}},
+    {55, 0, 0, -4, {1790, 1767, 2327}, {0, -13.5, -10.6}},
+    {70, 0, 0, -1.1, {1528, 1767, 2327}, {0, -11.8, -9}},
+    {75, 0, 0, -1, {1265, 1767, 2327}, {0, -3.5, -4.9}},
     {80, 0, 0, -1.4, {1265, 2298, 1277}, {0, -6.9, -14.6}},
     {85, 0, 0, 0.5, {1260, 1516, 2327}, {0, -0.6, -2.9}},
     {90, 0, 0, -1.4, {1009, 1015, 2239}, {0, -11.7, -9.3}},
     {95, 0, 0, 1.4, {991, 1003, 2239}, {0, -8.1, -5.9}},
-    {100, 0, 0, 0.7, {781, 764, 2239}, {0, -10.2, -8.0}},
+    {100, 0, 0, 0.7, {781, 764, 2239}, {0, -10.2, -8}},
     {105, 0, 0, 1.7, {764, 577, 2239}, {0, -13.7, 4.8}},
     {110, 0, 0, 2.3, {723, 402, 245}, {0, -12.3, -13.3}},
-    {115, 0, 0, 0.2, {647, 309, 245}, {0, 0.1, -60.0}},
-    {120, 0, 0, 2.8, {630, 309, 245}, {0, -60.0, -60.0}},
-    {125, 0, 0, 0.9, {519, 309, 245}, {0, -60.0, -60.0}},
-    {130, 0, 0, 2.5, {501, 309, 245}, {0, -60.0, -60.0}},
-    {135, 0, 0, 3.1, {362, 309, 245}, {0, -60.0, -60.0}},
-    {140, 0, 0, 0.6, {344, 309, 245}, {0, -60.0, -60.0}},
-    {145, 0, 0, 3.6, {338, 455, 245}, {0, -60.0, -60.0}},
-    {150, 0, 0, 2.0, {198, 455, 583}, {0, -60.0, -60.0}},
-    {165, 0, 0, -5.1, {198, 455, 583}, {0, -60.0, -60.0}},
-    {170, 0, 0, -6.2, {297, 455, 583}, {0, -6.3, -60.0}},
-    {175, 0, 0, -5.8, {327, 595, 583}, {0, -0.1, -60.0}},
-    {180, 0, 0, -7.0, {297, 455, 583}, {0, -6.0, -14.7}},
+    {115, 0, 0, 0.2, {647, 309, 245}, {0, 0.1, -60}},
+    {130, 0, 0, 2.5, {501, 309, 245}, {0, -60, -60}},
+    {135, 0, 0, 3.1, {362, 309, 245}, {0, -60, -60}},
+    {145, 0, 0, 3.6, {338, 455, 245}, {0, -60, -60}},
+    {150, 0, 0, 2, {198, 455, 583}, {0, -60, -60}},
+    {165, 0, 0, -5.1, {198, 455, 583}, {0, -60, -60}},
+    {170, 0, 0, -6.2, {297, 455, 583}, {0, -6.3, -60}},
+    {175, 0, 0, -5.8, {327, 595, 583}, {0, -0.1, -60}},
+    {180, 0, 0, -7, {297, 455, 583}, {0, -6, -14.7}},
     {185, 0, 0, -9.9, {327, 595, 787}, {0, -2.7, -6.1}},
-    {190, 0, 0, -9.0, {327, 595, 898}, {0, -6.4, -9.9}},
+    {190, 0, 0, -9, {327, 595, 898}, {0, -6.4, -9.9}},
     {200, 0, 0, -13.4, {251, 484, 787}, {0, -8.2, -13.8}},
-    {205, 0, 0, -12.7, {251, 566, 881}, {0, -9.3, -12.0}},
-    {210, 0, 0, -14.5, {251, 484, 881}, {0, -0.0, -0.1}},
-    {215, 0, 0, -17.3, {216, 490, 881}, {0, -8.8, -60.0}},
-    {220, 0, 0, -17.1, {216, 490, 881}, {0, -0.0, -60.0}},
-    {225, 0, 0, -60.0, {268, 490, 881}, {0, -10.7, -60.0}},
-    {240, 0, 0, -60.0, {239, 461, 881}, {0, -0.0, -60.0}},
-    {245, 0, 0, -60.0, {239, 461, 881}, {0, -60.0, -60.0}},
-    /* C1 */
-    {5, 0, 0, -60.0, {239, 449, 426}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {239, 449, 426}, {0, -13.5, -60.0}},
-    {15, 0, 0, -60.0, {245, 449, 426}, {0, -14.1, -60.0}},
-    {20, 0, 0, -60.0, {653, 478, 426}, {0, -1.8, -14.5}},
-    {25, 0, 0, -17.8, {671, 676, 426}, {0, -0.0, 0.1}},
-    {30, 0, 0, -9.4, {1096, 676, 682}, {0, -1.5, -8.1}},
-    {40, 0, 0, -4.5, {1155, 834, 682}, {0, -1.1, -7.9}},
-    {45, 0, 0, -3.2, {1155, 1388, 933}, {0, -3.6, -6.0}},
-    {55, 0, 0, -1.4, {1423, 1400, 933}, {0, -4.9, -8.5}},
-    {65, 0, 0, -0.7, {986, 332, 1609}, {0, -3.9, -3.6}},
-    {70, 0, 0, 0.2, {741, 332, 1609}, {0, -2.9, -4.0}},
-    {80, 0, 0, 1.2, {741, 350, 1522}, {0, -9.0, -13.9}},
-    {95, 0, 0, -1.6, {834, 420, 869}, {0, -0.5, -2.4}},
-    {100, 0, 0, -2.4, {1283, 1347, 869}, {0, -0.1, -13.0}},
-    {105, 0, 0, -2.5, {1341, 1347, 846}, {0, 0.0, -0.3}},
-    {110, 0, 0, 0.5, {2029, 1265, 840}, {0, -4.4, -10.4}},
-    {120, 0, 0, -0.1, {1989, 1598, 840}, {0, -4.2, -8.0}},
-    {125, 0, 0, -0.4, {1989, 1598, 408}, {0, -4.5, -9.8}},
-    {140, 0, 0, -3.5, {1528, 1895, 385}, {0, -2.8, -5.9}},
-    {145, 0, 0, -4.2, {1528, 1895, 1353}, {0, 0.4, -2.3}},
-    {185, 0, 0, -6.4, {1446, 1994, 1219}, {0, 1.5, -6.9}},
-    {190, 0, 0, -7.3, {1405, 1994, 1954}, {0, 1.2, -4.9}},
-    {195, 0, 0, -8.7, {1359, 1994, 1160}, {0, -2.2, -5.9}},
-    {225, 0, 0, -12.2, {1114, 1749, 1353}, {0, -0.0, -2.4}},
-    {235, 0, 0, -13.5, {1079, 986, 1674}, {0, -0.6, -2.1}},
-    {245, 0, 0, -15.0, {1073, 986, 1662}, {0, -3.1, -2.0}},
-    {265, 0, 0, -18.3, {834, 2507, 1662}, {0, 2.5, -4.3}},
-    {270, 0, 0, -18.7, {787, 2682, 1528}, {0, 4.0, -3.7}},
-    {280, 0, 0, -22.3, {741, 2688, 239}, {0, 3.0, -6.2}},
-    {285, 0, 0, -23.0, {741, 2688, 227}, {0, 7.4, -4.0}},
-    {290, 0, 0, -16.5, {2805, 630, 227}, {0, -10.1, -13.6}},
-    {295, 0, 0, -16.6, {2805, 222, 192}, {0, -9.2, -9.2}},
-    {300, 0, 0, -18.2, {2805, 222, 192}, {0, -14.5, -17.8}},
-    {305, 0, 0, -60.0, {519, 222, 490}, {0, 0.0, 0.0}},
-    {310, 0, 0, -60.0, {490, 280, 799}, {0, -3.2, -4.5}},
-    {315, 0, 0, -60.0, {245, 472, 886}, {0, -2.0, -4.9}},
-    {325, 0, 0, -60.0, {239, 472, 799}, {0, -11.2, -12.6}},
-    {330, 0, 0, -60.0, {227, 472, 799}, {0, -14.7, -60.0}},
+    {205, 0, 0, -12.7, {251, 566, 881}, {0, -9.3, -12}},
+    {210, 0, 0, -14.5, {251, 484, 881}, {0, -0, -0.1}},
+    {215, 0, 0, -17.3, {216, 490, 881}, {0, -8.8, -60}},
+    {220, 0, 0, -17.1, {216, 490, 881}, {0, -0, -60}},
+    {225, 0, 0, -60, {268, 490, 881}, {0, -10.7, -60}},
+    {245, 0, 0, -60, {239, 461, 881}, {0, -60, -60}},
     /* C2 */
-    {5, 0, 0, -60.0, {233, 216, 974}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {239, 216, 974}, {0, -60.0, -60.0}},
-    {15, 0, 0, -60.0, {239, 216, 974}, {0, 0.0, -60.0}},
-    {25, 0, 0, -60.0, {455, 216, 974}, {0, -2.1, -60.0}},
-    {30, 0, 0, -60.0, {478, 910, 974}, {0, -5.1, -0.1}},
+    {5, 0, 0, -60, {233, 216, 974}, {0, -60, -60}},
+    {30, 0, 0, -60, {478, 910, 974}, {0, -5.1, -0.1}},
     {35, 0, 0, -6.8, {499, 904, 974}, {0, -0.1, -0.1}},
-    {40, 0, 0, -6.4, {501, 904, 974}, {0, -2.9, -60.0}},
-    {45, 0, 0, -6.4, {507, 904, 169}, {0, -2.8, -11.0}},
+    {45, 0, 0, -6.4, {507, 904, 169}, {0, -2.8, -11}},
     {50, 0, 0, -0.8, {507, 910, 2210}, {0, -0.1, 4.5}},
     {55, 0, 0, -1.4, {507, 916, 2198}, {0, -2.7, -2.8}},
     {60, 0, 0, -1.5, {507, 921, 175}, {0, -2.6, -10.3}},
     {65, 0, 0, 0.9, {519, 933, 2012}, {0, -2.9, -7.5}},
     {75, 0, 0, -1.6, {525, 986, 2006}, {0, -3.2, -6.4}},
     {80, 0, 0, 0.7, {531, 1009, 239}, {0, -4.3, -9.4}},
-    {85, 0, 0, -1.0, {543, 1020, 1814}, {0, -0.0, 1.9}},
+    {85, 0, 0, -1, {543, 1020, 1814}, {0, -0, 1.9}},
     {90, 0, 0, -1.9, {548, 986, 239}, {0, -8.3, -10.9}},
-    {95, 0, 0, 0.1, {549, 986, 239}, {0, -60.0, -60.0}},
-    {100, 0, 0, -1.6, {566, 1114, 239}, {0, -0.0, 0.1}},
-    {105, 0, 0, -2.9, {566, 1114, 239}, {0, -60.0, -60.0}},
-    {110, 0, 0, -1.6, {566, 1155, 245}, {0, -60.0, -60.0}},
-    {115, 0, 0, -3.9, {566, 1155, 245}, {0, 0.0, 0.1}},
+    {100, 0, 0, -1.6, {566, 1114, 239}, {0, -0, 0.1}},
     {135, 0, 0, -9.7, {560, 1172, 245}, {0, -3.5, -9.9}},
-    {140, 0, 0, -9.5, {554, 1172, 344}, {0, -7.0, -12.4}},
-    {165, 0, 0, -25.7, {449, 1155, 251}, {0, -14.3, 0.0}},
-    {170, 0, 0, -25.2, {449, 1155, 251}, {0, -9.1, -60.0}},
-    {175, 0, 0, -22.7, {449, 175, 251}, {0, 0.0, -60.0}},
-    {180, 0, 0, -9.3, {3312, 175, 251}, {0, -60.0, -60.0}},
-    {185, 0, 0, -8.0, {3336, 175, 251}, {0, -60.0, -60.0}},
-    {190, 0, 0, -3.9, {3336, 175, 251}, {0, -13.1, -60.0}},
-    {195, 0, 0, -4.4, {3336, 175, 618}, {0, -26.6, -60.0}},
-    {200, 0, 0, -4.2, {3336, 175, 618}, {0, -60.0, -60.0}},
-    {205, 0, 0, 0.3, {3341, 192, 618}, {0, -13.2, -60.0}},
-    {215, 0, 0, -1.0, {3341, 216, 618}, {0, -26.5, -60.0}},
+    {140, 0, 0, -9.5, {554, 1172, 344}, {0, -7, -12.4}},
+    {165, 0, 0, -25.7, {449, 1155, 251}, {0, -14.3, 0}},
+    {170, 0, 0, -25.2, {449, 1155, 251}, {0, -9.1, -60}},
+    {175, 0, 0, -22.7, {449, 175, 251}, {0, 0, -60}},
+    {180, 0, 0, -9.3, {3312, 175, 251}, {0, -60, -60}},
+    {190, 0, 0, -3.9, {3336, 175, 251}, {0, -13.1, -60}},
+    {195, 0, 0, -4.4, {3336, 175, 618}, {0, -26.6, -60}},
+    {205, 0, 0, 0.3, {3341, 192, 618}, {0, -13.2, -60}},
+    {215, 0, 0, -1, {3341, 216, 618}, {0, -26.5, -60}},
     {220, 0, 0, -0.8, {3341, 297, 618}, {0, -17.5, -22.8}},
     {225, 0, 0, -20.7, {1674, 315, 618}, {0, -6.6, -10.5}},
     {230, 0, 0, -21.3, {1668, 315, 618}, {0, -7.2, -10.7}},
     {235, 0, 0, -22.4, {262, 472, 618}, {0, -2.9, -9.2}},
-    {240, 0, 0, -60.0, {245, 472, 484}, {0, -14.6, -0.0}},
-    {245, 0, 0, -60.0, {239, 472, 484}, {0, -12.0, -60.0}},
-    {250, 0, 0, -60.0, {233, 472, 484}, {0, -60.0, -60.0}},
+    {240, 0, 0, -60, {245, 472, 484}, {0, -14.6, -0}},
+    {250, 0, 0, -60, {233, 472, 484}, {0, -60, -60}},
     /* C3 */
-    {5, 0, 0, -60.0, {222, 490, 414}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {239, 490, 414}, {0, -12.0, -60.0}},
-    {15, 0, 0, -60.0, {239, 490, 414}, {0, -13.2, -60.0}},
-    {20, 0, 0, -60.0, {268, 490, 414}, {0, -7.4, -60.0}},
-    {25, 0, 0, -9.4, {3143, 216, 414}, {0, -11.7, -60.0}},
-    {30, 0, 0, -8.3, {3161, 175, 414}, {0, -19.1, -60.0}},
-    {40, 0, 0, -3.0, {3166, 187, 414}, {0, -11.8, -60.0}},
-    {45, 0, 0, -3.2, {3172, 175, 414}, {0, -25.7, -60.0}},
-    {50, 0, 0, -0.9, {3166, 175, 414}, {0, -60.0, -60.0}},
-    {115, 0, 0, 3.8, {3376, 175, 414}, {0, -60.0, -60.0}},
-    {120, 0, 0, 3.9, {3470, 204, 414}, {0, -60.0, -60.0}},
-    {180, 0, 0, 4.3, {3785, 204, 414}, {0, -60.0, -60.0}},
-    {185, 0, 0, 4.4, {3785, 204, 414}, {0, -16.8, -60.0}},
-    {190, 0, 0, 4.4, {3785, 204, 414}, {0, -16.8, -60.0}},
-    {195, 0, 0, 4.4, {3785, 204, 414}, {0, -26.4, -60.0}},
-    {200, 0, 0, 0.5, {3785, 338, 414}, {0, -18.9, -60.0}},
-    {205, 0, 0, 0.7, {3773, 338, 414}, {0, -30.2, -60.0}},
+    {5, 0, 0, -60, {222, 490, 414}, {0, -60, -60}},
+    {20, 0, 0, -60, {268, 490, 414}, {0, -7.4, -60}},
+    {25, 0, 0, -9.4, {3143, 216, 414}, {0, -11.7, -60}},
+    {30, 0, 0, -8.3, {3161, 175, 414}, {0, -19.1, -60}},
+    {40, 0, 0, -3, {3166, 187, 414}, {0, -11.8, -60}},
+    {45, 0, 0, -3.2, {3172, 175, 414}, {0, -25.7, -60}},
+    {50, 0, 0, -0.9, {3166, 175, 414}, {0, -60, -60}},
+    {115, 0, 0, 3.8, {3376, 175, 414}, {0, -60, -60}},
+    {120, 0, 0, 3.9, {3470, 204, 414}, {0, -60, -60}},
+    {180, 0, 0, 4.3, {3785, 204, 414}, {0, -60, -60}},
+    {185, 0, 0, 4.4, {3785, 204, 414}, {0, -16.8, -60}},
+    {190, 0, 0, 4.4, {3785, 204, 414}, {0, -16.8, -60}},
+    {195, 0, 0, 4.4, {3785, 204, 414}, {0, -26.4, -60}},
+    {200, 0, 0, 0.5, {3785, 338, 414}, {0, -18.9, -60}},
+    {205, 0, 0, 0.7, {3773, 338, 414}, {0, -30.2, -60}},
     {210, 0, 0, 0.6, {3773, 356, 414}, {0, -31.1, -16.8}},
     {215, 0, 0, 0.6, {3773, 356, 414}, {0, -27.2, -31.4}},
     {220, 0, 0, -18.9, {233, 3779, 571}, {0, 10.3, -8.6}},
     {225, 0, 0, -20.3, {233, 3779, 741}, {0, 16.5, -10.4}},
     {230, 0, 0, -20.5, {233, 3779, 571}, {0, 16.7, -8.9}},
-    {235, 0, 0, -20.3, {239, 3755, 571}, {0, 10.1, -8.0}},
-    {240, 0, 0, -60.0, {239, 997, 571}, {0, -13.4, -60.0}},
-    {250, 0, 0, -60.0, {239, 991, 571}, {0, -13.5, -60.0}},
+    {235, 0, 0, -20.3, {239, 3755, 571}, {0, 10.1, -8}},
+    {240, 0, 0, -60, {239, 997, 571}, {0, -13.4, -60}},
+    {250, 0, 0, -60, {239, 991, 571}, {0, -13.5, -60}},
     /* C4: traced again from unit B's VoxRecord recording every 2ms (8ms
      * windows), the one tone it is, with its own peaking filters (see sound_eq);
      * its pulsing with the voicing and its noise stay as they were (see
      * fx_pulse, fx_noise): all 13 recordings of both units 1.30 to 1.05, the
      * other pitches and bends 1.28 to 1.06 */
-    {2, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {4, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {6, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {8, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {12, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {14, 0, 0, -58.8, {182, 0, 0}, {0, -60.0, -60.0}},
-    {16, 0, 0, -57.4, {210, 0, 0}, {0, -60.0, -60.0}},
-    {18, 0, 0, -36.1, {959, 0, 0}, {0, -60.0, -60.0}},
-    {20, 0, 0, -39.3, {941, 0, 0}, {0, -60.0, -60.0}},
-    {22, 0, 0, -60.0, {941, 0, 0}, {0, -60.0, -60.0}},
-    {24, 0, 0, -60.0, {941, 0, 0}, {0, -60.0, -60.0}},
-    {26, 0, 0, -24.6, {910, 0, 0}, {0, -60.0, -60.0}},
-    {28, 0, 0, -14.7, {953, 0, 0}, {0, -60.0, -60.0}},
-    {30, 0, 0, -13.1, {965, 0, 0}, {0, -60.0, -60.0}},
-    {32, 0, 0, -17.6, {966, 0, 0}, {0, -60.0, -60.0}},
-    {34, 0, 0, -27.7, {956, 0, 0}, {0, -60.0, -60.0}},
-    {36, 0, 0, -54.5, {195, 0, 0}, {0, -60.0, -60.0}},
-    {38, 0, 0, -49.4, {182, 0, 0}, {0, -60.0, -60.0}},
-    {40, 0, 0, -14.0, {932, 0, 0}, {0, -60.0, -60.0}},
-    {42, 0, 0, -7.3, {957, 0, 0}, {0, -60.0, -60.0}},
-    {44, 0, 0, -8.0, {965, 0, 0}, {0, -60.0, -60.0}},
-    {46, 0, 0, -14.1, {966, 0, 0}, {0, -60.0, -60.0}},
-    {48, 0, 0, -25.5, {969, 0, 0}, {0, -60.0, -60.0}},
-    {50, 0, 0, -36.1, {1295, 0, 0}, {0, -60.0, -60.0}},
-    {52, 0, 0, -13.8, {916, 0, 0}, {0, -60.0, -60.0}},
-    {54, 0, 0, -4.7, {954, 0, 0}, {0, -60.0, -60.0}},
-    {56, 0, 0, -4.0, {964, 0, 0}, {0, -60.0, -60.0}},
-    {58, 0, 0, -9.2, {965, 0, 0}, {0, -60.0, -60.0}},
-    {60, 0, 0, -19.7, {960, 0, 0}, {0, -60.0, -60.0}},
-    {62, 0, 0, -27.9, {1093, 0, 0}, {0, -60.0, -60.0}},
-    {64, 0, 0, -10.1, {928, 0, 0}, {0, -60.0, -60.0}},
-    {66, 0, 0, -2.7, {956, 0, 0}, {0, -60.0, -60.0}},
-    {68, 0, 0, -3.1, {966, 0, 0}, {0, -60.0, -60.0}},
-    {70, 0, 0, -9.3, {964, 0, 0}, {0, -60.0, -60.0}},
-    {72, 0, 0, -20.8, {956, 0, 0}, {0, -60.0, -60.0}},
-    {74, 0, 0, -25.3, {776, 0, 0}, {0, -60.0, -60.0}},
-    {76, 0, 0, -7.3, {935, 0, 0}, {0, -60.0, -60.0}},
-    {78, 0, 0, -2.2, {958, 0, 0}, {0, -60.0, -60.0}},
-    {80, 0, 0, -4.3, {966, 0, 0}, {0, -60.0, -60.0}},
-    {82, 0, 0, -11.8, {960, 0, 0}, {0, -60.0, -60.0}},
-    {84, 0, 0, -25.1, {946, 0, 0}, {0, -60.0, -60.0}},
-    {86, 0, 0, -19.8, {791, 0, 0}, {0, -60.0, -60.0}},
-    {88, 0, 0, -5.0, {941, 0, 0}, {0, -60.0, -60.0}},
-    {90, 0, 0, -2.0, {960, 0, 0}, {0, -60.0, -60.0}},
-    {92, 0, 0, -5.7, {966, 0, 0}, {0, -60.0, -60.0}},
-    {94, 0, 0, -14.3, {965, 0, 0}, {0, -60.0, -60.0}},
-    {96, 0, 0, -27.8, {971, 0, 0}, {0, -60.0, -60.0}},
-    {98, 0, 0, -12.8, {1965, 0, 0}, {0, -60.0, -60.0}},
-    {100, 0, 0, -3.6, {943, 0, 0}, {0, -60.0, -60.0}},
-    {102, 0, 0, -2.5, {1937, 0, 0}, {0, -60.0, -60.0}},
-    {104, 0, 0, -6.9, {1933, 0, 0}, {0, -60.0, -60.0}},
-    {106, 0, 0, -16.7, {1938, 0, 0}, {0, -60.0, -60.0}},
-    {108, 0, 0, -24.0, {2078, 0, 0}, {0, -60.0, -60.0}},
-    {110, 0, 0, -7.1, {1936, 0, 0}, {0, -60.0, -60.0}},
-    {112, 0, 0, -0.7, {1936, 0, 0}, {0, -60.0, -60.0}},
-    {114, 0, 0, -1.8, {1935, 0, 0}, {0, -60.0, -60.0}},
-    {116, 0, 0, -8.2, {1934, 0, 0}, {0, -60.0, -60.0}},
-    {118, 0, 0, -19.9, {1940, 0, 0}, {0, -60.0, -60.0}},
-    {120, 0, 0, -19.2, {1893, 0, 0}, {0, -60.0, -60.0}},
-    {122, 0, 0, -4.6, {1921, 0, 0}, {0, -60.0, -60.0}},
-    {124, 0, 0, -0.3, {1930, 0, 0}, {0, -60.0, -60.0}},
-    {126, 0, 0, -3.0, {1932, 0, 0}, {0, -60.0, -60.0}},
-    {128, 0, 0, -10.7, {1934, 0, 0}, {0, -60.0, -60.0}},
-    {130, 0, 0, -24.1, {1933, 0, 0}, {0, -60.0, -60.0}},
-    {132, 0, 0, -14.6, {1892, 0, 0}, {0, -60.0, -60.0}},
-    {134, 0, 0, -2.8, {1936, 0, 0}, {0, -60.0, -60.0}},
-    {136, 0, 0, 0.0, {1915, 0, 0}, {0, -60.0, -60.0}},
-    {138, 0, 0, -4.1, {1900, 0, 0}, {0, -60.0, -60.0}},
-    {140, 0, 0, -15.2, {1918, 0, 0}, {0, -60.0, -60.0}},
-    {142, 0, 0, -27.1, {1927, 0, 0}, {0, -60.0, -60.0}},
-    {144, 0, 0, -9.3, {1865, 0, 0}, {0, -60.0, -60.0}},
-    {146, 0, 0, -1.1, {1908, 0, 0}, {0, -60.0, -60.0}},
-    {148, 0, 0, -0.8, {1930, 0, 0}, {0, -60.0, -60.0}},
-    {150, 0, 0, -6.4, {1934, 0, 0}, {0, -60.0, -60.0}},
-    {152, 0, 0, -17.2, {1928, 0, 0}, {0, -60.0, -60.0}},
-    {154, 0, 0, -23.9, {3103, 0, 0}, {0, -60.0, -60.0}},
-    {156, 0, 0, -7.2, {3015, 0, 0}, {0, -60.0, -60.0}},
-    {158, 0, 0, -1.5, {3001, 0, 0}, {0, -60.0, -60.0}},
-    {160, 0, 0, -2.9, {2994, 0, 0}, {0, -60.0, -60.0}},
-    {162, 0, 0, -9.6, {2990, 0, 0}, {0, -60.0, -60.0}},
-    {164, 0, 0, -21.6, {2974, 0, 0}, {0, -60.0, -60.0}},
-    {166, 0, 0, -18.9, {2934, 0, 0}, {0, -60.0, -60.0}},
-    {168, 0, 0, -5.1, {2992, 0, 0}, {0, -60.0, -60.0}},
-    {170, 0, 0, -1.3, {2994, 0, 0}, {0, -60.0, -60.0}},
-    {172, 0, 0, -4.3, {2993, 0, 0}, {0, -60.0, -60.0}},
-    {174, 0, 0, -12.4, {2994, 0, 0}, {0, -60.0, -60.0}},
-    {176, 0, 0, -26.8, {3080, 0, 0}, {0, -60.0, -60.0}},
-    {178, 0, 0, -14.2, {2973, 0, 0}, {0, -60.0, -60.0}},
-    {180, 0, 0, -3.3, {2986, 0, 0}, {0, -60.0, -60.0}},
-    {182, 0, 0, -1.5, {2988, 0, 0}, {0, -60.0, -60.0}},
-    {184, 0, 0, -5.9, {2990, 0, 0}, {0, -60.0, -60.0}},
-    {186, 0, 0, -15.3, {2987, 0, 0}, {0, -60.0, -60.0}},
-    {188, 0, 0, -60.0, {2987, 0, 0}, {0, -60.0, -60.0}},
-    {190, 0, 0, -10.2, {2972, 0, 0}, {0, -60.0, -60.0}},
-    {192, 0, 0, -2.2, {2988, 0, 0}, {0, -60.0, -60.0}},
-    {194, 0, 0, -2.1, {2991, 0, 0}, {0, -60.0, -60.0}},
-    {196, 0, 0, -7.9, {2993, 0, 0}, {0, -60.0, -60.0}},
-    {198, 0, 0, -18.7, {3006, 0, 0}, {0, -60.0, -60.0}},
-    {200, 0, 0, -23.7, {3106, 0, 0}, {0, -60.0, -60.0}},
-    {202, 0, 0, -7.5, {2987, 0, 0}, {0, -60.0, -60.0}},
-    {204, 0, 0, -2.0, {2990, 0, 0}, {0, -60.0, -60.0}},
-    {206, 0, 0, -4.0, {2991, 0, 0}, {0, -60.0, -60.0}},
-    {208, 0, 0, -11.5, {2987, 0, 0}, {0, -60.0, -60.0}},
-    {210, 0, 0, -24.7, {2962, 0, 0}, {0, -60.0, -60.0}},
-    {212, 0, 0, -54.1, {255, 0, 0}, {0, -60.0, -60.0}},
-    {214, 0, 0, -11.0, {2982, 0, 0}, {0, -60.0, -60.0}},
-    {216, 0, 0, -5.2, {2988, 0, 0}, {0, -60.0, -60.0}},
-    {218, 0, 0, -7.0, {2992, 0, 0}, {0, -60.0, -60.0}},
-    {220, 0, 0, -14.1, {2993, 0, 0}, {0, -60.0, -60.0}},
-    {222, 0, 0, -25.5, {2995, 0, 0}, {0, -60.0, -60.0}},
-    {224, 0, 0, -55.5, {237, 0, 0}, {0, -60.0, -60.0}},
-    {226, 0, 0, -56.1, {229, 0, 0}, {0, -60.0, -60.0}},
-    {228, 0, 0, -16.6, {2982, 0, 0}, {0, -60.0, -60.0}},
-    {230, 0, 0, -13.3, {2989, 0, 0}, {0, -60.0, -60.0}},
-    {232, 0, 0, -17.5, {2992, 0, 0}, {0, -60.0, -60.0}},
-    {234, 0, 0, -26.1, {2998, 0, 0}, {0, -60.0, -60.0}},
-    {236, 0, 0, -60.0, {2998, 0, 0}, {0, -60.0, -60.0}},
-    {238, 0, 0, -59.0, {226, 0, 0}, {0, -60.0, -60.0}},
-    {240, 0, 0, -60.0, {226, 0, 0}, {0, -60.0, -60.0}},
-    {242, 0, 0, -60.0, {226, 0, 0}, {0, -60.0, -60.0}},
-    {244, 0, 0, -60.0, {226, 0, 0}, {0, -60.0, -60.0}},
-    {246, 0, 0, -60.0, {226, 0, 0}, {0, -60.0, -60.0}},
-    {249, 0, 0, -60.0, {226, 0, 0}, {0, -60.0, -60.0}},
-    /* C5 */
-    {5, 0, 0, -60.0, {239, 467, 297}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {239, 467, 297}, {0, -0.0, -60.0}},
-    {15, 0, 0, -60.0, {239, 665, 297}, {0, -14.5, -60.0}},
-    {20, 0, 0, -60.0, {239, 665, 297}, {0, -2.1, -60.0}},
-    {25, 0, 0, -60.0, {309, 764, 297}, {0, -10.9, -60.0}},
-    {30, 0, 0, -12.4, {2694, 764, 297}, {0, -11.0, -60.0}},
-    {40, 0, 0, -9.1, {2700, 764, 297}, {0, -10.6, -60.0}},
-    {70, 0, 0, -8.6, {2694, 764, 297}, {0, -10.2, -60.0}},
-    {75, 0, 0, -15.1, {770, 764, 297}, {0, 0.0, -60.0}},
-    {80, 0, 0, -12.5, {746, 892, 297}, {0, -10.8, -60.0}},
-    {110, 0, 0, -1.8, {618, 898, 297}, {0, -3.3, -60.0}},
-    {115, 0, 0, -1.2, {606, 898, 297}, {0, -3.3, -13.8}},
-    {125, 0, 0, -0.8, {595, 898, 297}, {0, -4.0, -5.3}},
-    {130, 0, 0, -0.4, {595, 297, 898}, {0, -2.8, -4.9}},
-    {145, 0, 0, -0.1, {595, 297, 892}, {0, -0.1, -14.9}},
-    {150, 0, 0, 0.0, {297, 297, 892}, {0, 0.0, -60.0}},
-    {160, 0, 0, -0.1, {297, 297, 892}, {0, -0.3, -60.0}},
-    {165, 0, 0, -0.1, {496, 297, 892}, {0, -0.5, -60.0}},
-    {175, 0, 0, -0.1, {496, 297, 892}, {0, -0.7, -60.0}},
-    {185, 0, 0, -0.2, {432, 297, 892}, {0, -0.0, -60.0}},
-    {190, 0, 0, -0.1, {338, 192, 892}, {0, -14.9, -60.0}},
-    {195, 0, 0, -0.3, {379, 181, 892}, {0, 0.0, -60.0}},
-    {200, 0, 0, -0.8, {338, 181, 892}, {0, -60.0, -60.0}},
-    {205, 0, 0, -0.3, {309, 181, 892}, {0, -60.0, -60.0}},
-    {215, 0, 0, 0.2, {297, 181, 892}, {0, -60.0, -60.0}},
-    {240, 0, 0, -3.0, {297, 181, 892}, {0, -60.0, -60.0}},
-    {245, 0, 0, -3.1, {268, 181, 892}, {0, -60.0, -60.0}},
-    {250, 0, 0, -3.2, {181, 181, 892}, {0, -60.0, -60.0}},
-    {270, 0, 0, -5.6, {175, 181, 892}, {0, -60.0, -60.0}},
-    {275, 0, 0, -6.0, {175, 362, 892}, {0, -60.0, -60.0}},
-    {345, 0, 0, -7.4, {175, 362, 892}, {0, -60.0, -60.0}},
-    {350, 0, 0, -9.8, {175, 362, 892}, {0, -0.0, -60.0}},
-    {355, 0, 0, -10.9, {175, 373, 892}, {0, -13.6, -60.0}},
-    {360, 0, 0, -60.0, {187, 612, 892}, {0, -11.8, -60.0}},
-    {365, 0, 0, -60.0, {198, 612, 892}, {0, -9.6, -60.0}},
-    {370, 0, 0, -60.0, {239, 991, 892}, {0, -5.0, -60.0}},
-    {375, 0, 0, -60.0, {239, 991, 892}, {0, -14.5, -60.0}},
-    {380, 0, 0, -60.0, {239, 991, 892}, {0, -13.8, -60.0}},
+    {2, 0, 0, -60, {0, 0, 0}, {0, -60, -60}},
+    {16, 0, 0, -57.4, {210, 0, 0}, {0, -60, -60}},
+    {18, 0, 0, -36.1, {959, 0, 0}, {0, -60, -60}},
+    {24, 0, 0, -60, {941, 0, 0}, {0, -60, -60}},
+    {26, 0, 0, -24.6, {910, 0, 0}, {0, -60, -60}},
+    {28, 0, 0, -14.7, {953, 0, 0}, {0, -60, -60}},
+    {34, 0, 0, -27.7, {956, 0, 0}, {0, -60, -60}},
+    {36, 0, 0, -54.5, {195, 0, 0}, {0, -60, -60}},
+    {38, 0, 0, -49.4, {182, 0, 0}, {0, -60, -60}},
+    {40, 0, 0, -14, {932, 0, 0}, {0, -60, -60}},
+    {42, 0, 0, -7.3, {957, 0, 0}, {0, -60, -60}},
+    {48, 0, 0, -25.5, {969, 0, 0}, {0, -60, -60}},
+    {50, 0, 0, -36.1, {1295, 0, 0}, {0, -60, -60}},
+    {52, 0, 0, -13.8, {916, 0, 0}, {0, -60, -60}},
+    {54, 0, 0, -4.7, {954, 0, 0}, {0, -60, -60}},
+    {58, 0, 0, -9.2, {965, 0, 0}, {0, -60, -60}},
+    {62, 0, 0, -27.9, {1093, 0, 0}, {0, -60, -60}},
+    {66, 0, 0, -2.7, {956, 0, 0}, {0, -60, -60}},
+    {72, 0, 0, -20.8, {956, 0, 0}, {0, -60, -60}},
+    {74, 0, 0, -25.3, {776, 0, 0}, {0, -60, -60}},
+    {76, 0, 0, -7.3, {935, 0, 0}, {0, -60, -60}},
+    {78, 0, 0, -2.2, {958, 0, 0}, {0, -60, -60}},
+    {84, 0, 0, -25.1, {946, 0, 0}, {0, -60, -60}},
+    {86, 0, 0, -19.8, {791, 0, 0}, {0, -60, -60}},
+    {90, 0, 0, -2, {960, 0, 0}, {0, -60, -60}},
+    {96, 0, 0, -27.8, {971, 0, 0}, {0, -60, -60}},
+    {98, 0, 0, -12.8, {1965, 0, 0}, {0, -60, -60}},
+    {100, 0, 0, -3.6, {943, 0, 0}, {0, -60, -60}},
+    {102, 0, 0, -2.5, {1937, 0, 0}, {0, -60, -60}},
+    {108, 0, 0, -24, {2078, 0, 0}, {0, -60, -60}},
+    {112, 0, 0, -0.7, {1936, 0, 0}, {0, -60, -60}},
+    {118, 0, 0, -19.9, {1940, 0, 0}, {0, -60, -60}},
+    {124, 0, 0, -0.3, {1930, 0, 0}, {0, -60, -60}},
+    {130, 0, 0, -24.1, {1933, 0, 0}, {0, -60, -60}},
+    {136, 0, 0, 0, {1915, 0, 0}, {0, -60, -60}},
+    {142, 0, 0, -27.1, {1927, 0, 0}, {0, -60, -60}},
+    {146, 0, 0, -1.1, {1908, 0, 0}, {0, -60, -60}},
+    {152, 0, 0, -17.2, {1928, 0, 0}, {0, -60, -60}},
+    {154, 0, 0, -23.9, {3103, 0, 0}, {0, -60, -60}},
+    {158, 0, 0, -1.5, {3001, 0, 0}, {0, -60, -60}},
+    {164, 0, 0, -21.6, {2974, 0, 0}, {0, -60, -60}},
+    {170, 0, 0, -1.3, {2994, 0, 0}, {0, -60, -60}},
+    {176, 0, 0, -26.8, {3080, 0, 0}, {0, -60, -60}},
+    {180, 0, 0, -3.3, {2986, 0, 0}, {0, -60, -60}},
+    {182, 0, 0, -1.5, {2988, 0, 0}, {0, -60, -60}},
+    {186, 0, 0, -15.3, {2987, 0, 0}, {0, -60, -60}},
+    {188, 0, 0, -60, {2987, 0, 0}, {0, -60, -60}},
+    {190, 0, 0, -10.2, {2972, 0, 0}, {0, -60, -60}},
+    {192, 0, 0, -2.2, {2988, 0, 0}, {0, -60, -60}},
+    {200, 0, 0, -23.7, {3106, 0, 0}, {0, -60, -60}},
+    {204, 0, 0, -2, {2990, 0, 0}, {0, -60, -60}},
+    {210, 0, 0, -24.7, {2962, 0, 0}, {0, -60, -60}},
+    {212, 0, 0, -54.1, {255, 0, 0}, {0, -60, -60}},
+    {214, 0, 0, -11, {2982, 0, 0}, {0, -60, -60}},
+    {216, 0, 0, -5.2, {2988, 0, 0}, {0, -60, -60}},
+    {222, 0, 0, -25.5, {2995, 0, 0}, {0, -60, -60}},
+    {224, 0, 0, -55.5, {237, 0, 0}, {0, -60, -60}},
+    {226, 0, 0, -56.1, {229, 0, 0}, {0, -60, -60}},
+    {228, 0, 0, -16.6, {2982, 0, 0}, {0, -60, -60}},
+    {230, 0, 0, -13.3, {2989, 0, 0}, {0, -60, -60}},
+    {234, 0, 0, -26.1, {2998, 0, 0}, {0, -60, -60}},
+    {236, 0, 0, -60, {2998, 0, 0}, {0, -60, -60}},
+    {238, 0, 0, -59, {226, 0, 0}, {0, -60, -60}},
+    {249, 0, 0, -60, {226, 0, 0}, {0, -60, -60}},
     /* C6 */
-    {5, 0, 0, -60.0, {233, 478, 583}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {233, 478, 583}, {0, -0.0, -60.0}},
-    {15, 0, 0, -60.0, {239, 980, 583}, {0, -13.4, -0.1}},
-    {20, 0, 0, -60.0, {239, 980, 583}, {0, -11.9, -12.9}},
-    {25, 0, 0, -60.0, {2012, 991, 595}, {0, -14.7, -15.1}},
+    {5, 0, 0, -60, {233, 478, 583}, {0, -60, -60}},
+    {25, 0, 0, -60, {2012, 991, 595}, {0, -14.7, -15.1}},
     {30, 0, 0, -22.1, {2029, 980, 997}, {0, -10.5, -15.7}},
     {35, 0, 0, -13.4, {2041, 227, 595}, {0, -7.5, -9.8}},
-    {40, 0, 0, -13.0, {2029, 227, 1569}, {0, -14.8, -17.3}},
-    {55, 0, 0, -8.2, {2023, 227, 1569}, {0, -3.1, -60.0}},
-    {65, 0, 0, -4.2, {2023, 227, 1569}, {0, -60.0, -60.0}},
-    {70, 0, 0, -4.9, {2023, 1475, 1125}, {0, -60.0, -60.0}},
-    {75, 0, 0, -5.2, {2023, 1475, 1125}, {0, -2.6, -60.0}},
-    {80, 0, 0, -1.4, {2023, 1475, 1125}, {0, -60.0, -60.0}},
+    {40, 0, 0, -13, {2029, 227, 1569}, {0, -14.8, -17.3}},
+    {55, 0, 0, -8.2, {2023, 227, 1569}, {0, -3.1, -60}},
+    {75, 0, 0, -5.2, {2023, 1475, 1125}, {0, -2.6, -60}},
     {90, 0, 0, -1.9, {1738, 1475, 1125}, {0, -0.9, -1.5}},
     {100, 0, 0, -0.6, {1376, 1143, 1125}, {0, -14.2, -14.8}},
     {110, 0, 0, 1.1, {1067, 1143, 2799}, {0, -9.8, -2.4}},
-    {130, 0, 0, -1.4, {904, 647, 641}, {0, 0.0, 0.0}},
-    {135, 0, 0, -2.3, {904, 1942, 641}, {0, 2.7, 0.0}},
-    {140, 0, 0, -2.8, {904, 1942, 910}, {0, 1.8, -7.0}},
+    {130, 0, 0, -1.4, {904, 647, 641}, {0, 0, 0}},
+    {135, 0, 0, -2.3, {904, 1942, 641}, {0, 2.7, 0}},
+    {140, 0, 0, -2.8, {904, 1942, 910}, {0, 1.8, -7}},
     {145, 0, 0, -1.9, {1930, 1942, 910}, {0, -1.8, -6.2}},
     {150, 0, 0, -1.8, {1936, 1942, 1679}, {0, -9.1, -13.1}},
-    {160, 0, 0, -2.0, {1930, 898, 910}, {0, -5.1, -8.5}},
-    {165, 0, 0, -3.0, {906, 898, 647}, {0, -1.4, -10.3}},
-    {175, 0, 0, -1.8, {898, 898, 647}, {0, -60.0, -60.0}},
-    {180, 0, 0, 0.7, {904, 641, 2782}, {0, -60.0, -60.0}},
-    {185, 0, 0, 1.2, {904, 641, 2782}, {0, -13.7, -5.0}},
-    {200, 0, 0, -0.0, {1225, 1096, 2898}, {0, -0.5, 7.4}},
+    {160, 0, 0, -2, {1930, 898, 910}, {0, -5.1, -8.5}},
+    {165, 0, 0, -3, {906, 898, 647}, {0, -1.4, -10.3}},
+    {185, 0, 0, 1.2, {904, 641, 2782}, {0, -13.7, -5}},
+    {200, 0, 0, -0, {1225, 1096, 2898}, {0, -0.5, 7.4}},
     {205, 0, 0, -0.4, {1330, 1073, 1382}, {0, -10.7, -12.7}},
-    {240, 0, 0, -6.0, {2029, 1096, 1195}, {0, -60.0, -60.0}},
-    {245, 0, 0, -5.1, {2035, 338, 338}, {0, -60.0, -60.0}},
-    {265, 0, 0, -9.7, {2035, 338, 338}, {0, -60.0, -60.0}},
-    {280, 0, 0, -16.1, {2035, 571, 531}, {0, -7.5, -11.0}},
-    {285, 0, 0, -60.0, {239, 571, 531}, {0, -8.0, -10.3}},
-    {295, 0, 0, -60.0, {239, 764, 566}, {0, -14.6, -0.1}},
-    {300, 0, 0, -60.0, {239, 764, 566}, {0, -10.4, -60.0}},
-    {305, 0, 0, -60.0, {239, 478, 566}, {0, -13.0, -60.0}},
-    /* C7: traced again from unit B's VoxRecord recording every 2ms (8ms
-     * windows), the one tone it is, which sweeps up from 500Hz to 2.7kHz and
-     * drops back five times in 300ms, faster each time; the 5 to 20ms points
-     * before had smoothed the sweeps into a wave under 1kHz, with three tones
-     * where the chip has one. with its own peaking filters (see sound_eq) all
-     * 13 recordings of both units, at pitch 60 and 150 and bend 0 and 15 too,
-     * 1.33 to 1.04 */
-    {2, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {4, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {6, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {8, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {10, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {12, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {14, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {16, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {18, 0, 0, -60.0, {0, 0, 0}, {0, -60.0, -60.0}},
-    {20, 0, 0, -55.4, {263, 0, 0}, {0, -60.0, -60.0}},
-    {22, 0, 0, -32.2, {501, 0, 0}, {0, -60.0, -60.0}},
-    {24, 0, 0, -25.4, {516, 0, 0}, {0, -60.0, -60.0}},
-    {26, 0, 0, -26.0, {524, 0, 0}, {0, -60.0, -60.0}},
-    {28, 0, 0, -32.0, {522, 0, 0}, {0, -60.0, -60.0}},
-    {30, 0, 0, -42.8, {519, 0, 0}, {0, -60.0, -60.0}},
-    {32, 0, 0, -57.0, {182, 0, 0}, {0, -60.0, -60.0}},
-    {34, 0, 0, -46.2, {202, 0, 0}, {0, -60.0, -60.0}},
-    {36, 0, 0, -23.9, {488, 0, 0}, {0, -60.0, -60.0}},
-    {38, 0, 0, -17.8, {514, 0, 0}, {0, -60.0, -60.0}},
-    {40, 0, 0, -19.1, {525, 0, 0}, {0, -60.0, -60.0}},
-    {42, 0, 0, -25.8, {523, 0, 0}, {0, -60.0, -60.0}},
-    {44, 0, 0, -37.8, {520, 0, 0}, {0, -60.0, -60.0}},
-    {46, 0, 0, -49.7, {160, 0, 0}, {0, -60.0, -60.0}},
-    {48, 0, 0, -27.0, {461, 0, 0}, {0, -60.0, -60.0}},
-    {50, 0, 0, -15.8, {507, 0, 0}, {0, -60.0, -60.0}},
-    {52, 0, 0, -13.9, {522, 0, 0}, {0, -60.0, -60.0}},
-    {54, 0, 0, -18.4, {528, 0, 0}, {0, -60.0, -60.0}},
-    {56, 0, 0, -27.5, {525, 0, 0}, {0, -60.0, -60.0}},
-    {58, 0, 0, -49.4, {124, 0, 0}, {0, -60.0, -60.0}},
-    {60, 0, 0, -26.2, {459, 0, 0}, {0, -60.0, -60.0}},
-    {62, 0, 0, -13.9, {504, 0, 0}, {0, -60.0, -60.0}},
-    {64, 0, 0, -11.2, {526, 0, 0}, {0, -60.0, -60.0}},
-    {66, 0, 0, -14.8, {559, 0, 0}, {0, -60.0, -60.0}},
-    {68, 0, 0, -22.8, {609, 0, 0}, {0, -60.0, -60.0}},
-    {70, 0, 0, -33.7, {850, 0, 0}, {0, -60.0, -60.0}},
-    {72, 0, 0, -13.5, {957, 0, 0}, {0, -60.0, -60.0}},
-    {74, 0, 0, -4.5, {1029, 0, 0}, {0, -60.0, -60.0}},
-    {76, 0, 0, -3.9, {1086, 0, 0}, {0, -60.0, -60.0}},
-    {78, 0, 0, -8.8, {1159, 0, 0}, {0, -60.0, -60.0}},
-    {80, 0, 0, -19.2, {1219, 0, 0}, {0, -60.0, -60.0}},
-    {82, 0, 0, -24.6, {1368, 0, 0}, {0, -60.0, -60.0}},
-    {84, 0, 0, -6.3, {1578, 0, 0}, {0, -60.0, -60.0}},
-    {86, 0, 0, -0.6, {1639, 0, 0}, {0, -60.0, -60.0}},
-    {88, 0, 0, -2.1, {1700, 0, 0}, {0, -60.0, -60.0}},
-    {90, 0, 0, -8.8, {1770, 0, 0}, {0, -60.0, -60.0}},
-    {92, 0, 0, -21.4, {1841, 0, 0}, {0, -60.0, -60.0}},
-    {94, 0, 0, -17.2, {2012, 0, 0}, {0, -60.0, -60.0}},
-    {96, 0, 0, -3.3, {2186, 0, 0}, {0, -60.0, -60.0}},
-    {98, 0, 0, -0.0, {2242, 0, 0}, {0, -60.0, -60.0}},
-    {100, 0, 0, -3.4, {2311, 0, 0}, {0, -60.0, -60.0}},
-    {102, 0, 0, -11.3, {2379, 0, 0}, {0, -60.0, -60.0}},
-    {104, 0, 0, -25.5, {2433, 0, 0}, {0, -60.0, -60.0}},
-    {106, 0, 0, -12.6, {2721, 0, 0}, {0, -60.0, -60.0}},
-    {108, 0, 0, -2.8, {2733, 0, 0}, {0, -60.0, -60.0}},
-    {110, 0, 0, -3.9, {2643, 0, 0}, {0, -60.0, -60.0}},
-    {112, 0, 0, -9.2, {2198, 0, 0}, {0, -60.0, -60.0}},
-    {114, 0, 0, -17.1, {1875, 0, 0}, {0, -60.0, -60.0}},
-    {116, 0, 0, -32.7, {1529, 0, 0}, {0, -60.0, -60.0}},
-    {118, 0, 0, -19.8, {542, 0, 0}, {0, -60.0, -60.0}},
-    {120, 0, 0, -10.0, {618, 0, 0}, {0, -60.0, -60.0}},
-    {122, 0, 0, -8.8, {678, 0, 0}, {0, -60.0, -60.0}},
-    {124, 0, 0, -13.2, {753, 0, 0}, {0, -60.0, -60.0}},
-    {126, 0, 0, -22.9, {825, 0, 0}, {0, -60.0, -60.0}},
-    {128, 0, 0, -16.1, {1064, 0, 0}, {0, -60.0, -60.0}},
-    {130, 0, 0, -4.9, {1134, 0, 0}, {0, -60.0, -60.0}},
-    {132, 0, 0, -2.5, {1191, 0, 0}, {0, -60.0, -60.0}},
-    {134, 0, 0, -6.3, {1261, 0, 0}, {0, -60.0, -60.0}},
-    {136, 0, 0, -14.1, {1345, 0, 0}, {0, -60.0, -60.0}},
-    {138, 0, 0, -8.8, {1607, 0, 0}, {0, -60.0, -60.0}},
-    {140, 0, 0, -1.3, {1630, 0, 0}, {0, -60.0, -60.0}},
-    {142, 0, 0, -1.2, {1684, 0, 0}, {0, -60.0, -60.0}},
-    {144, 0, 0, -6.6, {1756, 0, 0}, {0, -60.0, -60.0}},
-    {146, 0, 0, -9.8, {1864, 0, 0}, {0, -60.0, -60.0}},
-    {148, 0, 0, -2.3, {2040, 0, 0}, {0, -60.0, -60.0}},
-    {150, 0, 0, -0.1, {2095, 0, 0}, {0, -60.0, -60.0}},
-    {152, 0, 0, -4.3, {2163, 0, 0}, {0, -60.0, -60.0}},
-    {154, 0, 0, -7.7, {2207, 0, 0}, {0, -60.0, -60.0}},
-    {156, 0, 0, -3.0, {2139, 0, 0}, {0, -60.0, -60.0}},
-    {158, 0, 0, -3.4, {1974, 0, 0}, {0, -60.0, -60.0}},
-    {160, 0, 0, -8.9, {1656, 0, 0}, {0, -60.0, -60.0}},
-    {162, 0, 0, -15.1, {1571, 0, 0}, {0, -60.0, -60.0}},
-    {164, 0, 0, -11.2, {588, 0, 0}, {0, -60.0, -60.0}},
-    {166, 0, 0, -10.1, {576, 0, 0}, {0, -60.0, -60.0}},
-    {168, 0, 0, -14.3, {627, 0, 0}, {0, -60.0, -60.0}},
-    {170, 0, 0, -11.3, {754, 0, 0}, {0, -60.0, -60.0}},
-    {172, 0, 0, -5.9, {826, 0, 0}, {0, -60.0, -60.0}},
-    {174, 0, 0, -6.2, {881, 0, 0}, {0, -60.0, -60.0}},
-    {176, 0, 0, -10.3, {895, 0, 0}, {0, -60.0, -60.0}},
-    {178, 0, 0, -5.3, {1166, 0, 0}, {0, -60.0, -60.0}},
-    {180, 0, 0, -2.7, {1154, 0, 0}, {0, -60.0, -60.0}},
-    {182, 0, 0, -5.1, {1229, 0, 0}, {0, -60.0, -60.0}},
-    {184, 0, 0, -4.8, {1294, 0, 0}, {0, -60.0, -60.0}},
-    {186, 0, 0, -1.3, {1414, 0, 0}, {0, -60.0, -60.0}},
-    {188, 0, 0, -2.5, {1469, 0, 0}, {0, -60.0, -60.0}},
-    {190, 0, 0, -5.4, {1463, 0, 0}, {0, -60.0, -60.0}},
-    {192, 0, 0, -1.2, {1717, 0, 0}, {0, -60.0, -60.0}},
-    {194, 0, 0, -1.4, {1733, 0, 0}, {0, -60.0, -60.0}},
-    {196, 0, 0, -3.5, {1919, 0, 0}, {0, -60.0, -60.0}},
-    {198, 0, 0, -0.0, {1968, 0, 0}, {0, -60.0, -60.0}},
-    {200, 0, 0, -1.0, {2000, 0, 0}, {0, -60.0, -60.0}},
-    {202, 0, 0, -3.4, {2081, 0, 0}, {0, -60.0, -60.0}},
-    {204, 0, 0, -2.1, {1677, 0, 0}, {0, -60.0, -60.0}},
-    {206, 0, 0, -4.7, {1594, 0, 0}, {0, -60.0, -60.0}},
-    {208, 0, 0, -12.9, {763, 0, 0}, {0, -60.0, -60.0}},
-    {210, 0, 0, -8.9, {700, 0, 0}, {0, -60.0, -60.0}},
-    {212, 0, 0, -10.6, {627, 0, 0}, {0, -60.0, -60.0}},
-    {214, 0, 0, -9.7, {648, 0, 0}, {0, -60.0, -60.0}},
-    {216, 0, 0, -7.7, {665, 0, 0}, {0, -60.0, -60.0}},
-    {218, 0, 0, -8.8, {747, 0, 0}, {0, -60.0, -60.0}},
-    {220, 0, 0, -6.3, {823, 0, 0}, {0, -60.0, -60.0}},
-    {222, 0, 0, -5.5, {818, 0, 0}, {0, -60.0, -60.0}},
-    {224, 0, 0, -8.7, {771, 0, 0}, {0, -60.0, -60.0}},
-    {226, 0, 0, -8.9, {818, 0, 0}, {0, -60.0, -60.0}},
-    {228, 0, 0, -4.0, {973, 0, 0}, {0, -60.0, -60.0}},
-    {230, 0, 0, -4.1, {999, 0, 0}, {0, -60.0, -60.0}},
-    {232, 0, 0, -2.9, {1068, 0, 0}, {0, -60.0, -60.0}},
-    {234, 0, 0, -6.4, {1030, 0, 0}, {0, -60.0, -60.0}},
-    {236, 0, 0, -2.6, {1296, 0, 0}, {0, -60.0, -60.0}},
-    {238, 0, 0, -1.5, {1254, 0, 0}, {0, -60.0, -60.0}},
-    {240, 0, 0, -1.4, {1286, 0, 0}, {0, -60.0, -60.0}},
-    {242, 0, 0, -1.0, {1340, 0, 0}, {0, -60.0, -60.0}},
-    {244, 0, 0, -4.5, {1286, 0, 0}, {0, -60.0, -60.0}},
-    {246, 0, 0, -1.4, {1557, 0, 0}, {0, -60.0, -60.0}},
-    {248, 0, 0, -0.3, {1504, 0, 0}, {0, -60.0, -60.0}},
-    {250, 0, 0, -2.8, {1415, 0, 0}, {0, -60.0, -60.0}},
-    {252, 0, 0, -3.6, {1209, 0, 0}, {0, -60.0, -60.0}},
-    {254, 0, 0, -9.5, {764, 0, 0}, {0, -60.0, -60.0}},
-    {256, 0, 0, -8.7, {644, 0, 0}, {0, -60.0, -60.0}},
-    {258, 0, 0, -10.6, {542, 0, 0}, {0, -60.0, -60.0}},
-    {260, 0, 0, -10.4, {503, 0, 0}, {0, -60.0, -60.0}},
-    {262, 0, 0, -12.1, {464, 0, 0}, {0, -60.0, -60.0}},
-    {264, 0, 0, -12.7, {466, 0, 0}, {0, -60.0, -60.0}},
-    {266, 0, 0, -10.6, {610, 0, 0}, {0, -60.0, -60.0}},
-    {268, 0, 0, -7.4, {731, 0, 0}, {0, -60.0, -60.0}},
-    {270, 0, 0, -7.0, {699, 0, 0}, {0, -60.0, -60.0}},
-    {272, 0, 0, -6.8, {700, 0, 0}, {0, -60.0, -60.0}},
-    {274, 0, 0, -6.2, {736, 0, 0}, {0, -60.0, -60.0}},
-    {276, 0, 0, -8.0, {706, 0, 0}, {0, -60.0, -60.0}},
-    {278, 0, 0, -8.2, {753, 0, 0}, {0, -60.0, -60.0}},
-    {280, 0, 0, -4.3, {939, 0, 0}, {0, -60.0, -60.0}},
-    {282, 0, 0, -3.1, {977, 0, 0}, {0, -60.0, -60.0}},
-    {284, 0, 0, -3.5, {944, 0, 0}, {0, -60.0, -60.0}},
-    {286, 0, 0, -3.7, {957, 0, 0}, {0, -60.0, -60.0}},
-    {288, 0, 0, -4.2, {979, 0, 0}, {0, -60.0, -60.0}},
-    {290, 0, 0, -4.7, {1246, 0, 0}, {0, -60.0, -60.0}},
-    {292, 0, 0, -2.7, {1172, 0, 0}, {0, -60.0, -60.0}},
-    {294, 0, 0, -1.2, {1226, 0, 0}, {0, -60.0, -60.0}},
-    {296, 0, 0, -1.8, {1174, 0, 0}, {0, -60.0, -60.0}},
-    {298, 0, 0, -3.4, {1074, 0, 0}, {0, -60.0, -60.0}},
-    {300, 0, 0, -5.4, {894, 0, 0}, {0, -60.0, -60.0}},
-    {302, 0, 0, -7.3, {856, 0, 0}, {0, -60.0, -60.0}},
-    {304, 0, 0, -11.6, {485, 0, 0}, {0, -60.0, -60.0}},
-    {306, 0, 0, -12.9, {428, 0, 0}, {0, -60.0, -60.0}},
-    {308, 0, 0, -12.9, {421, 0, 0}, {0, -60.0, -60.0}},
-    {310, 0, 0, -11.4, {470, 0, 0}, {0, -60.0, -60.0}},
-    {312, 0, 0, -11.5, {469, 0, 0}, {0, -60.0, -60.0}},
-    {314, 0, 0, -12.1, {464, 0, 0}, {0, -60.0, -60.0}},
-    {316, 0, 0, -12.7, {453, 0, 0}, {0, -60.0, -60.0}},
-    {318, 0, 0, -13.3, {454, 0, 0}, {0, -60.0, -60.0}},
-    {320, 0, 0, -14.7, {420, 0, 0}, {0, -60.0, -60.0}},
-    {322, 0, 0, -13.9, {446, 0, 0}, {0, -60.0, -60.0}},
-    {324, 0, 0, -15.9, {415, 0, 0}, {0, -60.0, -60.0}},
-    {326, 0, 0, -15.6, {420, 0, 0}, {0, -60.0, -60.0}},
-    {328, 0, 0, -17.0, {423, 0, 0}, {0, -60.0, -60.0}},
-    {330, 0, 0, -18.8, {370, 0, 0}, {0, -60.0, -60.0}},
-    {332, 0, 0, -15.8, {453, 0, 0}, {0, -60.0, -60.0}},
-    {334, 0, 0, -22.1, {360, 0, 0}, {0, -60.0, -60.0}},
-    {336, 0, 0, -20.4, {379, 0, 0}, {0, -60.0, -60.0}},
-    {338, 0, 0, -16.3, {489, 0, 0}, {0, -60.0, -60.0}},
-    {340, 0, 0, -16.4, {561, 0, 0}, {0, -60.0, -60.0}},
-    {342, 0, 0, -16.3, {509, 0, 0}, {0, -60.0, -60.0}},
-    {344, 0, 0, -17.5, {487, 0, 0}, {0, -60.0, -60.0}},
-    {346, 0, 0, -18.9, {497, 0, 0}, {0, -60.0, -60.0}},
-    {348, 0, 0, -17.6, {481, 0, 0}, {0, -60.0, -60.0}},
-    {350, 0, 0, -19.0, {480, 0, 0}, {0, -60.0, -60.0}},
-    {352, 0, 0, -23.2, {447, 0, 0}, {0, -60.0, -60.0}},
-    {354, 0, 0, -21.1, {437, 0, 0}, {0, -60.0, -60.0}},
-    {356, 0, 0, -19.6, {476, 0, 0}, {0, -60.0, -60.0}},
-    {358, 0, 0, -25.0, {469, 0, 0}, {0, -60.0, -60.0}},
-    {360, 0, 0, -24.1, {614, 0, 0}, {0, -60.0, -60.0}},
-    {362, 0, 0, -22.6, {459, 0, 0}, {0, -60.0, -60.0}},
-    {364, 0, 0, -23.0, {478, 0, 0}, {0, -60.0, -60.0}},
-    {366, 0, 0, -29.0, {493, 0, 0}, {0, -60.0, -60.0}},
-    {368, 0, 0, -30.1, {492, 0, 0}, {0, -60.0, -60.0}},
-    {370, 0, 0, -25.5, {460, 0, 0}, {0, -60.0, -60.0}},
-    {372, 0, 0, -25.6, {476, 0, 0}, {0, -60.0, -60.0}},
-    {374, 0, 0, -31.8, {491, 0, 0}, {0, -60.0, -60.0}},
-    {376, 0, 0, -39.6, {556, 0, 0}, {0, -60.0, -60.0}},
-    {378, 0, 0, -35.3, {528, 0, 0}, {0, -60.0, -60.0}},
-    {380, 0, 0, -31.1, {468, 0, 0}, {0, -60.0, -60.0}},
-    {382, 0, 0, -32.7, {483, 0, 0}, {0, -60.0, -60.0}},
-    {384, 0, 0, -39.1, {501, 0, 0}, {0, -60.0, -60.0}},
-    {386, 0, 0, -46.2, {558, 0, 0}, {0, -60.0, -60.0}},
-    {388, 0, 0, -60.0, {558, 0, 0}, {0, -60.0, -60.0}},
-    {390, 0, 0, -60.0, {558, 0, 0}, {0, -60.0, -60.0}},
-    {392, 0, 0, -60.0, {558, 0, 0}, {0, -60.0, -60.0}},
-    {394, 0, 0, -60.0, {558, 0, 0}, {0, -60.0, -60.0}},
-    {396, 0, 0, -60.0, {558, 0, 0}, {0, -60.0, -60.0}},
-    {398, 0, 0, -60.0, {558, 0, 0}, {0, -60.0, -60.0}},
-    {400, 0, 0, -60.0, {558, 0, 0}, {0, -60.0, -60.0}},
-    {402, 0, 0, -60.0, {558, 0, 0}, {0, -60.0, -60.0}},
-    {405, 0, 0, -60.0, {558, 0, 0}, {0, -60.0, -60.0}},
-    /* M0 */
-    {5, 0, 0, -60.0, {239, 986, 1627}, {0, -13.9, -60.0}},
-    {15, 0, 0, -60.0, {239, 991, 1627}, {0, -14.8, -60.0}},
-    {25, 0, 0, -2.4, {1755, 1609, 1627}, {0, -11.4, -60.0}},
-    {35, 0, 0, 1.1, {1790, 1609, 1627}, {0, -12.9, -60.0}},
-    {60, 0, 0, 0.8, {1814, 1574, 1627}, {0, -60.0, -60.0}},
-    {180, 0, 0, -2.1, {1819, 1598, 1627}, {0, -60.0, -60.0}},
-    {185, 0, 0, -2.1, {1819, 1598, 1627}, {0, -1.0, -60.0}},
-    {210, 0, 0, -2.9, {1784, 1574, 1627}, {0, -0.9, -60.0}},
-    {215, 0, 0, -3.1, {1784, 1574, 1627}, {0, -60.0, -60.0}},
-    {930, 0, 0, -24.3, {1796, 1580, 1627}, {0, -14.7, -60.0}},
-    {935, 0, 0, -60.0, {1796, 251, 1627}, {0, -16.4, -60.0}},
-    {950, 0, 0, -60.0, {1819, 222, 1627}, {0, -15.6, -60.0}},
-    {980, 0, 0, -60.0, {1773, 251, 1627}, {0, -60.0, -60.0}},
-    {985, 0, 0, -60.0, {1796, 251, 1627}, {0, -11.5, -60.0}},
-    {990, 0, 0, -60.0, {1825, 251, 1627}, {0, -12.3, -0.9}},
-    {995, 0, 0, -60.0, {1825, 1475, 1627}, {0, -13.8, -13.4}},
-    {1000, 0, 0, -60.0, {1825, 1475, 1627}, {0, -11.2, -15.2}},
-    {1005, 0, 0, -60.0, {1814, 251, 1627}, {0, -14.1, -13.7}},
-    {1010, 0, 0, -60.0, {1805, 245, 478}, {0, -12.5, -14.4}},
-    {1030, 0, 0, -60.0, {1800, 245, 478}, {0, -60.0, -60.0}},
-    {1035, 0, 0, -60.0, {1795, 245, 478}, {0, -1.7, -60.0}},
-    {1060, 0, 0, -60.0, {1808, 233, 583}, {0, -10.6, -14.1}},
-    {1075, 0, 0, -60.0, {1831, 227, 1679}, {0, -11.5, -12.2}},
-    {1085, 0, 0, -60.0, {1819, 513, 1679}, {0, -13.5, -15.3}},
-    {1110, 0, 0, -60.0, {1796, 292, 443}, {0, -14.4, -16.5}},
-    {1130, 0, 0, -60.0, {1779, 612, 840}, {0, -8.9, -12.9}},
-    {1135, 2, 128, -60.0, {957, 1781, 2639}, {0, 26.7, 11.7}},
-    {1160, 2, 128, -60.0, {1014, 1784, 2636}, {0, 24.6, 10.0}},
-    {1165, 0, 0, -60.0, {1790, 239, 1586}, {0, -9.2, -13.0}},
-    {1210, 0, 0, -60.0, {1802, 251, 461}, {0, -4.6, -9.0}},
-    {1215, 0, 0, -60.0, {239, 496, 443}, {0, -5.8, -7.1}},
-    {1220, 0, 0, -60.0, {239, 991, 443}, {0, -12.5, -14.5}},
-    {1230, 0, 0, -60.0, {233, 496, 397}, {0, -2.2, -60.0}},
+    {240, 0, 0, -6, {2029, 1096, 1195}, {0, -60, -60}},
+    {280, 0, 0, -16.1, {2035, 571, 531}, {0, -7.5, -11}},
+    {285, 0, 0, -60, {239, 571, 531}, {0, -8, -10.3}},
+    {305, 0, 0, -60, {239, 478, 566}, {0, -13, -60}},
+    /* C7 is one tone that sweeps up from 500Hz to 2.7kHz and drops back five
+     * times in 300ms, faster each time: traced every 2ms */
+    {2, 0, 0, -60, {0, 0, 0}, {0, -60, -60}},
+    {20, 0, 0, -55.4, {263, 0, 0}, {0, -60, -60}},
+    {22, 0, 0, -32.2, {501, 0, 0}, {0, -60, -60}},
+    {26, 0, 0, -26, {524, 0, 0}, {0, -60, -60}},
+    {30, 0, 0, -42.8, {519, 0, 0}, {0, -60, -60}},
+    {32, 0, 0, -57, {182, 0, 0}, {0, -60, -60}},
+    {34, 0, 0, -46.2, {202, 0, 0}, {0, -60, -60}},
+    {36, 0, 0, -23.9, {488, 0, 0}, {0, -60, -60}},
+    {38, 0, 0, -17.8, {514, 0, 0}, {0, -60, -60}},
+    {44, 0, 0, -37.8, {520, 0, 0}, {0, -60, -60}},
+    {46, 0, 0, -49.7, {160, 0, 0}, {0, -60, -60}},
+    {48, 0, 0, -27, {461, 0, 0}, {0, -60, -60}},
+    {50, 0, 0, -15.8, {507, 0, 0}, {0, -60, -60}},
+    {56, 0, 0, -27.5, {525, 0, 0}, {0, -60, -60}},
+    {58, 0, 0, -49.4, {124, 0, 0}, {0, -60, -60}},
+    {60, 0, 0, -26.2, {459, 0, 0}, {0, -60, -60}},
+    {64, 0, 0, -11.2, {526, 0, 0}, {0, -60, -60}},
+    {68, 0, 0, -22.8, {609, 0, 0}, {0, -60, -60}},
+    {70, 0, 0, -33.7, {850, 0, 0}, {0, -60, -60}},
+    {74, 0, 0, -4.5, {1029, 0, 0}, {0, -60, -60}},
+    {82, 0, 0, -24.6, {1368, 0, 0}, {0, -60, -60}},
+    {84, 0, 0, -6.3, {1578, 0, 0}, {0, -60, -60}},
+    {86, 0, 0, -0.6, {1639, 0, 0}, {0, -60, -60}},
+    {92, 0, 0, -21.4, {1841, 0, 0}, {0, -60, -60}},
+    {98, 0, 0, -0, {2242, 0, 0}, {0, -60, -60}},
+    {104, 0, 0, -25.5, {2433, 0, 0}, {0, -60, -60}},
+    {108, 0, 0, -2.8, {2733, 0, 0}, {0, -60, -60}},
+    {110, 0, 0, -3.9, {2643, 0, 0}, {0, -60, -60}},
+    {116, 0, 0, -32.7, {1529, 0, 0}, {0, -60, -60}},
+    {118, 0, 0, -19.8, {542, 0, 0}, {0, -60, -60}},
+    {122, 0, 0, -8.8, {678, 0, 0}, {0, -60, -60}},
+    {126, 0, 0, -22.9, {825, 0, 0}, {0, -60, -60}},
+    {132, 0, 0, -2.5, {1191, 0, 0}, {0, -60, -60}},
+    {136, 0, 0, -14.1, {1345, 0, 0}, {0, -60, -60}},
+    {140, 0, 0, -1.3, {1630, 0, 0}, {0, -60, -60}},
+    {154, 0, 0, -7.7, {2207, 0, 0}, {0, -60, -60}},
+    {158, 0, 0, -3.4, {1974, 0, 0}, {0, -60, -60}},
+    {162, 0, 0, -15.1, {1571, 0, 0}, {0, -60, -60}},
+    {164, 0, 0, -11.2, {588, 0, 0}, {0, -60, -60}},
+    {166, 0, 0, -10.1, {576, 0, 0}, {0, -60, -60}},
+    {202, 0, 0, -3.4, {2081, 0, 0}, {0, -60, -60}},
+    {206, 0, 0, -4.7, {1594, 0, 0}, {0, -60, -60}},
+    {208, 0, 0, -12.9, {763, 0, 0}, {0, -60, -60}},
+    {212, 0, 0, -10.6, {627, 0, 0}, {0, -60, -60}},
+    {220, 0, 0, -6.3, {823, 0, 0}, {0, -60, -60}},
+    {224, 0, 0, -8.7, {771, 0, 0}, {0, -60, -60}},
+    {234, 0, 0, -6.4, {1030, 0, 0}, {0, -60, -60}},
+    {236, 0, 0, -2.6, {1296, 0, 0}, {0, -60, -60}},
+    {244, 0, 0, -4.5, {1286, 0, 0}, {0, -60, -60}},
+    {246, 0, 0, -1.4, {1557, 0, 0}, {0, -60, -60}},
+    {252, 0, 0, -3.6, {1209, 0, 0}, {0, -60, -60}},
+    {254, 0, 0, -9.5, {764, 0, 0}, {0, -60, -60}},
+    {258, 0, 0, -10.6, {542, 0, 0}, {0, -60, -60}},
+    {264, 0, 0, -12.7, {466, 0, 0}, {0, -60, -60}},
+    {268, 0, 0, -7.4, {731, 0, 0}, {0, -60, -60}},
+    {276, 0, 0, -8, {706, 0, 0}, {0, -60, -60}},
+    {280, 0, 0, -4.3, {939, 0, 0}, {0, -60, -60}},
+    {288, 0, 0, -4.2, {979, 0, 0}, {0, -60, -60}},
+    {290, 0, 0, -4.7, {1246, 0, 0}, {0, -60, -60}},
+    {294, 0, 0, -1.2, {1226, 0, 0}, {0, -60, -60}},
+    {302, 0, 0, -7.3, {856, 0, 0}, {0, -60, -60}},
+    {304, 0, 0, -11.6, {485, 0, 0}, {0, -60, -60}},
+    {306, 0, 0, -12.9, {428, 0, 0}, {0, -60, -60}},
+    {322, 0, 0, -13.9, {446, 0, 0}, {0, -60, -60}},
+    {330, 0, 0, -18.8, {370, 0, 0}, {0, -60, -60}},
+    {332, 0, 0, -15.8, {453, 0, 0}, {0, -60, -60}},
+    {334, 0, 0, -22.1, {360, 0, 0}, {0, -60, -60}},
+    {336, 0, 0, -20.4, {379, 0, 0}, {0, -60, -60}},
+    {340, 0, 0, -16.4, {561, 0, 0}, {0, -60, -60}},
+    {354, 0, 0, -21.1, {437, 0, 0}, {0, -60, -60}},
+    {358, 0, 0, -25, {469, 0, 0}, {0, -60, -60}},
+    {360, 0, 0, -24.1, {614, 0, 0}, {0, -60, -60}},
+    {362, 0, 0, -22.6, {459, 0, 0}, {0, -60, -60}},
+    {372, 0, 0, -25.6, {476, 0, 0}, {0, -60, -60}},
+    {376, 0, 0, -39.6, {556, 0, 0}, {0, -60, -60}},
+    {382, 0, 0, -32.7, {483, 0, 0}, {0, -60, -60}},
+    {388, 0, 0, -60, {558, 0, 0}, {0, -60, -60}},
+    {405, 0, 0, -60, {558, 0, 0}, {0, -60, -60}},
     /* M2 */
     {5, 2, 128, -60.0, {540, 1687, 2856}, {0, 37.6, 43.5}},
     {10, 2, 177, -60.0, {540, 1707, 2858}, {0, 38.1, 44.6}},
@@ -3235,26 +1640,20 @@ static const fx_point fx_points[] = {
 static const struct {
   short first, count;
 } fx_index[] = {
-    {0, 16}, {16, 11}, {27, 15}, {42, 18}, {60, 15}, {75, 16}, {91, 18},
-    {109, 19}, {128, 18}, {146, 16}, {162, 38}, {200, 38}, {238, 38}, {276, 20},
-    {296, 33}, {329, 27}, {356, 18}, {374, 26}, {400, 33}, {433, 32}, {465, 11},
-    {476, 14}, {490, 24}, {514, 15}, {529, 31}, {560, 27}, {587, 18}, {605, 19},
-    {624, 12}, {636, 159}, {795, 40}, {835, 38}, {873, 40}, {913, 25}, {938, 124},
-    {1062, 38}, {1100, 36}, {1136, 202}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
     {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-    {0, 0}, {0, 0}, {0, 0}, {1338, 33}, {0, 0}, {1371, 16},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 27}, {0, 0}, {27, 14},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {41, 56}, {97, 35}, {0, 0}, {132, 29}, {161, 23}, {184, 64},
+    {0, 0}, {248, 24}, {272, 78}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {350, 16},
 };
 
-/* the effects the chip gates: their tones pulse on and off at a steady rate,
- * which the chip's envelope oscillator does. on the VoxRecord recording's
- * third take, measured from each effect's envelope a millisecond at a time:
- * C0 and C4 pulse at the default speech pitch (85 and 87Hz), C2 at 66Hz, C3
- * at 59Hz, C6 at 125Hz, on for a quarter to two fifths of each cycle (B9
- * pulses at 87Hz too, but plays closer to the recording ungated). C8 and C9
- * are gated noise, built in effect() (see c_noise()). the envelope shape for each is the one that brought it closest to
- * the recording. 0 is not gated. for codes 200 to 254. C0, C2, C3, C4 and C6
- * have since been found to pulse with the voicing instead (see fx_pulse),
- * which takes the place of their gates here */
+/* the effects the chip gates: their tones pulse on and off at a steady rate
+ * (the envelope oscillator). 0 is not gated. for codes 200 to 254. C8 and C9
+ * are gated noise (see c_noise()), and C0, C2, C3, C4 and C6 pulse with the
+ * voicing instead (see fx_pulse) */
 /* FX-GATE-BEGIN */
 static const struct {
   short hz;
@@ -3275,64 +1674,13 @@ static const struct {
 };
 /* FX-GATE-END */
 
-/* the fourth VoxProbe recording plays the gated effects at pitch 60 and 150
- * and at bend 0 and 15, on both units. their gates follow the Pitch control,
- * a steady distance from the voicing frequency at all three pitches: C0 4.7Hz
- * under it, C2 20.5Hz under, C3 27.9Hz under, C4 on it and C6 42.7Hz over.
- * and each pulse has the same length whatever the rate: folded at the gate's
- * period, the envelope starts each pulse at full level and fades to nothing
- * in a fixed time, as the voicing does (see voice_fade): C4 as the voicing,
- * C0 about 1.3 times as long, C3 and C6 about 1.6 times, and C2 as long but
- * in two humps (its tones beating, restarted together each pulse). at low
- * pitch the rest of each period is silent; at high pitch the next pulse cuts
- * the fade short.
- *
- * C2, C4 and C6 play that way here: voiced at the voicing frequency plus
- * their distance, along voice_fade stretched as measured, with their noise
- * (see fx_noise) refitted to it. fitted on both recordings at the default
- * pitch, at pitch 60 and at bend 0, and checked at pitch 150, at speeds 90 and
- * 127 and at bend 15, which were left out: C2 73 to 77% and 2.5 to 2.2dB on
- * those, C4 65 to 71% and 4.0 to 3.6dB, C6 65 to 67% and 3.0 to 2.1dB. C0
- * and C3 came out worse played this way (on the 4kHz comparison of the
- * time); C3 pulses at a moving distance, and C0, measured full band, closer
- * and with a shorter fade (below).
- *
- * R8 and R9 pulse too. their low tone, near 650Hz, is restarted at half its
- * frequency: on both units of the fourth VoxProbe recording its lines are
- * 306, 333 and 380Hz apart at pitch 60, 88 and 150, the rate falls with the
- * tone (R9 333 to 296Hz over its first 40ms as the tone falls 667 to 609Hz),
- * and the rate doesn't move with Bend while the tone does, which is what put
- * the strongest line near 330Hz at bend 0 and near 1kHz at bend 15 (the low
- * tone read 126Hz lower there than on the VoxRecord recording). their high
- * tone (3.1 and 3.4kHz) is steady, so it moves to oscillator 4, and their
- * noise goes. here the restart rate is half the loudest tone of oscillators
- * 1 to 3, moved with the Pitch control as the others are; 10Hz either side
- * of half fitted 3 to 5 points worse. the fade, 0.7 of the voicing's, and
- * the tones' levels were fitted at pitch 60, at bend 0 and on the VoxRecord
- * recording: on pitch 150, bend 15 and the speeds, left out, R8 61 to 77% and
- * 4.9 to 2.8dB, R9 34 to 67% and 7.1 to 3.2dB. a rate rising 0.86Hz to each
- * hertz of the voicing, which pitch 150 suggests, made R8 worse.
- *
- * C3 pulses too, but its pulses slow down as it plays: on every C3 of both
- * units of the fourth VoxProbe recording and of the VoxRecord recording
- * they come 15, 15, 16, 16, 17, 19, 19, 22 and 22ms apart at the default
- * pitch, 5 to 6ms long each at every pitch. at speed 90 the slowing is
- * drawn out and at speed 127 squeezed, so it follows the trace, not the
- * clock, and at pitch 60 and 150 the gaps (24 to 50ms and 8 to 12ms) are
- * the voicing less a distance growing from about 20 to 42Hz along it, as at
- * the default pitch. so its distance falls by drift hertz for each
- * millisecond of the trace. fitted on every C3: 66.9 to 77.2% and 4.06 to
- * 2.67dB, pitch 60 50 to 72%, speed 127 65 to 79%, its old steady 59Hz gate
- * at pitch 60 having pulsed nearly twice as fast as the chip.
- *
- * C0 pulses as well. its gate is the voicing less 4 to 6Hz at all three
- * pitches (every 18.1, 12.3 and 7.0ms at pitch 60, 88 and 150, on both
- * units), where it had a steady 85Hz gate. a steady distance on that gate
- * made it worse, its square pulses too long at low pitch; pulses fading at
- * 0.66 of the voicing's fade, with its noise (see fx_noise) 6dB quieter,
- * fitted on every C0 of both recordings: 76.2 to 79.8% and 2.15 to 2.43dB,
- * pitch 60 73 to 80%, bend 0 76 to 83%, bend 15 72 to 78%, pitch 150 82 to
- * 79% */
+/* the effects that pulse with the voicing: each pulse restarts the tones at
+ * full level and fades along voice_fade stretched by fade, the pulses a steady
+ * distance (offset_hz) from the voicing frequency, so they follow the Pitch
+ * control: C0 4Hz under it, C2 20.5Hz under, C4 on it, C6 42.7Hz over. C3's
+ * distance grows along the sound (drift, in Hz a millisecond), so its pulses
+ * slow as it plays. R8 and R9 restart at half the frequency of their loudest
+ * tone */
 static const struct {
   short code;
   double offset_hz, fade, drift;
@@ -3355,27 +1703,10 @@ static int fx_pulse_index(int code) {
 }
 
 
-/* the noise under some of the traced effects. on both units of the VoxRecord
- * recording C0, C1, C2, C4, C6 and C7 have a broad noise under their tones
- * that the traces, which take the strongest peaks as tones, leave out (C1 is
- * as noisy as it is tonal). here oscillators 4 and 5 add it, at a level
- * against the tones' and gated as deep as fitted, along with their
- * frequencies and width, to both units at once. C0 70 to 78% and 2.7 to
- * 2.3dB, C1 42 to 67% and 5.7 to 1.7dB, C2 74 to 79% and 5.1 to 3.3dB, C4 68
- * to 75% and 4.8 to 4.3dB, C6 66 to 72% and 3.8 to 2.7dB, C7 58 to 65% and
- * 6.3 to 1.9dB. C3's made it match one unit worse, so it has none. C2's, C4's
- * and C6's levels and depths were fitted again for their pulses (see
- * fx_pulse): 3dB quieter each, and 0.4, 1 and 0 deep.
- *
- * the tone effects (see fx2_points) have it too: on both units a pure tone
- * sits on a skirt of noise and scattered lines 15 to 30dB under it, across
- * the band, 15 to 30dB over the recording's background, where these had
- * clean sines with nothing. fitted the same way (depth 0: they aren't gated)
- * and kept where neither unit's spectrogram match fell more than half a
- * point: M0 67 to 97% and 5.6 to 0.5dB, A0 66 to 86% and 7.9 to 2.0dB, B6
- * 6.1 to 0.7dB, R2 3.3 to 0.6dB, R9 5.5 to 1.8dB, A6 3.7 to 1.4dB. B7's made
- * its spectrogram worse, as did R3's, R7's, R8's, A5's, B3's and B4's. R9's
- * went again when it was found to pulse (see fx_pulse) */
+/* the noise under some of the traced effects, on oscillators 4 and 5: their
+ * frequencies, width (distortion), how deep it is gated and its level against
+ * the tones. the C series have a broad noise under their tones, and some tone
+ * effects a skirt of noise 15 to 30dB under them */
 static const struct {
   short code;
   double n1, n2, dist, depth, db;
@@ -3464,13 +1795,10 @@ static frame fx_frame(const fx_point *p, int code) {
   return f;
 }
 
-/* contour plays a traced effect: a quick start on the first point, then a
- * glide to each of the others in turn, then 3ms to silence. a tone doesn't
- * move while it is silent: it fades out where it was and fades in where it
- * is going. the traces give the silent points whatever the background held
- * (C3's first and last are 227Hz), and gliding from those swept each tone in
- * from far below, which at bend 15 put a strong sweep near 660Hz into C3 that
- * neither unit of the fourth VoxProbe recording has (10.6 to 10.1dB there) */
+/* contour plays a traced effect: a quick start on the first point, a glide to
+ * each of the others in turn, then 3ms to silence. a tone doesn't move while
+ * it is silent: it fades out where it was and fades in where it is going,
+ * rather than sweeping in from wherever the trace's silent points were */
 static void contour(sound *s, const fx_point *p, int n, int code) {
   frame fr[MAX_PARTS];
   for (int i = 0; i < n; i++)
@@ -3503,34 +1831,10 @@ static void contour(sound *s, const fx_point *p, int n, int code) {
   hold(s, 3, 3, quiet(fr[n - 1]));
 }
 
-/* C8 and C9 are noise from about 400Hz to 2.8kHz, flat within a few dB, the
- * same on both units of the VoxRecord recording and nearly the same as each
- * other, gated at 52Hz 13 to 16dB deep. their traces had taken the noise's
- * strongest peaks for three tones, falling away above 1.5kHz. here they are
- * oscillators 4 and 5 spread wide, gated by a saw (see noise_depth), every
- * 5ms at the level both units have (the mean of the two, in dB against the
- * loudest); the frequencies, width and depth are fitted to both units at
- * once, and the depth comes out at 0.83 (-15dB), as measured. C8 and C9
- * 34% to 58% and 8.4 to 2.9dB.
- *
- * the fourth VoxProbe recording moves them with Bend (see msa_expand()), and
- * at bend 15 both units' noise has a sharp lower edge, nothing under 560Hz
- * within 20dB, which a new random frequency every sample, spreading the
- * noise in long skirts around the oscillator, can't give. holding each random
- * value 0.75ms makes a band with edges instead; with the spread, the
- * frequencies and the hold fitted to both recordings at default and bend 0
- * and the pitches, and scored over four noise sequences rather than one
- * (the noise carries on from the sounds before), C8 and C9 go from 49 to 55%
- * and 2.8 to 2.3dB there, 52 to 56% and 2.8 to 2.5dB on the VoxRecord
- * recording, and at bend 15, left out of the fit, from 37 to 62% and 8.3 to
- * 4.4dB.
- *
- * the gate keeps time with Speed, not Pitch: on both units of the fourth
- * VoxProbe recording C8's gate comes every 19.1ms at the default speed, 32.7
- * at speed 90 and 11.2 at speed 127 (1.71 and 0.59 times, where Speed
- * stretches the sound 1.75 and 0.59 times), and every 18.9 to 19.2ms at
- * pitch 60 and 150 and both bends. C8 at speed 90 62 to 68%, at speed 127 85
- * to 86% */
+/* C8 and C9 are noise from about 400Hz to 2.8kHz, gated by a saw (see
+ * noise_depth) about 15dB deep every 19ms: oscillators 4 and 5 spread wide,
+ * each random value held 0.75ms (a band with edges, as on the chip), at these
+ * levels in dB every 5ms. the gate keeps time with Speed, not Pitch */
 static const double c8_db[] = {
     -16.2, -11.8, -9.5, -5.5, -1.1, -0.5, -0.4, -0.3, -0.1, -0.3,
     -0.2, -0.1, -0.3, -0.5, -0.5, -0.2, -0.9, -1.3, -1.8, -5.2,
@@ -3568,1494 +1872,254 @@ static const char *const effect_names[] = {
 
 
 /* FX2-BEGIN */
-/* the sound effects that are pure tones, traced again from both units'
- * VoxRecord recordings: the tones were tracked every millisecond (12ms
- * windows), each tone followed while it lasts and split where its level
- * jumps, the two units' tracks paired and averaged (and a strong one heard on
- * only one unit kept), and each reduced to the points where it bends (10Hz,
- * 2dB). each tone gets an oscillator of its own, which takes its frequency
- * while silent before the tone starts, so tones start and stop in place
- * rather than sweeping in from another frequency as the first traces did. the
- * levels are the recording's with the output filter's loss added back,
- * scaled so that the DTMF tones play at their measured level. effects whose
- * recordings are mostly not tones (buzzes and noise) keep fx_points. each
- * point is its time after the one before (glided to in a straight line), the
- * five oscillators' frequencies and their volumes. A4's trace stopped at
- * 1315Hz, where its volume reached the oscillators' limit; on both units it
- * goes on, faster, to 3.9kHz by 190ms, holds there and dies away by 245ms.
- * from 1083Hz on it is tracked again every 4ms (the two units within 50Hz
- * and 0.5dB of each other) with this library's output filter loss added
- * back, against its level at 1083Hz. the volumes had been cut off at the
- * oscillators' limit (31), which flattened the loudest part of 30 effects
- * (A0's swell, B6's and B7's fall, the DTMF tones' whole body); each effect
- * is now scaled so that its loudest point is at the limit instead, which
- * keeps its shape below it: effects 82.9 to 83.5% and 2.91 to 2.45dB, B2 4.9
- * to 0.6dB, R0 3.1 to 1.0dB. A4, M0 and R6 keep their cut-off volumes, which
- * matched both units better */
+/* the effects that are pure tones, traced from both units every millisecond,
+ * the levels with the output filter's loss added back, each effect scaled so
+ * its loudest point is at the oscillators' limit. each tone has an oscillator
+ * of its own and is kept as its knots: its time from the start of the sound in
+ * tenths of a millisecond, its frequency in Hz and its volume in hundredths,
+ * glided between in straight lines (only the knots a straight line can't pass
+ * close enough to are kept). before its first knot a tone sits silent at its
+ * first frequency */
+static const short fx_knots[] = {
+    10, 794, 0, 50, 794, 0, 60, 794, 252, 170, 803, 3100, 650, 802, 3011, 780, 809, 641,
+    790, 809, 0, 820, 809, 0, 10, 409, 0, 170, 409, 0, 180, 409, 408, 290, 450, 700,
+    530, 539, 844, 580, 570, 1056, 590, 570, 0, 820, 570, 0, 10, 635, 0, 30, 635, 0,
+    40, 635, 37, 50, 681, 79, 80, 681, 169, 120, 686, 174, 160, 660, 247, 200, 699, 324,
+    280, 698, 347, 350, 733, 341, 500, 735, 335, 580, 776, 342, 670, 767, 327, 690, 715, 266,
+    720, 701, 233, 760, 744, 257, 780, 768, 145, 790, 768, 0, 860, 768, 0, 10, 1105, 0,
+    60, 1105, 0, 70, 1105, 209, 80, 1105, 331, 110, 1105, 1319, 160, 1105, 2886, 650, 1105, 3100,
+    780, 1107, 362, 790, 1107, 254, 820, 1107, 37, 860, 1107, 0, 10, 1300, 0, 40, 1300, 18,
+    60, 1300, 101, 70, 1300, 244, 80, 1300, 418, 90, 1300, 715, 120, 1301, 1865, 160, 1304, 3078,
+    670, 1304, 3100, 720, 1302, 2124, 750, 1304, 1180, 760, 1305, 970, 790, 1306, 539, 800, 1305, 711,
+    810, 1305, 0, 950, 1305, 0, 10, 733, 0, 60, 733, 0, 70, 733, 103, 80, 653, 75,
+    120, 659, 241, 160, 685, 308, 700, 375, 355, 730, 377, 324, 750, 415, 259, 760, 418, 239,
+    800, 376, 257, 830, 412, 223, 900, 421, 24, 910, 420, 60, 920, 420, 0, 950, 420, 0,
+    10, 1697, 0, 150, 1697, 0, 160, 1697, 367, 200, 1667, 518, 240, 1606, 690, 250, 1606, 0,
+    950, 1606, 0, 10, 1605, 0, 30, 1605, 0, 40, 1605, 95, 70, 1605, 451, 130, 1605, 2438,
+    660, 1606, 2828, 800, 1607, 109, 810, 1606, 135, 820, 1606, 0, 960, 1606, 0, 10, 636, 0,
+    30, 636, 0, 200, 694, 736, 570, 771, 320, 960, 706, 0, 10, 345, 0, 170, 345, 0,
+    180, 345, 121, 650, 367, 436, 730, 296, 177, 820, 299, 62, 830, 299, 0, 960, 299, 0,
+    10, 1901, 13, 30, 1901, 75, 40, 1901, 183, 50, 1901, 334, 140, 1906, 3100, 650, 1907, 2920,
+    790, 1905, 130, 800, 1905, 0, 830, 1905, 0, 10, 629, 0, 30, 629, 0, 40, 629, 59,
+    60, 603, 85, 90, 588, 312, 110, 555, 390, 140, 549, 425, 170, 629, 475, 390, 863, 217,
+    540, 863, 106, 590, 857, 0, 830, 857, 0, 10, 462, 0, 210, 462, 0, 220, 462, 521,
+    230, 463, 402, 590, 719, 358, 640, 737, 394, 680, 702, 307, 720, 728, 292, 730, 728, 0,
+    830, 728, 0, 10, 282, 0, 330, 282, 0, 340, 282, 197, 370, 279, 222, 470, 314, 503,
+    630, 367, 452, 680, 365, 408, 690, 373, 355, 700, 441, 373, 710, 441, 0, 830, 441, 0,
+    10, 1476, 0, 370, 1476, 0, 380, 1476, 177, 500, 1634, 298, 510, 1634, 0, 830, 1634, 0,
+    10, 347, 12, 50, 347, 75, 70, 347, 185, 100, 307, 258, 120, 302, 291, 130, 310, 306,
+    150, 359, 372, 170, 379, 426, 640, 382, 419, 690, 349, 399, 760, 431, 419, 800, 492, 206,
+    830, 492, 108, 850, 496, 103, 860, 496, 0, 890, 496, 0, 10, 2206, 0, 30, 2206, 43,
+    50, 2206, 236, 70, 2206, 625, 120, 2207, 2483, 670, 2208, 2506, 690, 2208, 1790, 770, 2207, 271,
+    790, 2208, 97, 830, 2209, 0, 890, 2209, 0, 10, 810, 0, 90, 810, 0, 100, 810, 346,
+    170, 769, 414, 640, 757, 416, 670, 740, 404, 680, 812, 0, 690, 812, 171, 720, 831, 212,
+    760, 787, 218, 790, 736, 175, 800, 736, 0, 890, 736, 0, 10, 1668, 0, 40, 1668, 58,
+    80, 1646, 291, 130, 1489, 217, 140, 1707, 0, 250, 1707, 0, 260, 1707, 200, 340, 1643, 426,
+    460, 1482, 312, 470, 542, 0, 680, 542, 0, 690, 542, 579, 750, 518, 484, 780, 469, 279,
+    810, 442, 416, 850, 504, 335, 860, 504, 0, 930, 504, 0, 10, 477, 0, 30, 477, 0,
+    40, 477, 139, 70, 471, 414, 110, 462, 526, 140, 377, 578, 160, 358, 695, 220, 374, 720,
+    400, 307, 669, 520, 287, 199, 530, 1622, 0, 690, 1622, 0, 700, 1622, 346, 760, 1670, 263,
+    830, 1688, 287, 860, 1681, 119, 900, 1678, 0, 930, 1678, 0, 10, 2511, 0, 40, 2511, 0,
+    50, 2511, 75, 70, 2511, 326, 80, 2511, 529, 130, 2510, 3084, 700, 2509, 3100, 780, 2508, 677,
+    810, 2508, 172, 830, 2506, 50, 840, 2506, 0, 930, 2506, 0, 10, 760, 0, 130, 760, 0,
+    140, 760, 320, 150, 713, 466, 220, 735, 605, 610, 466, 794, 620, 466, 0, 930, 466, 0,
+    10, 878, 0, 250, 878, 0, 260, 878, 106, 440, 869, 332, 640, 643, 682, 680, 625, 746,
+    690, 625, 0, 930, 625, 0, 10, 2805, 0, 20, 2805, 0, 30, 2805, 73, 40, 2805, 160,
+    110, 2809, 2416, 640, 2809, 2959, 750, 2810, 485, 790, 2811, 0, 970, 2811, 0, 10, 593, 0,
+    30, 593, 0, 40, 593, 112, 70, 565, 345, 90, 492, 334, 120, 475, 367, 130, 493, 486,
+    140, 1002, 0, 150, 1002, 0, 160, 1002, 333, 280, 1133, 143, 290, 260, 0, 380, 260, 0,
+    390, 260, 188, 670, 287, 444, 750, 403, 472, 820, 409, 97, 970, 410, 0, 10, 639, 0,
+    100, 639, 0, 110, 639, 299, 180, 596, 566, 340, 697, 334, 350, 761, 0, 400, 761, 0,
+    410, 761, 183, 500, 780, 128, 510, 1077, 0, 670, 1077, 0, 680, 1077, 255, 770, 1138, 282,
+    820, 1141, 71, 880, 1141, 78, 910, 1144, 0, 970, 1144, 0, 10, 424, 0, 200, 424, 0,
+    210, 424, 419, 610, 591, 366, 710, 572, 346, 720, 572, 0, 970, 572, 0, 10, 901, 0,
+    270, 901, 0, 280, 901, 283, 640, 1196, 383, 700, 1273, 139, 710, 1273, 0, 970, 1273, 0,
+    10, 728, 0, 20, 728, 0, 30, 728, 89, 60, 706, 540, 120, 756, 1200, 130, 2783, 0,
+    140, 2783, 411, 170, 2770, 583, 230, 2655, 627, 310, 2660, 270, 350, 2663, 177, 360, 2670, 222,
+    370, 1910, 0, 420, 1910, 0, 430, 1910, 85, 480, 1905, 225, 510, 1903, 402, 660, 1828, 599,
+    720, 1792, 456, 730, 1730, 385, 740, 689, 0, 747, 689, 0, 757, 689, 773, 784, 682, 768,
+    801, 624, 798, 811, 614, 780, 836, 616, 365, 883, 619, 0, 913, 619, 0, 10, 575, 0,
+    110, 575, 0, 120, 575, 903, 140, 621, 1143, 200, 679, 1670, 670, 614, 1670, 720, 540, 1353,
+    762, 541, 1112, 772, 574, 1749, 779, 574, 0, 913, 574, 0, 10, 3111, 0, 50, 3111, 0,
+    60, 3111, 175, 110, 3111, 1417, 160, 3110, 2868, 690, 3112, 2571, 757, 3111, 925, 801, 3111, 215,
+    811, 3111, 129, 826, 3112, 126, 836, 3112, 0, 913, 3112, 0, 10, 2311, 0, 190, 2311, 0,
+    200, 2311, 107, 270, 2317, 180, 340, 2316, 399, 410, 2228, 386, 540, 2220, 193, 550, 2211, 242,
+    560, 2211, 0, 913, 2211, 0, 10, 680, 0, 20, 680, 0, 40, 678, 202, 70, 682, 622,
+    100, 689, 906, 150, 651, 1385, 190, 678, 1498, 670, 612, 1436, 710, 534, 1169, 730, 531, 1075,
+    764, 526, 946, 774, 545, 1372, 781, 545, 0, 917, 545, 0, 10, 1693, 0, 40, 1693, 0,
+    50, 1693, 130, 70, 1710, 276, 120, 1800, 400, 130, 1677, 0, 160, 1677, 0, 170, 1677, 326,
+    230, 1667, 526, 340, 1668, 518, 400, 1605, 516, 520, 1602, 497, 600, 1538, 547, 730, 1548, 412,
+    752, 1512, 366, 798, 1587, 323, 805, 1587, 0, 917, 1587, 0, 10, 3412, 0, 40, 3412, 0,
+    50, 3412, 150, 70, 3412, 524, 90, 3412, 1187, 170, 3413, 4266, 660, 3413, 4074, 759, 3411, 1025,
+    781, 3410, 620, 798, 3410, 451, 805, 3410, 0, 917, 3410, 0, 10, 334, 0, 180, 334, 0,
+    190, 334, 260, 210, 334, 149, 220, 350, 143, 250, 348, 129, 260, 328, 119, 280, 347, 107,
+    290, 324, 101, 310, 344, 97, 320, 327, 98, 340, 360, 108, 350, 331, 100, 380, 300, 110,
+    410, 312, 149, 430, 340, 184, 440, 323, 195, 450, 688, 0, 752, 688, 0, 759, 688, 621,
+    786, 684, 636, 805, 630, 660, 817, 618, 658, 887, 628, 0, 917, 628, 0, 10, 1615, 0,
+    120, 1615, 0, 130, 1615, 571, 2040, 2653, 443, 2050, 2574, 512, 2060, 415, 0, 3170, 415, 0,
+    3180, 415, 1070, 3220, 437, 1205, 3350, 385, 616, 3370, 327, 631, 3380, 327, 0, 3410, 327, 0,
+    10, 305, 0, 320, 305, 0, 330, 305, 192, 340, 301, 132, 400, 294, 535, 470, 215, 289,
+    520, 281, 605, 590, 242, 504, 650, 283, 802, 700, 262, 660, 1120, 340, 840, 1170, 314, 927,
+    1210, 360, 816, 1270, 269, 845, 1280, 274, 749, 1290, 361, 921, 1300, 224, 0, 1360, 224, 0,
+    1370, 224, 784, 1380, 266, 866, 1410, 291, 1242, 1460, 236, 1142, 1500, 280, 1538, 1540, 247, 1421,
+    1580, 279, 1769, 1690, 263, 1830, 2930, 384, 3100, 3160, 305, 1694, 3170, 305, 0, 3410, 305, 0,
+    10, 247, 37, 110, 247, 1050, 140, 247, 2036, 210, 247, 1965, 320, 261, 3100, 930, 496, 3100,
+    970, 534, 3100, 1451, 1122, 2799, 1611, 1712, 2041, 1811, 2464, 1874, 1851, 2689, 1439, 1971, 3578, 1041,
+    2011, 3878, 1859, 2051, 3911, 2295, 2091, 3913, 2153, 2491, 3913, 417, 2501, 3913, 0, 2531, 3913, 0,
+    10, 644, 0, 30, 644, 0, 40, 644, 167, 50, 641, 167, 90, 641, 1267, 130, 636, 1894,
+    1890, 405, 1913, 1920, 417, 1890, 1950, 389, 1980, 1990, 413, 1827, 2030, 358, 2181, 2060, 409, 1766,
+    2070, 409, 1747, 2100, 345, 2417, 2110, 338, 2584, 2120, 341, 2461, 2160, 409, 1578, 2190, 341, 2388,
+    2240, 336, 2487, 2265, 377, 1581, 2273, 410, 1524, 2278, 410, 0, 5590, 410, 0, 10, 333, 0,
+    2273, 333, 0, 2278, 333, 1062, 2298, 333, 913, 2398, 331, 3100, 2568, 333, 631, 2578, 393, 461,
+    2588, 409, 421, 2608, 390, 541, 2618, 333, 796, 2678, 331, 2645, 2758, 334, 1697, 2768, 384, 1230,
+    2788, 411, 1039, 2798, 401, 1137, 2818, 333, 1958, 2858, 333, 2472, 2868, 335, 2098, 2888, 405, 1364,
+    2898, 413, 1307, 2918, 384, 1535, 2928, 338, 1951, 2948, 335, 2271, 2958, 342, 2017, 2968, 386, 1649,
+    2988, 414, 1460, 3008, 388, 1625, 3018, 350, 1884, 3028, 348, 1963, 3058, 414, 1563, 3078, 408, 1585,
+    3098, 376, 1751, 3128, 418, 1615, 3158, 403, 1628, 3198, 423, 1621, 5002, 628, 1444, 5510, 628, 64,
+    5590, 628, 0, 10, 308, 22, 70, 308, 171, 110, 308, 1200, 150, 457, 2815, 570, 1649, 1859,
+    1270, 1649, 72, 1280, 1649, 0, 1970, 1649, 0, 10, 262, 0, 160, 262, 0, 170, 262, 2141,
+    240, 304, 3057, 710, 799, 3100, 1650, 804, 1509, 1900, 804, 135, 1940, 804, 0, 1970, 804, 0,
+    10, 1145, 0, 20, 1145, 0, 30, 1145, 67, 120, 1156, 2309, 1540, 1462, 1032, 2400, 1463, 226,
+    3000, 1463, 111, 3460, 1463, 73, 4120, 1456, 85, 4130, 1456, 0, 5900, 1456, 0, 10, 418, 0,
+    110, 418, 0, 120, 418, 48, 150, 418, 50, 940, 418, 1177, 2390, 515, 3093, 4770, 867, 2850,
+    5650, 928, 203, 5750, 928, 0, 5900, 928, 0, 10, 876, 0, 140, 876, 0, 150, 876, 48,
+    850, 874, 901, 2450, 1229, 2465, 4770, 1748, 2190, 5870, 1815, 0, 5900, 1815, 0, 10, 348, 16,
+    70, 348, 98, 200, 348, 1080, 640, 999, 3100, 1300, 1003, 33, 1310, 284, 0, 1620, 284, 0,
+    1730, 280, 400, 1800, 280, 1172, 2100, 498, 2966, 2690, 502, 39, 2760, 502, 0, 10, 289, 0,
+    290, 289, 0, 300, 289, 1106, 350, 290, 1380, 650, 498, 2922, 1230, 501, 119, 1240, 544, 0,
+    1460, 544, 11, 1610, 544, 553, 2070, 1966, 2370, 2680, 2008, 52, 2760, 2008, 0, 10, 1303, 0,
+    20, 1303, 0, 40, 1302, 179, 50, 1302, 362, 100, 1301, 1890, 560, 1295, 2068, 2130, 304, 3100,
+    2250, 252, 1216, 2400, 251, 0, 2560, 251, 0, 10, 2431, 0, 30, 2431, 0, 40, 2431, 129,
+    110, 2449, 1676, 810, 2431, 1913, 2420, 1334, 2296, 2490, 1308, 393, 2520, 1308, 46, 2530, 1308, 0,
+    2560, 1308, 0, 10, 2603, 0, 20, 2603, 0, 30, 2603, 102, 110, 2606, 3076, 1150, 2607, 3100,
+    1740, 2605, 31, 1780, 2605, 0, 10, 1421, 0, 30, 1421, 0, 40, 1421, 169, 80, 1416, 1565,
+    130, 1473, 2909, 1490, 3837, 891, 1530, 3879, 996, 1570, 3822, 875, 2630, 1546, 2752, 2700, 1418, 3074,
+    3870, 1407, 51, 3940, 1407, 0, 10, 1406, 0, 30, 1406, 0, 40, 1406, 117, 50, 1406, 334,
+    120, 1412, 3032, 1220, 1414, 3018, 1270, 1562, 1652, 1280, 1869, 0, 1310, 1869, 0, 1320, 1869, 2459,
+    1390, 2266, 2525, 1400, 2395, 0, 1410, 2395, 2678, 1460, 2507, 3023, 1590, 2508, 3007, 1630, 2461, 1731,
+    1640, 1767, 0, 1650, 1767, 1698, 1710, 1707, 2906, 2820, 1707, 2887, 3920, 1708, 118, 3990, 1709, 10,
+    4030, 1709, 0, 10, 260, 0, 2040, 260, 0, 2070, 257, 32, 2160, 259, 251, 2230, 298, 509,
+    2610, 601, 510, 3920, 600, 0, 4030, 600, 0, 10, 3103, 0, 20, 3103, 0, 30, 3103, 130,
+    120, 3114, 2135, 1100, 3112, 2072, 1150, 3076, 788, 1170, 3075, 154, 1180, 3075, 0, 3100, 3075, 0,
+    10, 615, 0, 30, 615, 0, 40, 615, 130, 120, 596, 815, 2280, 602, 815, 3020, 602, 0,
+    3100, 602, 0, 10, 1416, 0, 1100, 1416, 0, 1110, 1416, 67, 1140, 1422, 619, 1200, 1404, 2994,
+    2310, 1404, 3082, 3070, 1404, 0, 3100, 1404, 0, 10, 1828, 0, 20, 1828, 0, 30, 1828, 216,
+    70, 1828, 1632, 140, 1855, 3020, 230, 1835, 1678, 310, 1805, 3100, 360, 1841, 2495, 2730, 1805, 2951,
+    2780, 1853, 1682, 2860, 1807, 1498, 2920, 1858, 3074, 3690, 1834, 166, 3740, 1834, 29, 3790, 1839, 0,
+    10, 1620, 0, 400, 1620, 0, 410, 1620, 1524, 1470, 357, 2167, 1520, 325, 2115, 1560, 353, 2163,
+    2600, 1574, 1487, 2640, 1617, 1919, 2650, 1617, 0, 3790, 1617, 0, 10, 982, 0, 30, 982, 0,
+    50, 981, 277, 120, 965, 2565, 780, 320, 3100, 870, 260, 1375, 1030, 258, 33, 1040, 258, 0,
+    1660, 258, 0, 10, 3508, 0, 30, 3508, 0, 40, 3508, 56, 50, 3502, 212, 130, 3511, 1656,
+    1100, 3514, 1599, 1620, 3517, 132, 1630, 3517, 0, 1660, 3517, 0, 10, 3503, 0, 20, 3503, 0,
+    30, 3503, 141, 90, 3507, 2297, 270, 3452, 1305, 280, 3493, 0, 480, 3493, 0, 490, 3493, 1154,
+    610, 3513, 2647, 680, 3491, 949, 690, 3469, 0, 820, 3469, 0, 830, 3469, 1274, 890, 3509, 2586,
+    940, 3463, 1313, 950, 3463, 0, 1710, 3463, 0, 10, 1821, 0, 230, 1821, 0, 240, 1821, 101,
+    260, 1821, 447, 310, 1805, 2904, 460, 1804, 3086, 510, 1803, 1026, 520, 1803, 0, 610, 1803, 0,
+    620, 1803, 47, 630, 1802, 162, 640, 1802, 361, 700, 1803, 3096, 800, 1809, 2578, 850, 1823, 298,
+    870, 1822, 0, 900, 1822, 0, 910, 1822, 117, 930, 1822, 496, 970, 1808, 2565, 1120, 1804, 3100,
+    1620, 1805, 203, 1670, 1805, 33, 1710, 1805, 0, 10, 2908, 0, 20, 2908, 0, 30, 2908, 174,
+    60, 2910, 1164, 100, 2914, 2900, 410, 2912, 3100, 440, 2910, 2556, 490, 2907, 434, 510, 2907, 70,
+    520, 3884, 0, 610, 3884, 0, 620, 3884, 115, 630, 3903, 460, 660, 3897, 1353, 730, 3918, 2813,
+    1060, 3916, 2742, 1350, 3918, 1385, 1590, 3917, 202, 1600, 3917, 0, 1630, 3917, 0, 10, 2085, 0,
+    20, 2085, 0, 30, 2085, 84, 40, 2086, 240, 110, 2082, 2804, 660, 1752, 2853, 1250, 1501, 3015,
+    2010, 1330, 3100, 2740, 1305, 2417, 3150, 1305, 124, 3170, 1305, 49, 3220, 1306, 0, 10, 3618, 0,
+    350, 3618, 0, 360, 3618, 455, 410, 3621, 1401, 580, 3619, 2237, 1240, 3005, 2894, 2300, 2611, 2451,
+    2690, 2609, 2454, 2840, 2611, 1771, 3150, 2612, 97, 3170, 2613, 82, 3180, 2613, 0, 3220, 2613, 0,
+    10, 716, 0, 85, 716, 0, 95, 716, 128, 150, 716, 268, 508, 716, 266, 658, 716, 948,
+    939, 597, 2179, 1302, 586, 2165, 1597, 472, 2136, 1627, 421, 2188, 1647, 453, 1985, 1672, 441, 1909,
+    1682, 339, 0, 1767, 339, 0, 1777, 339, 2131, 1832, 332, 3100, 1882, 324, 1153, 1888, 406, 0,
+    1893, 406, 0, 1899, 406, 1757, 1909, 357, 1011, 1929, 318, 1300, 2009, 302, 2532, 2049, 323, 2383,
+    2109, 289, 2322, 2259, 299, 2174, 2329, 305, 852, 2429, 305, 457, 2489, 305, 687, 2549, 305, 471,
+    2609, 305, 680, 2659, 305, 467, 2719, 305, 679, 2779, 305, 466, 2829, 305, 679, 2889, 305, 473,
+    2949, 305, 688, 3009, 305, 473, 3069, 305, 677, 3119, 305, 463, 3179, 305, 670, 3239, 305, 399,
+    3299, 305, 405, 3379, 305, 68, 3389, 316, 123, 3399, 316, 0, 3429, 316, 0, 10, 2705, 0,
+    95, 2705, 0, 100, 2705, 805, 110, 2708, 389, 180, 2710, 1278, 540, 2668, 1062, 550, 2708, 1595,
+    560, 901, 0, 807, 901, 0, 812, 901, 1306, 912, 903, 2083, 1052, 902, 1799, 1288, 898, 307,
+    1302, 898, 268, 1312, 899, 361, 1322, 281, 0, 1652, 281, 0, 1662, 281, 1755, 1692, 361, 2622,
+    1712, 360, 2545, 1732, 417, 1680, 1752, 424, 1500, 1767, 406, 1628, 1777, 406, 0, 3429, 406, 0,
+    10, 302, 0, 862, 302, 0, 872, 302, 254, 939, 301, 493, 1112, 299, 1822, 1288, 300, 2004,
+    1482, 300, 2228, 1492, 300, 0, 3429, 300, 0, 10, 965, 0, 30, 965, 0, 40, 965, 318,
+    50, 968, 764, 70, 963, 1775, 110, 950, 3100, 1010, 950, 3065, 1190, 950, 1788, 1420, 949, 899,
+    1480, 949, 535, 1540, 949, 236, 1570, 949, 98, 1590, 950, 79, 1600, 950, 0, 1640, 950, 0,
+    10, 1334, 0, 70, 1334, 0, 80, 1334, 1754, 140, 1346, 2730, 980, 1341, 2711, 1190, 1342, 1853,
+    1420, 1342, 641, 1480, 1342, 486, 1510, 1342, 302, 1550, 1342, 136, 1590, 1342, 26, 1640, 1344, 0,
+    10, 690, 0, 40, 690, 0, 50, 690, 377, 70, 697, 878, 90, 705, 2040, 130, 707, 3100,
+    1030, 701, 3046, 1160, 701, 2016, 1360, 701, 1069, 1440, 701, 829, 1550, 701, 209, 1610, 700, 0,
+    1640, 700, 0, 10, 1231, 0, 70, 1231, 0, 80, 1231, 1247, 90, 1213, 1727, 130, 1214, 2589,
+    1030, 1215, 2047, 1160, 1215, 1978, 1530, 1215, 250, 1600, 1215, 0, 1640, 1215, 0, 10, 714, 0,
+    40, 714, 0, 50, 714, 328, 60, 693, 411, 130, 704, 3098, 1040, 701, 3100, 1590, 701, 57,
+    1620, 701, 0, 1660, 701, 0, 10, 1350, 0, 60, 1350, 0, 90, 1343, 1405, 140, 1347, 2533,
+    1110, 1341, 2163, 1500, 1341, 426, 1590, 1341, 48, 1660, 1342, 0, 10, 699, 0, 40, 699, 0,
+    60, 699, 424, 70, 699, 783, 80, 699, 1447, 130, 706, 3100, 1020, 701, 3055, 1550, 701, 203,
+    1610, 701, 0, 1640, 701, 0, 10, 1489, 0, 60, 1489, 0, 70, 1489, 1019, 130, 1479, 2366,
+    1110, 1480, 2004, 1540, 1480, 185, 1600, 1480, 0, 1640, 1480, 0, 10, 794, 0, 40, 794, 0,
+    80, 780, 1568, 130, 773, 3098, 1000, 773, 3100, 1590, 773, 48, 1650, 773, 0, 10, 1202, 0,
+    80, 1202, 0, 90, 1202, 1839, 1150, 1215, 2036, 1460, 1215, 603, 1590, 1215, 0, 1650, 1215, 0,
+    10, 765, 0, 40, 765, 0, 50, 765, 221, 70, 765, 772, 80, 765, 1441, 130, 772, 3100,
+    1030, 773, 3052, 1590, 772, 54, 1610, 772, 0, 1640, 772, 0, 10, 1354, 0, 70, 1354, 0,
+    80, 1354, 1460, 140, 1346, 2540, 1150, 1341, 1980, 1280, 1341, 1177, 1540, 1341, 233, 1600, 1342, 0,
+    1640, 1342, 0, 10, 780, 0, 40, 780, 0, 50, 780, 449, 60, 758, 503, 70, 758, 782,
+    90, 757, 1893, 130, 771, 3100, 1040, 773, 3028, 1320, 773, 1210, 1450, 773, 791, 1550, 773, 227,
+    1610, 773, 0, 1640, 773, 0, 10, 1476, 0, 60, 1476, 0, 70, 1476, 424, 80, 1470, 1089,
+    130, 1479, 2440, 1050, 1480, 2332, 1540, 1481, 214, 1610, 1480, 0, 1640, 1480, 0, 10, 895, 0,
+    30, 895, 0, 40, 895, 577, 50, 862, 445, 130, 861, 3100, 1080, 856, 2759, 1570, 855, 73,
+    1600, 856, 0, 1630, 856, 0, 10, 1220, 0, 70, 1220, 0, 90, 1212, 1894, 130, 1214, 2718,
+    1050, 1214, 2570, 1580, 1215, 0, 1630, 1215, 0, 10, 878, 0, 30, 878, 0, 50, 853, 307,
+    130, 860, 3100, 1030, 856, 3044, 1590, 854, 47, 1640, 854, 0, 10, 1360, 0, 70, 1360, 0,
+    80, 1360, 853, 130, 1346, 2607, 1070, 1342, 2380, 1590, 1342, 41, 1600, 1342, 0, 1640, 1342, 0,
+    10, 865, 0, 40, 865, 0, 90, 850, 2007, 1050, 856, 2991, 1600, 856, 49, 1650, 856, 0,
+    10, 1486, 0, 60, 1486, 0, 70, 1486, 737, 130, 1480, 2501, 1070, 1480, 2337, 1610, 1483, 0,
+    1650, 1483, 0, 10, 936, 0, 40, 936, 0, 50, 936, 507, 130, 950, 3100, 1010, 949, 3065,
+    1570, 948, 93, 1580, 949, 111, 1590, 949, 0, 1620, 949, 0, 10, 1211, 0, 100, 1211, 0,
+    110, 1211, 2174, 140, 1215, 2827, 1010, 1215, 2786, 1500, 1216, 353, 1520, 1216, 301, 1530, 1217, 375,
+    1540, 1217, 0, 1620, 1217, 0, 10, 953, 0, 40, 953, 0, 50, 953, 848, 130, 949, 3100,
+    1050, 950, 2899, 1560, 949, 124, 1600, 949, 0, 1640, 949, 0, 10, 1470, 0, 70, 1470, 0,
+    80, 1470, 1530, 990, 1479, 2579, 1590, 1478, 29, 1640, 1478, 0, 10, 1732, 0, 50, 1732, 0,
+    60, 1732, 3100, 70, 1784, 1971, 100, 1810, 3100, 2570, 1782, 3100, 2680, 1844, 3100, 3360, 1782, 3100,
+    8590, 1783, 428, 9720, 1783, 357, 9850, 1783, 244, 10920, 1783, 253, 11040, 1783, 133, 11880, 1783, 130,
+    11950, 1783, 41, 11960, 1794, 70, 11970, 1794, 0, 12000, 1794, 0,
+};
+
+/* each tone: its effect, its oscillator, where its knots start in fx_knots
+ * (in knots) and how many */
+static const struct {
+  short code, osc, first, count;
+} fx_tones[] = {
+    {200, 0, 0, 8}, {200, 1, 8, 8}, {201, 0, 16, 19}, {201, 1, 35, 11},
+    {202, 0, 46, 16}, {202, 1, 62, 16}, {202, 2, 78, 7}, {203, 0, 85, 10},
+    {203, 1, 95, 5}, {203, 2, 100, 8}, {204, 0, 108, 9}, {204, 1, 117, 12},
+    {204, 2, 129, 10}, {204, 3, 139, 11}, {204, 4, 150, 6}, {205, 0, 156, 16},
+    {205, 1, 172, 11}, {205, 2, 183, 13}, {206, 0, 196, 18}, {206, 1, 214, 18},
+    {206, 2, 232, 12}, {206, 3, 244, 8}, {206, 4, 252, 8}, {207, 0, 260, 9},
+    {207, 1, 269, 18}, {207, 2, 287, 17}, {207, 3, 304, 7}, {207, 4, 311, 7},
+    {208, 0, 318, 29}, {208, 2, 347, 11}, {208, 3, 358, 12}, {208, 4, 370, 10},
+    {209, 0, 380, 14}, {209, 1, 394, 18}, {209, 3, 412, 12}, {209, 4, 424, 25},
+    {210, 0, 449, 13}, {210, 1, 462, 30}, {214, 0, 492, 18}, {215, 0, 510, 23},
+    {215, 1, 533, 38}, {216, 0, 571, 8}, {216, 1, 579, 9}, {217, 0, 588, 11},
+    {217, 1, 599, 10}, {217, 2, 609, 8}, {218, 0, 617, 12}, {218, 1, 629, 12},
+    {219, 0, 641, 10}, {219, 1, 651, 10}, {220, 0, 661, 7}, {221, 0, 668, 12},
+    {222, 0, 680, 23}, {222, 1, 703, 8}, {223, 0, 711, 9}, {223, 1, 720, 7},
+    {223, 2, 727, 8}, {224, 0, 735, 15}, {224, 1, 750, 10}, {225, 0, 760, 9},
+    {225, 1, 769, 9}, {226, 0, 778, 17}, {226, 1, 795, 24}, {227, 0, 819, 20},
+    {228, 0, 839, 12}, {228, 1, 851, 13}, {235, 0, 864, 47}, {235, 1, 911, 25},
+    {235, 2, 936, 9}, {240, 0, 945, 15}, {240, 1, 960, 12}, {241, 0, 972, 13},
+    {241, 1, 985, 10}, {242, 0, 995, 9}, {242, 1, 1004, 8}, {243, 0, 1012, 10},
+    {243, 1, 1022, 8}, {244, 0, 1030, 7}, {244, 1, 1037, 7}, {245, 0, 1044, 10},
+    {245, 1, 1054, 9}, {246, 0, 1063, 13}, {246, 1, 1076, 9}, {247, 0, 1085, 9},
+    {247, 1, 1094, 7}, {248, 0, 1101, 7}, {248, 1, 1108, 8}, {249, 0, 1116, 6},
+    {249, 1, 1122, 7}, {250, 0, 1129, 9}, {250, 1, 1138, 10}, {251, 0, 1148, 8},
+    {251, 1, 1156, 6}, {252, 0, 1162, 18},
+};
+
 typedef struct fx2_point {
   float ms;
   float freq[5];
   float vol[5];
 } fx2_point;
 
-static const fx2_point fx2_points[] = {
-    {1.0, {794, 409, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {794, 409, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {794, 409, 0, 0, 0}, {2.52, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {798, 409, 0, 0, 0}, {16.51, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {803, 409, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {803, 409, 0, 0, 0}, {30.98, 4.08, 0.00, 0.00, 0.00}},
-    {11.0, {803, 450, 0, 0, 0}, {30.78, 7.00, 0.00, 0.00, 0.00}},
-    {24.0, {802, 539, 0, 0, 0}, {30.33, 8.44, 0.00, 0.00, 0.00}},
-    {5.0, {802, 570, 0, 0, 0}, {30.24, 10.56, 0.00, 0.00, 0.00}},
-    {1.0, {802, 570, 0, 0, 0}, {30.22, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {802, 570, 0, 0, 0}, {30.11, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {804, 570, 0, 0, 0}, {19.17, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {809, 570, 0, 0, 0}, {6.41, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {809, 570, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {809, 570, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {635, 1105, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {635, 1105, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {635, 1105, 0, 0, 0}, {0.37, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {681, 1105, 0, 0, 0}, {0.79, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {681, 1105, 0, 0, 0}, {1.01, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {681, 1105, 0, 0, 0}, {1.31, 2.09, 0.00, 0.00, 0.00}},
-    {1.0, {681, 1105, 0, 0, 0}, {1.69, 3.31, 0.00, 0.00, 0.00}},
-    {3.0, {685, 1105, 0, 0, 0}, {1.72, 13.19, 0.00, 0.00, 0.00}},
-    {1.0, {686, 1105, 0, 0, 0}, {1.74, 15.42, 0.00, 0.00, 0.00}},
-    {4.0, {660, 1105, 0, 0, 0}, {2.47, 28.86, 0.00, 0.00, 0.00}},
-    {4.0, {699, 1105, 0, 0, 0}, {3.24, 29.03, 0.00, 0.00, 0.00}},
-    {8.0, {698, 1105, 0, 0, 0}, {3.47, 29.37, 0.00, 0.00, 0.00}},
-    {7.0, {733, 1105, 0, 0, 0}, {3.41, 29.67, 0.00, 0.00, 0.00}},
-    {15.0, {735, 1105, 0, 0, 0}, {3.35, 30.33, 0.00, 0.00, 0.00}},
-    {8.0, {776, 1105, 0, 0, 0}, {3.42, 30.69, 0.00, 0.00, 0.00}},
-    {1.0, {766, 1105, 0, 0, 0}, {3.42, 30.73, 0.00, 0.00, 0.00}},
-    {2.0, {777, 1105, 0, 0, 0}, {3.40, 30.82, 0.00, 0.00, 0.00}},
-    {1.0, {765, 1105, 0, 0, 0}, {3.35, 30.86, 0.00, 0.00, 0.00}},
-    {3.0, {766, 1105, 0, 0, 0}, {3.31, 31.00, 0.00, 0.00, 0.00}},
-    {2.0, {767, 1105, 0, 0, 0}, {3.27, 27.70, 0.00, 0.00, 0.00}},
-    {2.0, {715, 1105, 0, 0, 0}, {2.66, 24.75, 0.00, 0.00, 0.00}},
-    {1.0, {710, 1104, 0, 0, 0}, {2.55, 23.40, 0.00, 0.00, 0.00}},
-    {2.0, {701, 1105, 0, 0, 0}, {2.33, 16.96, 0.00, 0.00, 0.00}},
-    {3.0, {733, 1107, 0, 0, 0}, {2.51, 10.46, 0.00, 0.00, 0.00}},
-    {1.0, {744, 1107, 0, 0, 0}, {2.57, 7.34, 0.00, 0.00, 0.00}},
-    {2.0, {768, 1107, 0, 0, 0}, {1.45, 3.62, 0.00, 0.00, 0.00}},
-    {1.0, {768, 1107, 0, 0, 0}, {0.00, 2.54, 0.00, 0.00, 0.00}},
-    {3.0, {768, 1107, 0, 0, 0}, {0.00, 0.37, 0.00, 0.00, 0.00}},
-    {1.0, {768, 1107, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {768, 1107, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1300, 733, 1697, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1300, 733, 1697, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1300, 733, 1697, 0, 0}, {0.18, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1300, 733, 1697, 0, 0}, {1.01, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1300, 733, 1697, 0, 0}, {2.44, 1.03, 0.00, 0.00, 0.00}},
-    {1.0, {1300, 653, 1697, 0, 0}, {4.18, 0.75, 0.00, 0.00, 0.00}},
-    {1.0, {1300, 655, 1697, 0, 0}, {7.15, 1.01, 0.00, 0.00, 0.00}},
-    {3.0, {1301, 659, 1697, 0, 0}, {18.65, 2.41, 0.00, 0.00, 0.00}},
-    {3.0, {1303, 678, 1697, 0, 0}, {27.16, 2.89, 0.00, 0.00, 0.00}},
-    {1.0, {1304, 685, 1697, 0, 0}, {30.78, 3.08, 3.67, 0.00, 0.00}},
-    {4.0, {1304, 662, 1667, 0, 0}, {30.80, 3.11, 5.18, 0.00, 0.00}},
-    {4.0, {1304, 639, 1606, 0, 0}, {30.81, 3.14, 6.90, 0.00, 0.00}},
-    {1.0, {1304, 633, 1606, 0, 0}, {30.82, 3.15, 0.00, 0.00, 0.00}},
-    {42.0, {1304, 392, 1606, 0, 0}, {31.00, 3.52, 0.00, 0.00, 0.00}},
-    {3.0, {1303, 375, 1606, 0, 0}, {24.71, 3.55, 0.00, 0.00, 0.00}},
-    {2.0, {1302, 376, 1606, 0, 0}, {21.24, 3.34, 0.00, 0.00, 0.00}},
-    {1.0, {1303, 377, 1606, 0, 0}, {17.46, 3.24, 0.00, 0.00, 0.00}},
-    {2.0, {1304, 415, 1606, 0, 0}, {11.80, 2.59, 0.00, 0.00, 0.00}},
-    {1.0, {1305, 418, 1606, 0, 0}, {9.70, 2.39, 0.00, 0.00, 0.00}},
-    {3.0, {1306, 386, 1606, 0, 0}, {5.39, 2.52, 0.00, 0.00, 0.00}},
-    {1.0, {1305, 376, 1606, 0, 0}, {7.11, 2.57, 0.00, 0.00, 0.00}},
-    {1.0, {1305, 388, 1606, 0, 0}, {0.00, 2.45, 0.00, 0.00, 0.00}},
-    {2.0, {1305, 412, 1606, 0, 0}, {0.00, 2.23, 0.00, 0.00, 0.00}},
-    {7.0, {1305, 421, 1606, 0, 0}, {0.00, 0.24, 0.00, 0.00, 0.00}},
-    {1.0, {1305, 420, 1606, 0, 0}, {0.00, 0.60, 0.00, 0.00, 0.00}},
-    {1.0, {1305, 420, 1606, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1305, 420, 1606, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1605, 636, 345, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1605, 636, 345, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1605, 636, 345, 0, 0}, {0.95, 0.87, 0.00, 0.00, 0.00}},
-    {3.0, {1605, 636, 345, 0, 0}, {4.51, 2.96, 0.00, 0.00, 0.00}},
-    {3.0, {1604, 645, 345, 0, 0}, {13.51, 3.97, 0.00, 0.00, 0.00}},
-    {3.0, {1605, 653, 345, 0, 0}, {24.38, 5.32, 0.00, 0.00, 0.00}},
-    {3.0, {1606, 662, 345, 0, 0}, {29.19, 7.12, 0.00, 0.00, 0.00}},
-    {1.0, {1607, 670, 345, 0, 0}, {31.00, 7.18, 0.00, 0.00, 0.00}},
-    {1.0, {1607, 678, 345, 0, 0}, {30.94, 7.24, 1.21, 0.00, 0.00}},
-    {1.0, {1607, 686, 360, 0, 0}, {30.88, 7.30, 1.70, 0.00, 0.00}},
-    {1.0, {1607, 694, 357, 0, 0}, {30.83, 7.36, 1.70, 0.00, 0.00}},
-    {4.0, {1607, 697, 345, 0, 0}, {30.60, 7.44, 1.69, 0.00, 0.00}},
-    {4.0, {1607, 699, 351, 0, 0}, {30.37, 7.52, 2.28, 0.00, 0.00}},
-    {6.0, {1607, 728, 360, 0, 0}, {30.03, 6.62, 3.54, 0.00, 0.00}},
-    {1.0, {1606, 729, 361, 0, 0}, {29.97, 6.43, 3.81, 0.00, 0.00}},
-    {15.0, {1606, 737, 364, 0, 0}, {29.14, 4.21, 4.08, 0.00, 0.00}},
-    {7.0, {1606, 771, 365, 0, 0}, {28.76, 3.20, 4.21, 0.00, 0.00}},
-    {8.0, {1606, 769, 367, 0, 0}, {28.34, 3.57, 4.36, 0.00, 0.00}},
-    {1.0, {1606, 758, 357, 0, 0}, {28.28, 3.49, 4.14, 0.00, 0.00}},
-    {4.0, {1606, 717, 318, 0, 0}, {17.71, 3.18, 3.36, 0.00, 0.00}},
-    {3.0, {1607, 726, 296, 0, 0}, {12.47, 3.04, 1.77, 0.00, 0.00}},
-    {1.0, {1607, 728, 296, 0, 0}, {11.09, 3.00, 1.43, 0.00, 0.00}},
-    {1.0, {1607, 731, 296, 0, 0}, {8.30, 2.95, 1.16, 0.00, 0.00}},
-    {1.0, {1607, 731, 296, 0, 0}, {6.22, 2.53, 0.94, 0.00, 0.00}},
-    {1.0, {1607, 731, 296, 0, 0}, {4.65, 2.17, 0.88, 0.00, 0.00}},
-    {3.0, {1607, 731, 298, 0, 0}, {1.09, 1.36, 0.71, 0.00, 0.00}},
-    {1.0, {1606, 731, 298, 0, 0}, {1.35, 1.17, 0.66, 0.00, 0.00}},
-    {1.0, {1606, 731, 299, 0, 0}, {0.00, 1.15, 0.62, 0.00, 0.00}},
-    {1.0, {1606, 731, 299, 0, 0}, {0.00, 1.14, 0.00, 0.00, 0.00}},
-    {4.0, {1606, 731, 299, 0, 0}, {0.00, 1.08, 0.00, 0.00, 0.00}},
-    {3.0, {1606, 731, 299, 0, 0}, {0.00, 0.35, 0.00, 0.00, 0.00}},
-    {1.0, {1606, 731, 299, 0, 0}, {0.00, 0.19, 0.00, 0.00, 0.00}},
-    {1.0, {1606, 706, 299, 0, 0}, {0.00, 0.07, 0.00, 0.00, 0.00}},
-    {1.0, {1606, 706, 299, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1606, 706, 299, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1901, 629, 462, 282, 1476}, {0.13, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1901, 629, 462, 282, 1476}, {0.75, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1901, 629, 462, 282, 1476}, {1.83, 0.59, 0.00, 0.00, 0.00}},
-    {1.0, {1901, 608, 462, 282, 1476}, {3.34, 0.55, 0.00, 0.00, 0.00}},
-    {1.0, {1901, 603, 462, 282, 1476}, {6.08, 0.85, 0.00, 0.00, 0.00}},
-    {3.0, {1904, 588, 462, 282, 1476}, {15.30, 3.12, 0.00, 0.00, 0.00}},
-    {1.0, {1905, 572, 462, 282, 1476}, {20.81, 3.49, 0.00, 0.00, 0.00}},
-    {1.0, {1905, 555, 462, 282, 1476}, {22.99, 3.90, 0.00, 0.00, 0.00}},
-    {3.0, {1906, 549, 462, 282, 1476}, {31.00, 4.25, 0.00, 0.00, 0.00}},
-    {3.0, {1906, 629, 462, 282, 1476}, {30.89, 4.75, 0.00, 0.00, 0.00}},
-    {2.0, {1907, 635, 462, 282, 1476}, {30.82, 4.69, 0.00, 0.00, 0.00}},
-    {2.0, {1907, 671, 462, 282, 1476}, {30.75, 4.21, 0.00, 0.00, 0.00}},
-    {1.0, {1907, 682, 462, 282, 1476}, {30.71, 4.10, 5.21, 0.00, 0.00}},
-    {1.0, {1907, 693, 463, 282, 1476}, {30.67, 4.00, 4.02, 0.00, 0.00}},
-    {7.0, {1907, 770, 505, 282, 1476}, {30.42, 3.33, 4.32, 0.00, 0.00}},
-    {3.0, {1907, 790, 522, 282, 1476}, {30.32, 3.18, 4.46, 0.00, 0.00}},
-    {1.0, {1907, 797, 531, 282, 1476}, {30.28, 3.13, 4.36, 1.97, 0.00}},
-    {1.0, {1907, 804, 540, 281, 1476}, {30.25, 3.08, 4.25, 2.05, 0.00}},
-    {2.0, {1907, 833, 558, 279, 1476}, {30.17, 2.58, 4.04, 2.22, 0.00}},
-    {1.0, {1907, 848, 567, 282, 1476}, {30.14, 2.37, 3.94, 2.41, 1.77}},
-    {1.0, {1907, 863, 576, 286, 1472}, {30.10, 2.17, 3.85, 2.62, 1.75}},
-    {1.0, {1907, 863, 585, 289, 1468}, {30.07, 2.07, 3.75, 2.84, 1.74}},
-    {4.0, {1907, 863, 621, 304, 1514}, {29.93, 1.71, 3.40, 3.94, 2.59}},
-    {1.0, {1907, 863, 630, 307, 1535}, {29.89, 1.63, 3.32, 4.27, 2.70}},
-    {2.0, {1907, 863, 641, 314, 1578}, {29.82, 1.48, 3.30, 5.03, 2.94}},
-    {1.0, {1907, 863, 646, 318, 1581}, {29.79, 1.41, 3.30, 5.00, 2.80}},
-    {1.0, {1907, 863, 651, 321, 1618}, {29.75, 1.35, 3.29, 4.96, 2.86}},
-    {1.0, {1907, 863, 657, 324, 1634}, {29.72, 1.28, 3.28, 4.93, 2.98}},
-    {1.0, {1907, 863, 662, 327, 1634}, {29.68, 1.22, 3.27, 4.90, 0.00}},
-    {3.0, {1907, 863, 678, 337, 1634}, {29.58, 1.06, 3.25, 4.80, 0.00}},
-    {1.0, {1907, 861, 683, 340, 1634}, {29.54, 0.87, 3.24, 4.77, 0.00}},
-    {3.0, {1907, 857, 710, 350, 1634}, {29.44, 0.48, 3.50, 4.68, 0.00}},
-    {1.0, {1907, 857, 719, 354, 1634}, {29.41, 0.00, 3.58, 4.64, 0.00}},
-    {4.0, {1907, 857, 734, 367, 1634}, {29.27, 0.00, 3.87, 4.52, 0.00}},
-    {1.0, {1907, 857, 737, 366, 1634}, {29.23, 0.00, 3.94, 4.43, 0.00}},
-    {1.0, {1907, 857, 729, 366, 1634}, {29.20, 0.00, 3.70, 4.34, 0.00}},
-    {3.0, {1907, 857, 702, 365, 1634}, {20.17, 0.00, 3.07, 4.08, 0.00}},
-    {1.0, {1907, 857, 709, 373, 1634}, {17.83, 0.00, 3.03, 3.55, 0.00}},
-    {1.0, {1907, 857, 715, 441, 1634}, {15.76, 0.00, 3.00, 3.73, 0.00}},
-    {1.0, {1907, 857, 722, 441, 1634}, {13.94, 0.00, 2.96, 0.00, 0.00}},
-    {1.0, {1907, 857, 728, 441, 1634}, {12.32, 0.00, 2.92, 0.00, 0.00}},
-    {1.0, {1906, 857, 728, 441, 1634}, {10.89, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1905, 857, 728, 441, 1634}, {1.30, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1905, 857, 728, 441, 1634}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1905, 857, 728, 441, 1634}, {0, 0, 0, 0, 0}},
-    {1.0, {347, 2206, 810, 0, 0}, {0.12, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {347, 2206, 810, 0, 0}, {0.19, 0.12, 0.00, 0.00, 0.00}},
-    {1.0, {347, 2206, 810, 0, 0}, {0.30, 0.43, 0.00, 0.00, 0.00}},
-    {2.0, {347, 2206, 810, 0, 0}, {0.75, 2.36, 0.00, 0.00, 0.00}},
-    {2.0, {347, 2206, 810, 0, 0}, {1.85, 6.25, 0.00, 0.00, 0.00}},
-    {1.0, {334, 2206, 810, 0, 0}, {2.07, 10.17, 0.00, 0.00, 0.00}},
-    {1.0, {321, 2206, 810, 0, 0}, {2.31, 12.71, 0.00, 0.00, 0.00}},
-    {1.0, {307, 2207, 810, 0, 0}, {2.58, 15.89, 3.46, 0.00, 0.00}},
-    {2.0, {302, 2207, 813, 0, 0}, {2.91, 24.83, 3.25, 0.00, 0.00}},
-    {1.0, {310, 2208, 804, 0, 0}, {3.06, 25.95, 3.41, 0.00, 0.00}},
-    {2.0, {359, 2208, 786, 0, 0}, {3.72, 28.36, 3.76, 0.00, 0.00}},
-    {2.0, {379, 2208, 769, 0, 0}, {4.26, 31.00, 4.14, 0.00, 0.00}},
-    {45.0, {381, 2208, 768, 0, 0}, {4.19, 25.60, 4.24, 0.00, 0.00}},
-    {2.0, {382, 2208, 757, 0, 0}, {4.19, 25.38, 4.16, 0.00, 0.00}},
-    {3.0, {362, 2208, 740, 0, 0}, {4.07, 25.06, 4.04, 0.00, 0.00}},
-    {1.0, {356, 2208, 812, 0, 0}, {4.03, 21.18, 0.00, 0.00, 0.00}},
-    {1.0, {349, 2208, 812, 0, 0}, {3.99, 17.90, 1.71, 0.00, 0.00}},
-    {1.0, {361, 2208, 833, 0, 0}, {4.02, 15.13, 2.11, 0.00, 0.00}},
-    {2.0, {384, 2207, 831, 0, 0}, {4.07, 10.81, 2.12, 0.00, 0.00}},
-    {3.0, {419, 2207, 798, 0, 0}, {4.16, 6.52, 2.17, 0.00, 0.00}},
-    {1.0, {431, 2207, 787, 0, 0}, {4.19, 4.20, 2.18, 0.00, 0.00}},
-    {1.0, {446, 2207, 776, 0, 0}, {3.51, 2.71, 2.20, 0.00, 0.00}},
-    {1.0, {462, 2207, 756, 0, 0}, {2.93, 1.74, 1.96, 0.00, 0.00}},
-    {1.0, {477, 2208, 736, 0, 0}, {2.46, 0.97, 1.75, 0.00, 0.00}},
-    {1.0, {492, 2208, 736, 0, 0}, {2.06, 0.54, 0.00, 0.00, 0.00}},
-    {2.0, {492, 2209, 736, 0, 0}, {1.34, 0.17, 0.00, 0.00, 0.00}},
-    {1.0, {492, 2209, 736, 0, 0}, {1.08, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {492, 2209, 736, 0, 0}, {0.88, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {496, 2209, 736, 0, 0}, {1.03, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {496, 2209, 736, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {496, 2209, 736, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1668, 477, 2511, 760, 878}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1668, 477, 2511, 760, 878}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1668, 477, 2511, 760, 878}, {0.26, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1668, 477, 2511, 760, 878}, {0.58, 1.39, 0.00, 0.00, 0.00}},
-    {1.0, {1668, 475, 2511, 760, 878}, {1.27, 2.00, 0.75, 0.00, 0.00}},
-    {2.0, {1654, 471, 2511, 760, 878}, {2.21, 4.14, 3.26, 0.00, 0.00}},
-    {1.0, {1646, 469, 2511, 760, 878}, {2.91, 4.40, 5.29, 0.00, 0.00}},
-    {2.0, {1597, 464, 2511, 760, 878}, {2.79, 4.96, 13.94, 0.00, 0.00}},
-    {1.0, {1573, 462, 2510, 760, 878}, {2.74, 5.26, 18.16, 0.00, 0.00}},
-    {1.0, {1548, 434, 2510, 760, 878}, {2.68, 5.42, 23.67, 0.00, 0.00}},
-    {1.0, {1489, 405, 2510, 760, 878}, {2.17, 5.60, 30.84, 0.00, 0.00}},
-    {1.0, {1707, 377, 2509, 760, 878}, {0.00, 5.78, 31.00, 3.20, 0.00}},
-    {1.0, {1707, 367, 2509, 713, 878}, {0.00, 6.33, 31.00, 4.66, 0.00}},
-    {1.0, {1707, 358, 2509, 719, 878}, {0.00, 6.95, 31.00, 4.95, 0.00}},
-    {3.0, {1707, 366, 2509, 739, 878}, {0.00, 7.07, 31.00, 5.92, 0.00}},
-    {3.0, {1707, 374, 2509, 735, 878}, {0.00, 7.20, 31.00, 6.05, 0.00}},
-    {3.0, {1707, 363, 2509, 712, 878}, {0.00, 7.11, 31.00, 6.06, 0.00}},
-    {1.0, {1707, 359, 2509, 704, 878}, {2.00, 7.08, 31.00, 6.07, 1.06}},
-    {3.0, {1691, 348, 2509, 682, 877}, {3.38, 6.99, 31.00, 6.08, 1.29}},
-    {5.0, {1643, 329, 2509, 644, 874}, {4.26, 6.85, 31.00, 6.10, 1.77}},
-    {6.0, {1535, 307, 2509, 598, 871}, {3.33, 6.69, 31.00, 6.14, 2.58}},
-    {3.0, {1482, 302, 2509, 575, 869}, {2.95, 4.94, 31.00, 6.15, 3.12}},
-    {1.0, {1482, 301, 2509, 568, 869}, {3.01, 4.47, 31.00, 6.16, 3.32}},
-    {2.0, {1482, 297, 2509, 553, 840}, {3.12, 3.65, 31.00, 6.17, 3.86}},
-    {1.0, {542, 296, 2509, 549, 826}, {0.00, 3.30, 31.00, 6.34, 4.17}},
-    {2.0, {542, 292, 2509, 541, 798}, {0.00, 2.70, 31.00, 6.69, 4.84}},
-    {3.0, {542, 287, 2509, 529, 772}, {0.00, 1.99, 31.00, 7.25, 5.20}},
-    {1.0, {542, 1622, 2509, 522, 763}, {0.00, 0.00, 31.00, 7.32, 5.33}},
-    {8.0, {542, 1622, 2510, 466, 692}, {0.00, 0.00, 31.00, 7.94, 6.45}},
-    {1.0, {542, 1622, 2510, 466, 683}, {0.00, 0.00, 31.00, 0.00, 6.60}},
-    {2.0, {542, 1622, 2510, 466, 643}, {0.00, 0.00, 31.00, 0.00, 6.82}},
-    {4.0, {542, 1622, 2509, 466, 625}, {0.00, 0.00, 31.00, 0.00, 7.46}},
-    {1.0, {542, 1622, 2509, 466, 625}, {5.79, 0.00, 31.00, 0.00, 0.00}},
-    {1.0, {538, 1622, 2509, 466, 625}, {5.62, 3.46, 31.00, 0.00, 0.00}},
-    {2.0, {530, 1600, 2509, 466, 625}, {5.29, 2.72, 26.30, 0.00, 0.00}},
-    {1.0, {526, 1607, 2509, 466, 625}, {5.13, 2.69, 22.60, 0.00, 0.00}},
-    {2.0, {518, 1668, 2508, 466, 625}, {4.84, 2.84, 16.68, 0.00, 0.00}},
-    {1.0, {502, 1670, 2508, 466, 625}, {4.03, 2.63, 14.33, 0.00, 0.00}},
-    {2.0, {469, 1675, 2508, 466, 625}, {2.79, 2.25, 6.77, 0.00, 0.00}},
-    {2.0, {451, 1680, 2508, 466, 625}, {3.64, 2.48, 3.20, 0.00, 0.00}},
-    {1.0, {442, 1683, 2508, 466, 625}, {4.16, 2.61, 1.72, 0.00, 0.00}},
-    {2.0, {473, 1688, 2506, 466, 625}, {3.73, 2.87, 0.50, 0.00, 0.00}},
-    {1.0, {488, 1685, 2506, 466, 625}, {3.53, 2.34, 0.00, 0.00, 0.00}},
-    {1.0, {504, 1682, 2506, 466, 625}, {3.35, 1.91, 0.00, 0.00, 0.00}},
-    {1.0, {504, 1681, 2506, 466, 625}, {0.00, 1.19, 0.00, 0.00, 0.00}},
-    {3.0, {504, 1678, 2506, 466, 625}, {0.00, 0.29, 0.00, 0.00, 0.00}},
-    {1.0, {504, 1678, 2506, 466, 625}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {504, 1678, 2506, 466, 625}, {0, 0, 0, 0, 0}},
-    {1.0, {2805, 593, 639, 424, 901}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2805, 593, 639, 424, 901}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2805, 593, 639, 424, 901}, {0.73, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2805, 593, 639, 424, 901}, {1.60, 1.12, 0.00, 0.00, 0.00}},
-    {1.0, {2805, 600, 639, 424, 901}, {3.51, 2.17, 0.00, 0.00, 0.00}},
-    {2.0, {2805, 565, 639, 424, 901}, {8.33, 3.45, 0.00, 0.00, 0.00}},
-    {1.0, {2805, 529, 639, 424, 901}, {12.82, 3.40, 0.00, 0.00, 0.00}},
-    {1.0, {2806, 492, 639, 424, 901}, {15.84, 3.34, 0.00, 0.00, 0.00}},
-    {1.0, {2808, 480, 639, 424, 901}, {19.56, 3.37, 0.00, 0.00, 0.00}},
-    {1.0, {2809, 477, 639, 424, 901}, {24.16, 3.51, 2.99, 0.00, 0.00}},
-    {1.0, {2809, 475, 625, 424, 901}, {25.72, 3.67, 3.43, 0.00, 0.00}},
-    {1.0, {2810, 493, 611, 424, 901}, {27.37, 4.86, 3.94, 0.00, 0.00}},
-    {1.0, {2810, 1002, 597, 424, 901}, {29.13, 0.00, 4.52, 0.00, 0.00}},
-    {1.0, {2811, 1002, 597, 424, 901}, {31.00, 0.00, 4.78, 0.00, 0.00}},
-    {1.0, {2811, 1002, 596, 424, 901}, {30.97, 3.33, 5.06, 0.00, 0.00}},
-    {2.0, {2811, 1021, 596, 424, 901}, {30.91, 3.13, 5.66, 0.00, 0.00}},
-    {2.0, {2811, 1041, 614, 424, 901}, {30.85, 2.94, 5.33, 0.00, 0.00}},
-    {1.0, {2811, 1051, 623, 424, 901}, {30.82, 2.85, 5.17, 4.19, 0.00}},
-    {2.0, {2810, 1070, 641, 430, 901}, {30.77, 2.67, 4.86, 4.44, 0.00}},
-    {1.0, {2810, 1083, 650, 433, 901}, {30.74, 2.36, 4.72, 4.57, 0.00}},
-    {3.0, {2810, 1120, 664, 442, 901}, {30.65, 1.62, 4.26, 4.98, 0.00}},
-    {1.0, {2810, 1133, 669, 445, 901}, {30.62, 1.43, 4.11, 5.12, 2.83}},
-    {1.0, {2810, 260, 674, 448, 907}, {30.59, 0.00, 3.97, 5.27, 2.93}},
-    {2.0, {2810, 260, 683, 455, 919}, {30.53, 0.00, 3.71, 5.59, 3.13}},
-    {2.0, {2810, 260, 693, 466, 931}, {30.47, 0.00, 3.46, 5.47, 3.35}},
-    {1.0, {2810, 260, 697, 471, 943}, {30.45, 0.00, 3.34, 5.41, 3.44}},
-    {1.0, {2810, 260, 761, 477, 956}, {30.42, 0.00, 0.00, 5.36, 3.54}},
-    {3.0, {2810, 260, 761, 494, 993}, {30.33, 0.00, 0.00, 5.19, 3.84}},
-    {1.0, {2810, 260, 761, 499, 1005}, {30.30, 1.88, 0.00, 5.14, 3.95}},
-    {1.0, {2810, 261, 761, 505, 1018}, {30.27, 1.98, 0.00, 5.09, 4.06}},
-    {1.0, {2810, 262, 761, 507, 1023}, {30.24, 2.09, 1.83, 4.99, 4.02}},
-    {1.0, {2810, 263, 764, 510, 1028}, {30.22, 2.20, 2.23, 4.90, 3.97}},
-    {7.0, {2810, 269, 778, 526, 1062}, {30.02, 3.18, 1.37, 4.29, 3.69}},
-    {1.0, {2810, 270, 780, 529, 1073}, {29.99, 3.35, 1.28, 4.21, 3.70}},
-    {1.0, {2810, 271, 1077, 534, 1083}, {29.96, 3.53, 0.00, 4.16, 3.70}},
-    {4.0, {2810, 275, 1077, 557, 1125}, {29.84, 4.36, 0.00, 3.95, 3.73}},
-    {6.0, {2809, 281, 1077, 591, 1188}, {29.68, 4.40, 0.00, 3.66, 3.77}},
-    {3.0, {2809, 284, 1077, 595, 1196}, {29.59, 4.42, 0.00, 3.87, 3.83}},
-    {2.0, {2809, 286, 1077, 579, 1204}, {23.89, 4.43, 0.00, 3.73, 3.14}},
-    {1.0, {2809, 287, 1077, 571, 1231}, {21.47, 4.44, 0.00, 3.67, 2.81}},
-    {1.0, {2809, 296, 1077, 563, 1258}, {19.29, 4.45, 2.55, 3.60, 2.51}},
-    {1.0, {2809, 304, 1072, 566, 1266}, {17.34, 4.46, 2.63, 3.55, 1.87}},
-    {1.0, {2809, 321, 1066, 569, 1273}, {15.58, 4.50, 2.71, 3.51, 1.39}},
-    {1.0, {2809, 337, 1082, 572, 1273}, {14.00, 4.54, 2.81, 3.46, 0.00}},
-    {1.0, {2809, 354, 1098, 572, 1273}, {12.58, 4.59, 2.90, 0.00, 0.00}},
-    {1.0, {2809, 370, 1114, 572, 1273}, {9.15, 4.63, 3.00, 0.00, 0.00}},
-    {2.0, {2810, 403, 1126, 572, 1273}, {4.85, 4.72, 2.91, 0.00, 0.00}},
-    {2.0, {2811, 403, 1138, 572, 1273}, {2.57, 3.62, 2.82, 0.00, 0.00}},
-    {1.0, {2811, 404, 1139, 572, 1273}, {1.87, 3.17, 2.14, 0.00, 0.00}},
-    {1.0, {2811, 405, 1139, 572, 1273}, {0.00, 2.36, 1.62, 0.00, 0.00}},
-    {3.0, {2811, 409, 1141, 572, 1273}, {0.00, 0.97, 0.71, 0.00, 0.00}},
-    {6.0, {2811, 409, 1141, 572, 1273}, {0.00, 0.85, 0.78, 0.00, 0.00}},
-    {2.0, {2811, 410, 1144, 572, 1273}, {0.00, 0.48, 0.35, 0.00, 0.00}},
-    {1.0, {2811, 410, 1144, 572, 1273}, {0.00, 0.36, 0.00, 0.00, 0.00}},
-    {2.0, {2811, 410, 1144, 572, 1273}, {0.00, 0.20, 0.00, 0.00, 0.00}},
-    {1.0, {2811, 410, 1144, 572, 1273}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {2811, 410, 1144, 572, 1273}, {0, 0, 0, 0, 0}},
-    {1.0, {728, 0, 575, 3111, 2311}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {728, 0, 575, 3111, 2311}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {728, 0, 575, 3111, 2311}, {0.89, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {709, 0, 575, 3111, 2311}, {2.13, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {707, 0, 575, 3111, 2311}, {3.39, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {706, 0, 575, 3111, 2311}, {5.40, 0.00, 0.00, 1.75, 0.00}},
-    {5.0, {748, 0, 575, 3111, 2311}, {10.50, 0.00, 0.00, 14.17, 0.00}},
-    {1.0, {756, 0, 575, 3111, 2311}, {12.00, 0.00, 9.03, 16.31, 0.00}},
-    {1.0, {2783, 0, 607, 3111, 2311}, {0.00, 0.00, 9.51, 18.79, 0.00}},
-    {1.0, {2783, 0, 621, 3111, 2311}, {4.11, 0.00, 11.43, 21.63, 0.00}},
-    {1.0, {2779, 0, 634, 3111, 2311}, {4.62, 0.00, 13.73, 24.91, 0.00}},
-    {1.0, {2774, 0, 643, 3110, 2311}, {5.19, 0.00, 14.28, 28.68, 0.00}},
-    {1.0, {2770, 0, 652, 3111, 2311}, {5.83, 0.00, 14.85, 28.73, 0.00}},
-    {2.0, {2725, 0, 670, 3111, 2311}, {5.85, 0.00, 16.05, 28.83, 0.00}},
-    {1.0, {2702, 0, 679, 3111, 2311}, {5.85, 0.00, 16.70, 28.87, 1.07}},
-    {1.0, {2679, 0, 677, 3111, 2317}, {5.85, 0.00, 16.70, 28.92, 0.91}},
-    {2.0, {2655, 0, 674, 3111, 2317}, {6.27, 0.00, 16.70, 29.02, 1.14}},
-    {4.0, {2658, 0, 669, 3111, 2317}, {4.12, 0.00, 16.70, 29.21, 1.80}},
-    {4.0, {2660, 0, 663, 3111, 2316}, {2.70, 0.00, 16.70, 29.40, 2.83}},
-    {3.0, {2663, 0, 659, 3111, 2316}, {1.98, 0.00, 16.70, 29.55, 3.99}},
-    {1.0, {2663, 0, 658, 3111, 2304}, {1.77, 0.00, 16.70, 29.60, 3.97}},
-    {1.0, {2670, 0, 657, 3111, 2291}, {2.22, 0.00, 16.70, 29.65, 3.95}},
-    {1.0, {1910, 0, 655, 3111, 2278}, {0.00, 0.00, 16.70, 29.70, 3.93}},
-    {1.0, {1910, 0, 654, 3111, 2266}, {0.00, 0.00, 16.70, 29.75, 3.92}},
-    {3.0, {1910, 0, 650, 3111, 2228}, {0.00, 0.00, 16.70, 29.89, 3.86}},
-    {1.0, {1910, 0, 648, 3111, 2228}, {0.00, 0.00, 16.70, 29.94, 3.71}},
-    {1.0, {1910, 0, 647, 3111, 2228}, {0.85, 0.00, 16.70, 29.99, 3.56}},
-    {5.0, {1905, 0, 640, 3111, 2228}, {2.25, 0.00, 16.70, 30.24, 2.90}},
-    {2.0, {1903, 0, 637, 3111, 2228}, {3.31, 0.00, 16.70, 30.34, 2.67}},
-    {1.0, {1903, 0, 636, 3111, 2228}, {4.02, 0.00, 16.70, 30.39, 2.57}},
-    {1.0, {1903, 0, 634, 3111, 2228}, {4.21, 0.00, 16.70, 30.44, 2.46}},
-    {1.0, {1902, 0, 633, 3111, 2224}, {4.41, 0.00, 16.70, 30.49, 2.18}},
-    {1.0, {1902, 0, 632, 3111, 2220}, {4.62, 0.00, 16.70, 30.54, 1.93}},
-    {1.0, {1890, 0, 630, 3112, 2211}, {4.74, 0.00, 16.70, 30.59, 2.42}},
-    {1.0, {1877, 0, 629, 3112, 2211}, {4.88, 0.00, 16.70, 30.64, 0.00}},
-    {2.0, {1851, 0, 626, 3112, 2211}, {5.15, 0.00, 16.70, 30.75, 0.00}},
-    {2.0, {1825, 0, 623, 3112, 2211}, {5.45, 0.00, 16.70, 30.85, 0.00}},
-    {3.0, {1827, 0, 619, 3112, 2211}, {5.70, 0.00, 16.70, 31.00, 0.00}},
-    {1.0, {1827, 0, 618, 3112, 2211}, {5.79, 0.00, 16.70, 30.05, 0.00}},
-    {2.0, {1828, 0, 615, 3112, 2211}, {5.99, 0.00, 16.70, 28.23, 0.00}},
-    {1.0, {1823, 0, 614, 3112, 2211}, {5.76, 0.00, 16.70, 27.37, 0.00}},
-    {2.0, {1814, 0, 584, 3112, 2211}, {5.35, 0.00, 15.35, 25.71, 0.00}},
-    {1.0, {1809, 0, 569, 3111, 2211}, {5.15, 0.00, 14.71, 22.89, 0.00}},
-    {2.0, {1792, 0, 540, 3111, 2211}, {4.56, 0.00, 13.53, 18.14, 0.00}},
-    {1.0, {1730, 0, 540, 3111, 2211}, {3.85, 0.00, 12.88, 16.15, 0.00}},
-    {1.0, {689, 0, 540, 3111, 2211}, {0.00, 0.00, 12.27, 14.38, 0.00}},
-    {0.7, {689, 0, 540, 3111, 2211}, {0.00, 0.00, 11.83, 11.91, 0.00}},
-    {1.0, {689, 0, 541, 3111, 2211}, {7.73, 0.00, 11.27, 9.25, 0.00}},
-    {0.5, {688, 0, 541, 3111, 2211}, {7.73, 0.00, 11.12, 8.67, 0.00}},
-    {1.0, {688, 0, 574, 3111, 2211}, {7.71, 0.00, 17.49, 6.73, 0.00}},
-    {0.7, {687, 0, 574, 3111, 2211}, {7.70, 0.00, 0.00, 5.58, 0.00}},
-    {0.5, {682, 0, 574, 3111, 2211}, {7.68, 0.00, 0.00, 5.23, 0.00}},
-    {0.7, {667, 0, 574, 3111, 2211}, {7.62, 0.00, 0.00, 3.59, 0.00}},
-    {1.0, {624, 0, 574, 3111, 2211}, {7.98, 0.00, 0.00, 2.15, 0.00}},
-    {1.0, {614, 0, 574, 3111, 2211}, {7.80, 0.00, 0.00, 1.29, 0.00}},
-    {0.5, {614, 0, 574, 3111, 2211}, {7.12, 0.00, 0.00, 1.12, 0.00}},
-    {1.0, {615, 0, 574, 3112, 2211}, {5.10, 0.00, 0.00, 1.26, 0.00}},
-    {1.0, {616, 0, 574, 3112, 2211}, {3.65, 0.00, 0.00, 0.00, 0.00}},
-    {3.7, {619, 0, 574, 3112, 2211}, {1.05, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {619, 0, 574, 3112, 2211}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {619, 0, 574, 3112, 2211}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {680, 1693, 0, 3412, 334}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {680, 1693, 0, 3412, 334}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {680, 1693, 0, 3412, 334}, {1.17, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {678, 1693, 0, 3412, 334}, {2.02, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {676, 1693, 0, 3412, 334}, {3.51, 1.30, 0.00, 1.50, 0.00}},
-    {2.0, {682, 1710, 0, 3412, 334}, {6.22, 2.76, 0.00, 5.24, 0.00}},
-    {2.0, {686, 1756, 0, 3412, 334}, {8.00, 3.23, 0.00, 11.87, 0.00}},
-    {1.0, {689, 1763, 0, 3412, 334}, {9.06, 3.35, 0.00, 17.84, 0.00}},
-    {1.0, {681, 1771, 0, 3413, 334}, {9.87, 3.48, 0.00, 21.95, 0.00}},
-    {1.0, {673, 1800, 0, 3414, 334}, {10.74, 4.00, 0.00, 27.00, 0.00}},
-    {1.0, {666, 1677, 0, 3414, 334}, {11.69, 0.00, 0.00, 33.22, 0.00}},
-    {2.0, {651, 1677, 0, 3414, 334}, {13.85, 0.00, 0.00, 37.65, 0.00}},
-    {1.0, {657, 1677, 0, 3413, 334}, {14.12, 0.00, 0.00, 40.08, 0.00}},
-    {1.0, {664, 1677, 0, 3413, 334}, {14.41, 3.26, 0.00, 42.66, 0.00}},
-    {1.0, {671, 1702, 0, 3413, 334}, {14.70, 4.08, 0.00, 42.62, 0.00}},
-    {1.0, {678, 1695, 0, 3413, 334}, {14.98, 4.29, 0.00, 42.59, 2.60}},
-    {2.0, {677, 1681, 0, 3413, 334}, {14.99, 4.75, 0.00, 42.49, 1.49}},
-    {1.0, {676, 1674, 0, 3413, 350}, {14.99, 4.99, 0.00, 42.46, 1.43}},
-    {1.0, {675, 1667, 0, 3413, 349}, {14.99, 5.26, 0.00, 42.42, 1.38}},
-    {2.0, {674, 1667, 0, 3413, 348}, {15.00, 5.25, 0.00, 42.34, 1.29}},
-    {1.0, {673, 1667, 0, 3413, 328}, {15.00, 5.24, 0.00, 42.30, 1.19}},
-    {2.0, {671, 1667, 0, 3413, 347}, {15.00, 5.23, 0.00, 42.22, 1.07}},
-    {1.0, {671, 1667, 0, 3413, 324}, {15.02, 5.21, 0.00, 42.18, 1.01}},
-    {1.0, {670, 1667, 0, 3413, 335}, {15.02, 5.21, 0.00, 42.13, 0.97}},
-    {1.0, {669, 1667, 0, 3413, 344}, {15.02, 5.20, 0.00, 42.11, 0.97}},
-    {1.0, {668, 1668, 0, 3413, 327}, {15.02, 5.19, 0.00, 42.06, 0.98}},
-    {2.0, {667, 1668, 0, 3413, 360}, {15.03, 5.18, 0.00, 41.98, 1.08}},
-    {1.0, {663, 1657, 0, 3413, 331}, {14.97, 5.18, 0.00, 41.94, 1.00}},
-    {3.0, {651, 1626, 0, 3413, 300}, {14.79, 5.16, 0.00, 41.82, 1.10}},
-    {2.0, {643, 1605, 0, 3413, 308}, {14.69, 5.16, 0.00, 41.74, 1.34}},
-    {1.0, {643, 1605, 0, 3413, 312}, {14.72, 5.14, 0.00, 41.70, 1.49}},
-    {2.0, {643, 1605, 0, 3413, 340}, {14.76, 5.12, 0.00, 41.62, 1.84}},
-    {1.0, {642, 1604, 0, 3413, 323}, {14.78, 5.09, 0.00, 41.59, 1.95}},
-    {1.0, {642, 1604, 0, 3413, 688}, {14.82, 5.08, 0.00, 41.55, 0.00}},
-    {7.0, {640, 1602, 0, 3413, 688}, {14.99, 4.97, 0.00, 41.28, 0.00}},
-    {1.0, {640, 1594, 0, 3413, 688}, {15.02, 5.04, 0.00, 41.23, 0.00}},
-    {7.0, {626, 1538, 0, 3413, 688}, {14.67, 5.47, 0.00, 40.96, 0.00}},
-    {6.0, {614, 1542, 0, 3413, 688}, {14.40, 4.81, 0.00, 40.74, 0.00}},
-    {1.0, {612, 1543, 0, 3413, 688}, {14.36, 4.70, 0.00, 36.91, 0.00}},
-    {4.0, {534, 1546, 0, 3412, 688}, {11.69, 4.31, 0.00, 24.90, 0.00}},
-    {2.0, {531, 1548, 0, 3412, 688}, {10.75, 4.12, 0.00, 20.46, 0.00}},
-    {1.7, {528, 1517, 0, 3411, 688}, {9.98, 3.72, 0.00, 13.17, 0.00}},
-    {0.5, {528, 1512, 0, 3411, 688}, {9.88, 3.66, 0.00, 12.36, 0.00}},
-    {0.7, {526, 1519, 0, 3411, 688}, {9.57, 3.61, 0.00, 10.25, 6.21}},
-    {0.5, {526, 1522, 0, 3411, 688}, {9.46, 3.60, 0.00, 9.60, 6.23}},
-    {1.0, {545, 1531, 0, 3411, 688}, {13.72, 3.52, 0.00, 7.47, 6.31}},
-    {0.7, {545, 1538, 0, 3410, 689}, {0.00, 3.48, 0.00, 6.20, 6.37}},
-    {0.5, {545, 1540, 0, 3410, 684}, {0.00, 3.45, 0.00, 5.80, 6.36}},
-    {0.7, {545, 1574, 0, 3410, 672}, {0.00, 3.29, 0.00, 4.81, 6.32}},
-    {0.5, {545, 1587, 0, 3410, 661}, {0.00, 3.23, 0.00, 4.51, 6.39}},
-    {0.7, {545, 1587, 0, 3410, 630}, {0.00, 0.00, 0.00, 0.00, 6.60}},
-    {0.5, {545, 1587, 0, 3410, 627}, {0.00, 0.00, 0.00, 0.00, 6.59}},
-    {0.7, {545, 1587, 0, 3410, 618}, {0.00, 0.00, 0.00, 0.00, 6.58}},
-    {2.0, {545, 1587, 0, 3410, 623}, {0.00, 0.00, 0.00, 0.00, 4.44}},
-    {4.0, {545, 1587, 0, 3410, 628}, {0.00, 0.00, 0.00, 0.00, 0.94}},
-    {1.0, {545, 1587, 0, 3410, 628}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {545, 1587, 0, 3410, 628}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1615, 305, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {11.0, {1615, 305, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1615, 305, 0, 0, 0}, {5.71, 0.00, 0.00, 0.00, 0.00}},
-    {15.0, {1695, 305, 0, 0, 0}, {7.41, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1718, 305, 0, 0, 0}, {6.47, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1724, 305, 0, 0, 0}, {6.25, 1.92, 0.00, 0.00, 0.00}},
-    {1.0, {1729, 301, 0, 0, 0}, {6.04, 1.32, 0.00, 0.00, 0.00}},
-    {1.0, {1735, 300, 0, 0, 0}, {5.84, 1.67, 0.00, 0.00, 0.00}},
-    {5.0, {1763, 294, 0, 0, 0}, {5.89, 5.35, 0.00, 0.00, 0.00}},
-    {7.0, {1803, 215, 0, 0, 0}, {5.97, 2.89, 0.00, 0.00, 0.00}},
-    {2.0, {1814, 228, 0, 0, 0}, {6.00, 3.45, 0.00, 0.00, 0.00}},
-    {3.0, {1831, 281, 0, 0, 0}, {6.04, 6.05, 0.00, 0.00, 0.00}},
-    {7.0, {1870, 242, 0, 0, 0}, {6.13, 5.04, 0.00, 0.00, 0.00}},
-    {6.0, {1904, 283, 0, 0, 0}, {6.21, 8.02, 0.00, 0.00, 0.00}},
-    {5.0, {1932, 262, 0, 0, 0}, {6.29, 6.60, 0.00, 0.00, 0.00}},
-    {5.0, {1961, 292, 0, 0, 0}, {6.37, 8.83, 0.00, 0.00, 0.00}},
-    {5.0, {1989, 277, 0, 0, 0}, {6.45, 7.50, 0.00, 0.00, 0.00}},
-    {5.0, {2017, 303, 0, 0, 0}, {6.53, 9.33, 0.00, 0.00, 0.00}},
-    {5.0, {2045, 293, 0, 0, 0}, {6.62, 7.76, 0.00, 0.00, 0.00}},
-    {5.0, {2073, 316, 0, 0, 0}, {6.71, 9.39, 0.00, 0.00, 0.00}},
-    {4.0, {2096, 303, 0, 0, 0}, {6.79, 8.56, 0.00, 0.00, 0.00}},
-    {5.0, {2124, 327, 0, 0, 0}, {6.89, 9.42, 0.00, 0.00, 0.00}},
-    {4.0, {2147, 312, 0, 0, 0}, {6.97, 8.93, 0.00, 0.00, 0.00}},
-    {4.0, {2169, 340, 0, 0, 0}, {7.05, 8.40, 0.00, 0.00, 0.00}},
-    {5.0, {2197, 314, 0, 0, 0}, {7.16, 9.27, 0.00, 0.00, 0.00}},
-    {4.0, {2220, 360, 0, 0, 0}, {7.25, 8.16, 0.00, 0.00, 0.00}},
-    {3.0, {2237, 322, 0, 0, 0}, {7.31, 10.79, 0.00, 0.00, 0.00}},
-    {3.0, {2254, 269, 0, 0, 0}, {7.38, 8.45, 0.00, 0.00, 0.00}},
-    {1.0, {2259, 274, 0, 0, 0}, {7.40, 7.49, 0.00, 0.00, 0.00}},
-    {1.0, {2265, 361, 0, 0, 0}, {7.43, 9.21, 0.00, 0.00, 0.00}},
-    {1.0, {2271, 224, 0, 0, 0}, {7.45, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {2305, 224, 0, 0, 0}, {7.59, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2310, 224, 0, 0, 0}, {7.62, 7.84, 0.00, 0.00, 0.00}},
-    {1.0, {2316, 266, 0, 0, 0}, {7.64, 8.66, 0.00, 0.00, 0.00}},
-    {3.0, {2333, 291, 0, 0, 0}, {7.71, 12.42, 0.00, 0.00, 0.00}},
-    {5.0, {2362, 236, 0, 0, 0}, {7.44, 11.42, 0.00, 0.00, 0.00}},
-    {4.0, {2385, 280, 0, 0, 0}, {7.22, 15.38, 0.00, 0.00, 0.00}},
-    {4.0, {2408, 247, 0, 0, 0}, {7.01, 14.21, 0.00, 0.00, 0.00}},
-    {4.0, {2431, 279, 0, 0, 0}, {6.81, 17.69, 0.00, 0.00, 0.00}},
-    {3.0, {2449, 258, 0, 0, 0}, {6.66, 16.99, 0.00, 0.00, 0.00}},
-    {4.0, {2472, 280, 0, 0, 0}, {6.47, 19.24, 0.00, 0.00, 0.00}},
-    {4.0, {2495, 263, 0, 0, 0}, {6.28, 18.30, 0.00, 0.00, 0.00}},
-    {4.0, {2518, 285, 0, 0, 0}, {6.10, 20.93, 0.00, 0.00, 0.00}},
-    {3.0, {2536, 273, 0, 0, 0}, {5.96, 20.68, 0.00, 0.00, 0.00}},
-    {4.0, {2559, 289, 0, 0, 0}, {5.79, 22.30, 0.00, 0.00, 0.00}},
-    {3.0, {2576, 288, 0, 0, 0}, {5.66, 22.38, 0.00, 0.00, 0.00}},
-    {8.0, {2599, 285, 0, 0, 0}, {5.45, 22.62, 0.00, 0.00, 0.00}},
-    {3.0, {2608, 299, 0, 0, 0}, {5.37, 24.10, 0.00, 0.00, 0.00}},
-    {2.0, {2613, 301, 0, 0, 0}, {5.32, 24.22, 0.00, 0.00, 0.00}},
-    {3.0, {2653, 304, 0, 0, 0}, {5.67, 24.41, 0.00, 0.00, 0.00}},
-    {5.0, {2653, 308, 0, 0, 0}, {4.43, 24.72, 0.00, 0.00, 0.00}},
-    {1.0, {2574, 309, 0, 0, 0}, {5.12, 24.78, 0.00, 0.00, 0.00}},
-    {1.0, {415, 310, 0, 0, 0}, {0.00, 24.85, 0.00, 0.00, 0.00}},
-    {87.0, {415, 384, 0, 0, 0}, {0.00, 31.00, 0.00, 0.00, 0.00}},
-    {18.0, {415, 342, 0, 0, 0}, {0.00, 17.90, 0.00, 0.00, 0.00}},
-    {4.0, {415, 308, 0, 0, 0}, {0.00, 13.56, 0.00, 0.00, 0.00}},
-    {1.0, {415, 305, 0, 0, 0}, {0.00, 16.94, 0.00, 0.00, 0.00}},
-    {1.0, {415, 305, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {415, 305, 0, 0, 0}, {10.70, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {437, 305, 0, 0, 0}, {12.05, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {388, 305, 0, 0, 0}, {10.02, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {390, 305, 0, 0, 0}, {8.95, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {385, 305, 0, 0, 0}, {6.16, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {371, 305, 0, 0, 0}, {4.87, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {327, 305, 0, 0, 0}, {6.31, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {327, 305, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {327, 305, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {247, 0, 0, 0, 0}, {0.37, 0.00, 0.00, 0.00, 0.00}},
-    {10.0, {247, 0, 0, 0, 0}, {10.50, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {247, 0, 0, 0, 0}, {20.36, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {247, 0, 0, 0, 0}, {19.65, 0.00, 0.00, 0.00, 0.00}},
-    {11.0, {261, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {12.0, {303, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {49.0, {496, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {534, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {45.0, {1083, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.1, {1122, 0, 0, 0, 0}, {27.99, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1257, 0, 0, 0, 0}, {23.91, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1408, 0, 0, 0, 0}, {22.51, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1559, 0, 0, 0, 0}, {21.35, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1712, 0, 0, 0, 0}, {20.41, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1863, 0, 0, 0, 0}, {20.10, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {2015, 0, 0, 0, 0}, {19.50, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {2169, 0, 0, 0, 0}, {19.68, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {2320, 0, 0, 0, 0}, {19.73, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {2464, 0, 0, 0, 0}, {18.74, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {2689, 0, 0, 0, 0}, {14.39, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {2998, 0, 0, 0, 0}, {13.33, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3298, 0, 0, 0, 0}, {11.45, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3578, 0, 0, 0, 0}, {10.41, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3878, 0, 0, 0, 0}, {18.59, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3911, 0, 0, 0, 0}, {22.95, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3913, 0, 0, 0, 0}, {21.53, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3913, 0, 0, 0, 0}, {19.52, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3913, 0, 0, 0, 0}, {17.75, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3913, 0, 0, 0, 0}, {16.17, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3913, 0, 0, 0, 0}, {14.74, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3912, 0, 0, 0, 0}, {13.01, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3913, 0, 0, 0, 0}, {11.02, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3914, 0, 0, 0, 0}, {9.23, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3912, 0, 0, 0, 0}, {7.60, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3914, 0, 0, 0, 0}, {6.08, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3913, 0, 0, 0, 0}, {4.17, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3913, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {3913, 0, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {644, 333, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {644, 333, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {644, 333, 0, 0, 0}, {1.67, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {641, 333, 0, 0, 0}, {1.67, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {641, 333, 0, 0, 0}, {6.38, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {641, 333, 0, 0, 0}, {12.67, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {636, 333, 0, 0, 0}, {18.94, 0.00, 0.00, 0.00, 0.00}},
-    {173.0, {420, 333, 0, 0, 0}, {19.05, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {405, 333, 0, 0, 0}, {19.13, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {417, 333, 0, 0, 0}, {18.90, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {389, 333, 0, 0, 0}, {19.80, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {413, 333, 0, 0, 0}, {18.27, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {358, 333, 0, 0, 0}, {21.81, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {409, 333, 0, 0, 0}, {17.66, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {409, 333, 0, 0, 0}, {17.47, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {345, 333, 0, 0, 0}, {24.17, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {338, 333, 0, 0, 0}, {25.84, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {341, 333, 0, 0, 0}, {24.61, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {404, 333, 0, 0, 0}, {16.39, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {409, 333, 0, 0, 0}, {15.78, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {341, 333, 0, 0, 0}, {23.88, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {336, 333, 0, 0, 0}, {24.87, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {368, 333, 0, 0, 0}, {15.99, 0.00, 0.00, 0.00, 0.00}},
-    {0.5, {377, 333, 0, 0, 0}, {15.81, 0.00, 0.00, 0.00, 0.00}},
-    {0.8, {410, 333, 0, 0, 0}, {15.24, 0.00, 0.00, 0.00, 0.00}},
-    {0.5, {410, 333, 0, 0, 0}, {0.00, 10.62, 0.00, 0.00, 0.00}},
-    {0.8, {410, 333, 0, 0, 0}, {0.00, 10.02, 0.00, 0.00, 0.00}},
-    {1.2, {410, 333, 0, 0, 0}, {0.00, 9.13, 0.00, 0.00, 0.00}},
-    {5.0, {410, 331, 0, 0, 0}, {0.00, 25.97, 0.00, 0.00, 0.00}},
-    {5.0, {410, 331, 0, 0, 0}, {0.00, 31.00, 0.00, 0.00, 0.00}},
-    {12.0, {410, 331, 0, 0, 0}, {0.00, 15.08, 0.00, 0.00, 0.00}},
-    {5.0, {410, 333, 0, 0, 0}, {0.00, 6.31, 0.00, 0.00, 0.00}},
-    {1.0, {410, 393, 0, 0, 0}, {0.00, 4.61, 0.00, 0.00, 0.00}},
-    {1.0, {410, 409, 0, 0, 0}, {0.00, 4.21, 0.00, 0.00, 0.00}},
-    {2.0, {410, 390, 0, 0, 0}, {0.00, 5.41, 0.00, 0.00, 0.00}},
-    {1.0, {410, 333, 0, 0, 0}, {0.00, 7.96, 0.00, 0.00, 0.00}},
-    {6.0, {410, 331, 0, 0, 0}, {0.00, 26.45, 0.00, 0.00, 0.00}},
-    {7.0, {410, 332, 0, 0, 0}, {0.00, 21.68, 0.00, 0.00, 0.00}},
-    {1.0, {410, 334, 0, 0, 0}, {0.00, 16.97, 0.00, 0.00, 0.00}},
-    {1.0, {410, 384, 0, 0, 0}, {0.00, 12.30, 0.00, 0.00, 0.00}},
-    {2.0, {410, 411, 0, 0, 0}, {0.00, 10.39, 0.00, 0.00, 0.00}},
-    {1.0, {410, 401, 0, 0, 0}, {0.00, 11.37, 0.00, 0.00, 0.00}},
-    {2.0, {410, 333, 0, 0, 0}, {0.00, 19.58, 0.00, 0.00, 0.00}},
-    {4.0, {410, 333, 0, 0, 0}, {0.00, 24.72, 0.00, 0.00, 0.00}},
-    {1.0, {410, 335, 0, 0, 0}, {0.00, 20.98, 0.00, 0.00, 0.00}},
-    {2.0, {410, 405, 0, 0, 0}, {0.00, 13.64, 0.00, 0.00, 0.00}},
-    {1.0, {410, 413, 0, 0, 0}, {0.00, 13.07, 0.00, 0.00, 0.00}},
-    {2.0, {410, 384, 0, 0, 0}, {0.00, 15.35, 0.00, 0.00, 0.00}},
-    {1.0, {410, 338, 0, 0, 0}, {0.00, 19.51, 0.00, 0.00, 0.00}},
-    {2.0, {410, 335, 0, 0, 0}, {0.00, 22.71, 0.00, 0.00, 0.00}},
-    {1.0, {410, 342, 0, 0, 0}, {0.00, 20.17, 0.00, 0.00, 0.00}},
-    {1.0, {410, 386, 0, 0, 0}, {0.00, 16.49, 0.00, 0.00, 0.00}},
-    {1.0, {410, 409, 0, 0, 0}, {0.00, 14.96, 0.00, 0.00, 0.00}},
-    {1.0, {410, 414, 0, 0, 0}, {0.00, 14.60, 0.00, 0.00, 0.00}},
-    {2.0, {410, 388, 0, 0, 0}, {0.00, 16.25, 0.00, 0.00, 0.00}},
-    {1.0, {410, 350, 0, 0, 0}, {0.00, 18.84, 0.00, 0.00, 0.00}},
-    {1.0, {410, 348, 0, 0, 0}, {0.00, 19.63, 0.00, 0.00, 0.00}},
-    {2.0, {410, 403, 0, 0, 0}, {0.00, 16.18, 0.00, 0.00, 0.00}},
-    {1.0, {410, 414, 0, 0, 0}, {0.00, 15.63, 0.00, 0.00, 0.00}},
-    {2.0, {410, 408, 0, 0, 0}, {0.00, 15.85, 0.00, 0.00, 0.00}},
-    {2.0, {410, 376, 0, 0, 0}, {0.00, 17.51, 0.00, 0.00, 0.00}},
-    {3.0, {410, 418, 0, 0, 0}, {0.00, 16.15, 0.00, 0.00, 0.00}},
-    {3.0, {410, 403, 0, 0, 0}, {0.00, 16.28, 0.00, 0.00, 0.00}},
-    {4.0, {410, 423, 0, 0, 0}, {0.00, 16.21, 0.00, 0.00, 0.00}},
-    {180.4, {410, 628, 0, 0, 0}, {0.00, 14.44, 0.00, 0.00, 0.00}},
-    {27.9, {410, 628, 0, 0, 0}, {0.00, 7.07, 0.00, 0.00, 0.00}},
-    {16.9, {410, 628, 0, 0, 0}, {0.00, 2.45, 0.00, 0.00, 0.00}},
-    {6.0, {410, 628, 0, 0, 0}, {0.00, 0.64, 0.00, 0.00, 0.00}},
-    {2.0, {410, 628, 0, 0, 0}, {0.00, 0.23, 0.00, 0.00, 0.00}},
-    {2.0, {410, 628, 0, 0, 0}, {0.00, 0.05, 0.00, 0.00, 0.00}},
-    {1.0, {410, 628, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {410, 628, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {308, 262, 0, 0, 0}, {0.22, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {308, 262, 0, 0, 0}, {1.71, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {308, 262, 0, 0, 0}, {12.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {368, 262, 0, 0, 0}, {22.68, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {457, 262, 0, 0, 0}, {28.15, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {475, 262, 0, 0, 0}, {30.38, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {503, 262, 0, 0, 0}, {29.91, 21.41, 0.00, 0.00, 0.00}},
-    {2.0, {561, 263, 0, 0, 0}, {29.03, 20.34, 0.00, 0.00, 0.00}},
-    {5.0, {704, 304, 0, 0, 0}, {27.04, 30.57, 0.00, 0.00, 0.00}},
-    {33.0, {1649, 662, 0, 0, 0}, {18.59, 30.66, 0.00, 0.00, 0.00}},
-    {9.0, {1649, 759, 0, 0, 0}, {14.88, 30.87, 0.00, 0.00, 0.00}},
-    {5.0, {1649, 799, 0, 0, 0}, {13.15, 31.00, 0.00, 0.00, 0.00}},
-    {37.0, {1649, 802, 0, 0, 0}, {5.27, 30.87, 0.00, 0.00, 0.00}},
-    {11.0, {1649, 803, 0, 0, 0}, {2.52, 30.84, 0.00, 0.00, 0.00}},
-    {8.0, {1649, 804, 0, 0, 0}, {0.72, 30.81, 0.00, 0.00, 0.00}},
-    {1.0, {1649, 804, 0, 0, 0}, {0.00, 30.81, 0.00, 0.00, 0.00}},
-    {6.0, {1649, 804, 0, 0, 0}, {0.00, 30.79, 0.00, 0.00, 0.00}},
-    {31.0, {1649, 804, 0, 0, 0}, {0.00, 15.09, 0.00, 0.00, 0.00}},
-    {12.0, {1649, 804, 0, 0, 0}, {0.00, 8.37, 0.00, 0.00, 0.00}},
-    {8.0, {1649, 804, 0, 0, 0}, {0.00, 3.78, 0.00, 0.00, 0.00}},
-    {5.0, {1649, 804, 0, 0, 0}, {0.00, 1.35, 0.00, 0.00, 0.00}},
-    {3.0, {1649, 804, 0, 0, 0}, {0.00, 0.32, 0.00, 0.00, 0.00}},
-    {1.0, {1649, 804, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1649, 804, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1145, 418, 876, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1145, 418, 876, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1145, 418, 876, 0, 0}, {0.67, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1142, 418, 876, 0, 0}, {4.17, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1142, 418, 876, 0, 0}, {11.24, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1153, 418, 876, 0, 0}, {19.99, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1156, 418, 876, 0, 0}, {23.09, 0.48, 0.00, 0.00, 0.00}},
-    {2.0, {1161, 418, 876, 0, 0}, {22.83, 0.41, 0.00, 0.00, 0.00}},
-    {1.0, {1163, 418, 876, 0, 0}, {22.70, 0.50, 0.48, 0.00, 0.00}},
-    {3.0, {1169, 418, 875, 0, 0}, {22.31, 0.97, 0.74, 0.00, 0.00}},
-    {6.0, {1182, 418, 873, 0, 0}, {21.55, 1.86, 1.78, 0.00, 0.00}},
-    {1.0, {1184, 418, 873, 0, 0}, {21.43, 2.07, 1.87, 0.00, 0.00}},
-    {8.0, {1202, 418, 873, 0, 0}, {20.46, 2.93, 2.81, 0.00, 0.00}},
-    {8.0, {1219, 418, 873, 0, 0}, {19.55, 4.15, 3.36, 0.00, 0.00}},
-    {44.0, {1314, 418, 874, 0, 0}, {15.21, 9.86, 9.01, 0.00, 0.00}},
-    {9.0, {1333, 418, 894, 0, 0}, {14.45, 11.77, 9.54, 0.00, 0.00}},
-    {60.0, {1462, 458, 1027, 0, 0}, {10.32, 17.55, 13.88, 0.00, 0.00}},
-    {58.0, {1463, 497, 1156, 0, 0}, {5.28, 25.83, 20.00, 0.00, 0.00}},
-    {27.0, {1463, 515, 1215, 0, 0}, {2.33, 30.93, 23.72, 0.00, 0.00}},
-    {1.0, {1463, 516, 1218, 0, 0}, {2.26, 30.93, 23.88, 0.00, 0.00}},
-    {5.0, {1463, 524, 1229, 0, 0}, {2.32, 30.93, 24.65, 0.00, 0.00}},
-    {29.0, {1463, 567, 1293, 0, 0}, {2.67, 30.94, 24.17, 0.00, 0.00}},
-    {16.0, {1463, 590, 1328, 0, 0}, {2.06, 30.95, 23.92, 0.00, 0.00}},
-    {10.0, {1463, 605, 1350, 0, 0}, {1.11, 30.96, 23.77, 0.00, 0.00}},
-    {22.0, {1463, 638, 1398, 0, 0}, {0.90, 30.99, 23.47, 0.00, 0.00}},
-    {4.0, {1463, 644, 1407, 0, 0}, {1.08, 31.00, 23.41, 0.00, 0.00}},
-    {3.0, {1463, 648, 1413, 0, 0}, {1.24, 30.95, 23.37, 0.00, 0.00}},
-    {11.0, {1463, 664, 1438, 0, 0}, {0.88, 30.75, 23.23, 0.00, 0.00}},
-    {6.0, {1463, 673, 1456, 0, 0}, {0.73, 30.64, 23.15, 0.00, 0.00}},
-    {13.0, {1463, 692, 1494, 0, 0}, {1.08, 30.42, 22.99, 0.00, 0.00}},
-    {1.0, {1463, 694, 1496, 0, 0}, {1.11, 30.40, 22.98, 0.00, 0.00}},
-    {14.0, {1463, 715, 1524, 0, 0}, {0.70, 30.16, 22.84, 0.00, 0.00}},
-    {26.0, {1463, 753, 1574, 0, 0}, {1.01, 29.72, 22.60, 0.00, 0.00}},
-    {11.0, {1463, 770, 1596, 0, 0}, {0.65, 29.54, 22.51, 0.00, 0.00}},
-    {1.0, {1456, 771, 1598, 0, 0}, {0.85, 29.53, 22.50, 0.00, 0.00}},
-    {1.0, {1456, 772, 1600, 0, 0}, {0.00, 29.51, 22.49, 0.00, 0.00}},
-    {4.0, {1456, 778, 1608, 0, 0}, {0.00, 29.44, 22.46, 0.00, 0.00}},
-    {15.0, {1456, 801, 1658, 0, 0}, {0.00, 29.20, 22.24, 0.00, 0.00}},
-    {9.0, {1456, 814, 1659, 0, 0}, {0.00, 29.06, 22.10, 0.00, 0.00}},
-    {5.0, {1456, 821, 1690, 0, 0}, {0.00, 28.98, 22.01, 0.00, 0.00}},
-    {9.0, {1456, 835, 1694, 0, 0}, {0.00, 28.84, 22.08, 0.00, 0.00}},
-    {16.0, {1456, 858, 1748, 0, 0}, {0.00, 28.59, 21.93, 0.00, 0.00}},
-    {6.0, {1456, 867, 1748, 0, 0}, {0.00, 28.50, 21.90, 0.00, 0.00}},
-    {42.0, {1456, 919, 1816, 0, 0}, {0.00, 16.03, 13.46, 0.00, 0.00}},
-    {3.0, {1456, 920, 1821, 0, 0}, {0.00, 14.48, 13.00, 0.00, 0.00}},
-    {35.0, {1456, 928, 1821, 0, 0}, {0.00, 4.39, 5.13, 0.00, 0.00}},
-    {8.0, {1456, 928, 1821, 0, 0}, {0.00, 2.03, 4.15, 0.00, 0.00}},
-    {1.0, {1456, 928, 1821, 0, 0}, {0.00, 1.84, 3.91, 0.00, 0.00}},
-    {8.0, {1456, 928, 1821, 0, 0}, {0.00, 0.33, 2.46, 0.00, 0.00}},
-    {1.0, {1456, 928, 1821, 0, 0}, {0.00, 0.00, 2.32, 0.00, 0.00}},
-    {4.0, {1456, 928, 1821, 0, 0}, {0.00, 0.00, 1.84, 0.00, 0.00}},
-    {3.0, {1456, 928, 1821, 0, 0}, {0.00, 0.00, 1.01, 0.00, 0.00}},
-    {4.0, {1456, 928, 1815, 0, 0}, {0.00, 0.00, 0.22, 0.00, 0.00}},
-    {1.0, {1456, 928, 1815, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1456, 928, 1815, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {348, 289, 0, 0, 0}, {0.16, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {348, 289, 0, 0, 0}, {0.98, 0.00, 0.00, 0.00, 0.00}},
-    {9.0, {348, 289, 0, 0, 0}, {6.76, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {348, 289, 0, 0, 0}, {10.80, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {389, 289, 0, 0, 0}, {11.75, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {423, 289, 0, 0, 0}, {14.24, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {484, 289, 0, 0, 0}, {15.53, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {500, 289, 0, 0, 0}, {15.87, 11.06, 0.00, 0.00, 0.00}},
-    {5.0, {577, 290, 0, 0, 0}, {17.71, 13.80, 0.00, 0.00, 0.00}},
-    {23.0, {931, 449, 0, 0, 0}, {29.84, 24.49, 0.00, 0.00, 0.00}},
-    {6.0, {999, 491, 0, 0, 0}, {31.00, 28.49, 0.00, 0.00, 0.00}},
-    {1.0, {999, 498, 0, 0, 0}, {30.38, 29.22, 0.00, 0.00, 0.00}},
-    {22.0, {1003, 501, 0, 0, 0}, {19.48, 17.99, 0.00, 0.00, 0.00}},
-    {3.0, {1003, 502, 0, 0, 0}, {17.19, 16.84, 0.00, 0.00, 0.00}},
-    {21.0, {1003, 501, 0, 0, 0}, {7.18, 6.86, 0.00, 0.00, 0.00}},
-    {6.0, {1003, 501, 0, 0, 0}, {5.59, 3.93, 0.00, 0.00, 0.00}},
-    {6.0, {1003, 501, 0, 0, 0}, {2.54, 1.19, 0.00, 0.00, 0.00}},
-    {1.0, {1003, 544, 0, 0, 0}, {2.23, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1003, 544, 0, 0, 0}, {1.50, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1003, 544, 0, 0, 0}, {0.33, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {284, 544, 0, 0, 0}, {0.00, 0.15, 0.00, 0.00, 0.00}},
-    {3.0, {284, 544, 0, 0, 0}, {0.00, 0.06, 0.00, 0.00, 0.00}},
-    {10.0, {284, 544, 0, 0, 0}, {0.00, 0.07, 0.00, 0.00, 0.00}},
-    {2.0, {284, 544, 0, 0, 0}, {0.00, 0.11, 0.00, 0.00, 0.00}},
-    {7.0, {284, 544, 0, 0, 0}, {0.00, 1.77, 0.00, 0.00, 0.00}},
-    {8.0, {284, 544, 0, 0, 0}, {0.00, 5.53, 0.00, 0.00, 0.00}},
-    {1.0, {284, 575, 0, 0, 0}, {0.00, 5.78, 0.00, 0.00, 0.00}},
-    {1.0, {284, 606, 0, 0, 0}, {0.44, 6.06, 0.00, 0.00, 0.00}},
-    {10.0, {280, 916, 0, 0, 0}, {4.00, 9.66, 0.00, 0.00, 0.00}},
-    {7.0, {280, 1134, 0, 0, 0}, {11.72, 13.49, 0.00, 0.00, 0.00}},
-    {2.0, {294, 1196, 0, 0, 0}, {13.52, 14.85, 0.00, 0.00, 0.00}},
-    {6.0, {336, 1383, 0, 0, 0}, {20.75, 16.11, 0.00, 0.00, 0.00}},
-    {17.0, {461, 1913, 0, 0, 0}, {27.33, 22.10, 0.00, 0.00, 0.00}},
-    {2.0, {476, 1966, 0, 0, 0}, {28.24, 23.70, 0.00, 0.00, 0.00}},
-    {2.0, {491, 1997, 0, 0, 0}, {29.18, 25.07, 0.00, 0.00, 0.00}},
-    {1.0, {498, 2001, 0, 0, 0}, {29.66, 24.91, 0.00, 0.00, 0.00}},
-    {2.0, {499, 2009, 0, 0, 0}, {27.84, 24.58, 0.00, 0.00, 0.00}},
-    {26.0, {500, 2009, 0, 0, 0}, {12.22, 12.76, 0.00, 0.00, 0.00}},
-    {19.0, {501, 2008, 0, 0, 0}, {6.70, 5.25, 0.00, 0.00, 0.00}},
-    {1.0, {501, 2008, 0, 0, 0}, {5.85, 5.01, 0.00, 0.00, 0.00}},
-    {7.0, {501, 2008, 0, 0, 0}, {2.26, 1.48, 0.00, 0.00, 0.00}},
-    {1.0, {501, 2008, 0, 0, 0}, {1.59, 1.24, 0.00, 0.00, 0.00}},
-    {2.0, {501, 2008, 0, 0, 0}, {0.80, 0.52, 0.00, 0.00, 0.00}},
-    {1.0, {502, 2008, 0, 0, 0}, {0.39, 0.33, 0.00, 0.00, 0.00}},
-    {1.0, {502, 2008, 0, 0, 0}, {0.19, 0.18, 0.00, 0.00, 0.00}},
-    {1.0, {502, 2008, 0, 0, 0}, {0.00, 0.09, 0.00, 0.00, 0.00}},
-    {1.0, {502, 2008, 0, 0, 0}, {0.00, 0.05, 0.00, 0.00, 0.00}},
-    {1.0, {502, 2008, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {502, 2008, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1303, 2431, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1303, 2431, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1303, 2431, 0, 0, 0}, {0.88, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1302, 2431, 0, 0, 0}, {1.79, 1.29, 0.00, 0.00, 0.00}},
-    {1.0, {1302, 2449, 0, 0, 0}, {3.62, 3.67, 0.00, 0.00, 0.00}},
-    {1.0, {1301, 2449, 0, 0, 0}, {7.35, 5.76, 0.00, 0.00, 0.00}},
-    {1.0, {1301, 2449, 0, 0, 0}, {9.31, 9.02, 0.00, 0.00, 0.00}},
-    {3.0, {1301, 2449, 0, 0, 0}, {18.90, 14.36, 0.00, 0.00, 0.00}},
-    {1.0, {1301, 2449, 0, 0, 0}, {18.93, 16.76, 0.00, 0.00, 0.00}},
-    {45.0, {1295, 2449, 0, 0, 0}, {20.68, 18.19, 0.00, 0.00, 0.00}},
-    {20.0, {1169, 2449, 0, 0, 0}, {21.57, 18.87, 0.00, 0.00, 0.00}},
-    {5.0, {1137, 2431, 0, 0, 0}, {21.82, 19.13, 0.00, 0.00, 0.00}},
-    {132.0, {304, 1531, 0, 0, 0}, {31.00, 21.28, 0.00, 0.00, 0.00}},
-    {12.0, {252, 1449, 0, 0, 0}, {12.16, 21.91, 0.00, 0.00, 0.00}},
-    {14.0, {251, 1354, 0, 0, 0}, {0.67, 22.76, 0.00, 0.00, 0.00}},
-    {1.0, {251, 1347, 0, 0, 0}, {0.00, 22.83, 0.00, 0.00, 0.00}},
-    {2.0, {251, 1334, 0, 0, 0}, {0.00, 22.96, 0.00, 0.00, 0.00}},
-    {5.0, {251, 1308, 0, 0, 0}, {0.00, 10.28, 0.00, 0.00, 0.00}},
-    {2.0, {251, 1308, 0, 0, 0}, {0.00, 3.93, 0.00, 0.00, 0.00}},
-    {3.0, {251, 1308, 0, 0, 0}, {0.00, 0.46, 0.00, 0.00, 0.00}},
-    {1.0, {251, 1308, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {251, 1308, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {2603, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2603, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2603, 0, 0, 0, 0}, {1.02, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2597, 0, 0, 0, 0}, {3.97, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {2597, 0, 0, 0, 0}, {12.47, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {2602, 0, 0, 0, 0}, {22.56, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {2606, 0, 0, 0, 0}, {30.76, 0.00, 0.00, 0.00, 0.00}},
-    {104.0, {2607, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {29.0, {2605, 0, 0, 0, 0}, {15.71, 0.00, 0.00, 0.00, 0.00}},
-    {17.0, {2605, 0, 0, 0, 0}, {6.63, 0.00, 0.00, 0.00, 0.00}},
-    {8.0, {2605, 0, 0, 0, 0}, {2.08, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {2605, 0, 0, 0, 0}, {0.31, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2605, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {2605, 0, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1421, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1421, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1421, 0, 0, 0, 0}, {1.69, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1416, 0, 0, 0, 0}, {15.65, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1473, 0, 0, 0, 0}, {29.09, 0.00, 0.00, 0.00, 0.00}},
-    {87.0, {2986, 0, 0, 0, 0}, {16.04, 0.00, 0.00, 0.00, 0.00}},
-    {49.0, {3837, 0, 0, 0, 0}, {8.91, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {3868, 0, 0, 0, 0}, {9.53, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {3879, 0, 0, 0, 0}, {9.96, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3822, 0, 0, 0, 0}, {8.75, 0.00, 0.00, 0.00, 0.00}},
-    {35.0, {3070, 0, 0, 0, 0}, {14.74, 0.00, 0.00, 0.00, 0.00}},
-    {71.0, {1546, 0, 0, 0, 0}, {27.52, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1443, 0, 0, 0, 0}, {29.51, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1418, 0, 0, 0, 0}, {30.74, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1407, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {61.0, {1407, 0, 0, 0, 0}, {15.11, 0.00, 0.00, 0.00, 0.00}},
-    {32.0, {1407, 0, 0, 0, 0}, {6.24, 0.00, 0.00, 0.00, 0.00}},
-    {10.0, {1407, 0, 0, 0, 0}, {3.50, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {1407, 0, 0, 0, 0}, {1.53, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1407, 0, 0, 0, 0}, {0.51, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1407, 0, 0, 0, 0}, {0.11, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1407, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1407, 0, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1406, 260, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1406, 260, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1406, 260, 0, 0, 0}, {1.17, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1406, 260, 0, 0, 0}, {3.34, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1406, 260, 0, 0, 0}, {11.39, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1409, 260, 0, 0, 0}, {21.47, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1412, 260, 0, 0, 0}, {30.32, 0.00, 0.00, 0.00, 0.00}},
-    {108.0, {1406, 260, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1414, 260, 0, 0, 0}, {30.18, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1443, 260, 0, 0, 0}, {26.56, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1471, 260, 0, 0, 0}, {23.98, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1562, 260, 0, 0, 0}, {16.52, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1869, 260, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1869, 260, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1869, 260, 0, 0, 0}, {24.59, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {2266, 260, 0, 0, 0}, {25.25, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2395, 260, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2395, 260, 0, 0, 0}, {26.78, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {2468, 260, 0, 0, 0}, {26.16, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {2507, 260, 0, 0, 0}, {30.23, 0.00, 0.00, 0.00, 0.00}},
-    {13.0, {2508, 260, 0, 0, 0}, {30.07, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {2487, 260, 0, 0, 0}, {22.17, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2461, 260, 0, 0, 0}, {17.31, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1767, 260, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1767, 260, 0, 0, 0}, {16.98, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1719, 260, 0, 0, 0}, {21.73, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1707, 260, 0, 0, 0}, {29.06, 0.00, 0.00, 0.00, 0.00}},
-    {33.0, {1707, 260, 0, 0, 0}, {29.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1707, 260, 0, 0, 0}, {29.00, 0.30, 0.00, 0.00, 0.00}},
-    {2.0, {1707, 257, 0, 0, 0}, {29.00, 0.32, 0.00, 0.00, 0.00}},
-    {9.0, {1707, 259, 0, 0, 0}, {28.98, 2.51, 0.00, 0.00, 0.00}},
-    {7.0, {1707, 298, 0, 0, 0}, {28.97, 5.09, 0.00, 0.00, 0.00}},
-    {33.0, {1707, 573, 0, 0, 0}, {28.91, 5.19, 0.00, 0.00, 0.00}},
-    {5.0, {1707, 601, 0, 0, 0}, {28.90, 5.10, 0.00, 0.00, 0.00}},
-    {21.0, {1707, 601, 0, 0, 0}, {28.87, 4.12, 0.00, 0.00, 0.00}},
-    {68.0, {1708, 603, 0, 0, 0}, {12.02, 2.07, 0.00, 0.00, 0.00}},
-    {3.0, {1708, 603, 0, 0, 0}, {11.03, 2.01, 0.00, 0.00, 0.00}},
-    {15.0, {1708, 603, 0, 0, 0}, {7.19, 1.22, 0.00, 0.00, 0.00}},
-    {5.0, {1708, 603, 0, 0, 0}, {6.23, 0.79, 0.00, 0.00, 0.00}},
-    {2.0, {1708, 603, 0, 0, 0}, {5.52, 0.66, 0.00, 0.00, 0.00}},
-    {7.0, {1708, 603, 0, 0, 0}, {3.59, 0.63, 0.00, 0.00, 0.00}},
-    {3.0, {1708, 603, 0, 0, 0}, {2.99, 0.44, 0.00, 0.00, 0.00}},
-    {2.0, {1708, 603, 0, 0, 0}, {2.65, 0.25, 0.00, 0.00, 0.00}},
-    {2.0, {1708, 603, 0, 0, 0}, {1.91, 0.15, 0.00, 0.00, 0.00}},
-    {2.0, {1708, 600, 0, 0, 0}, {1.38, 0.17, 0.00, 0.00, 0.00}},
-    {1.0, {1708, 600, 0, 0, 0}, {1.18, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1708, 600, 0, 0, 0}, {0.85, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1709, 600, 0, 0, 0}, {0.10, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1709, 600, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1709, 600, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {3103, 615, 1416, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3103, 615, 1416, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3103, 615, 1416, 0, 0}, {1.30, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3102, 615, 1416, 0, 0}, {2.81, 1.30, 0.00, 0.00, 0.00}},
-    {1.0, {3100, 612, 1416, 0, 0}, {6.04, 1.89, 0.00, 0.00, 0.00}},
-    {2.0, {3103, 605, 1416, 0, 0}, {12.93, 3.95, 0.00, 0.00, 0.00}},
-    {1.0, {3105, 602, 1416, 0, 0}, {14.29, 5.73, 0.00, 0.00, 0.00}},
-    {4.0, {3114, 596, 1416, 0, 0}, {21.35, 8.15, 0.00, 0.00, 0.00}},
-    {98.0, {3112, 599, 1416, 0, 0}, {20.72, 8.15, 0.00, 0.00, 0.00}},
-    {1.0, {3104, 599, 1416, 0, 0}, {17.08, 8.15, 0.67, 0.00, 0.00}},
-    {3.0, {3083, 599, 1422, 0, 0}, {9.57, 8.15, 6.19, 0.00, 0.00}},
-    {1.0, {3076, 599, 1418, 0, 0}, {7.88, 8.15, 9.20, 0.00, 0.00}},
-    {1.0, {3076, 599, 1415, 0, 0}, {5.01, 8.15, 13.68, 0.00, 0.00}},
-    {1.0, {3075, 599, 1412, 0, 0}, {1.54, 8.15, 20.35, 0.00, 0.00}},
-    {1.0, {3075, 599, 1409, 0, 0}, {0.00, 8.15, 23.14, 0.00, 0.00}},
-    {2.0, {3075, 599, 1404, 0, 0}, {0.00, 8.15, 29.94, 0.00, 0.00}},
-    {9.0, {3075, 599, 1404, 0, 0}, {0.00, 8.15, 31.00, 0.00, 0.00}},
-    {99.0, {3075, 602, 1404, 0, 0}, {0.00, 8.15, 30.83, 0.00, 0.00}},
-    {3.0, {3075, 602, 1404, 0, 0}, {0.00, 7.73, 30.82, 0.00, 0.00}},
-    {31.0, {3075, 601, 1403, 0, 0}, {0.00, 4.46, 18.58, 0.00, 0.00}},
-    {5.0, {3075, 600, 1403, 0, 0}, {0.00, 4.08, 15.24, 0.00, 0.00}},
-    {19.0, {3075, 604, 1403, 0, 0}, {0.00, 1.89, 7.17, 0.00, 0.00}},
-    {8.0, {3075, 604, 1403, 0, 0}, {0.00, 0.94, 5.22, 0.00, 0.00}},
-    {2.0, {3075, 604, 1403, 0, 0}, {0.00, 0.79, 3.99, 0.00, 0.00}},
-    {5.0, {3075, 602, 1403, 0, 0}, {0.00, 0.25, 2.03, 0.00, 0.00}},
-    {1.0, {3075, 602, 1403, 0, 0}, {0.00, 0.00, 1.51, 0.00, 0.00}},
-    {3.0, {3075, 602, 1403, 0, 0}, {0.00, 0.00, 0.63, 0.00, 0.00}},
-    {1.0, {3075, 602, 1404, 0, 0}, {0.00, 0.00, 0.70, 0.00, 0.00}},
-    {1.0, {3075, 602, 1404, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {3075, 602, 1404, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1828, 1620, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1828, 1620, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1828, 1620, 0, 0, 0}, {2.16, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1828, 1620, 0, 0, 0}, {8.65, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1828, 1620, 0, 0, 0}, {16.32, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1823, 1620, 0, 0, 0}, {24.15, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1855, 1620, 0, 0, 0}, {30.20, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1825, 1620, 0, 0, 0}, {19.76, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1835, 1620, 0, 0, 0}, {16.78, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1844, 1620, 0, 0, 0}, {18.82, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1805, 1620, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1841, 1620, 0, 0, 0}, {24.95, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1829, 1620, 0, 0, 0}, {25.50, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1829, 1620, 0, 0, 0}, {25.50, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1829, 1620, 0, 0, 0}, {25.50, 15.24, 0.00, 0.00, 0.00}},
-    {106.0, {1834, 357, 0, 0, 0}, {25.31, 21.67, 0.00, 0.00, 0.00}},
-    {5.0, {1834, 325, 0, 0, 0}, {25.30, 21.15, 0.00, 0.00, 0.00}},
-    {4.0, {1834, 353, 0, 0, 0}, {25.29, 21.63, 0.00, 0.00, 0.00}},
-    {104.0, {1839, 1574, 0, 0, 0}, {25.10, 14.87, 0.00, 0.00, 0.00}},
-    {4.0, {1839, 1617, 0, 0, 0}, {25.09, 19.19, 0.00, 0.00, 0.00}},
-    {1.0, {1839, 1617, 0, 0, 0}, {25.09, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1839, 1617, 0, 0, 0}, {25.09, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1805, 1617, 0, 0, 0}, {29.51, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1853, 1617, 0, 0, 0}, {16.82, 0.00, 0.00, 0.00, 0.00}},
-    {8.0, {1807, 1617, 0, 0, 0}, {14.98, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1858, 1617, 0, 0, 0}, {30.74, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1825, 1617, 0, 0, 0}, {25.39, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1838, 1617, 0, 0, 0}, {25.34, 0.00, 0.00, 0.00, 0.00}},
-    {31.0, {1832, 1617, 0, 0, 0}, {15.28, 0.00, 0.00, 0.00, 0.00}},
-    {28.0, {1834, 1617, 0, 0, 0}, {5.56, 0.00, 0.00, 0.00, 0.00}},
-    {11.0, {1834, 1617, 0, 0, 0}, {1.66, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1834, 1617, 0, 0, 0}, {0.76, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {1834, 1617, 0, 0, 0}, {0.29, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1839, 1617, 0, 0, 0}, {0.27, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1839, 1617, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1839, 1617, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {982, 3508, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {982, 3508, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {982, 3508, 0, 0, 0}, {1.45, 0.56, 0.00, 0.00, 0.00}},
-    {1.0, {981, 3502, 0, 0, 0}, {2.77, 2.12, 0.00, 0.00, 0.00}},
-    {2.0, {979, 3502, 0, 0, 0}, {10.13, 6.67, 0.00, 0.00, 0.00}},
-    {2.0, {977, 3506, 0, 0, 0}, {18.58, 11.02, 0.00, 0.00, 0.00}},
-    {1.0, {973, 3508, 0, 0, 0}, {20.69, 14.16, 0.00, 0.00, 0.00}},
-    {2.0, {965, 3510, 0, 0, 0}, {25.65, 15.72, 0.00, 0.00, 0.00}},
-    {1.0, {956, 3511, 0, 0, 0}, {25.71, 16.56, 0.00, 0.00, 0.00}},
-    {65.0, {320, 3513, 0, 0, 0}, {31.00, 16.18, 0.00, 0.00, 0.00}},
-    {9.0, {260, 3514, 0, 0, 0}, {13.75, 16.12, 0.00, 0.00, 0.00}},
-    {16.0, {258, 3514, 0, 0, 0}, {0.33, 16.03, 0.00, 0.00, 0.00}},
-    {1.0, {258, 3514, 0, 0, 0}, {0.00, 16.03, 0.00, 0.00, 0.00}},
-    {6.0, {258, 3514, 0, 0, 0}, {0.00, 15.99, 0.00, 0.00, 0.00}},
-    {34.0, {258, 3516, 0, 0, 0}, {0.00, 6.12, 0.00, 0.00, 0.00}},
-    {18.0, {258, 3517, 0, 0, 0}, {0.00, 1.32, 0.00, 0.00, 0.00}},
-    {1.0, {258, 3517, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {258, 3517, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {3503, 1821, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3503, 1821, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3503, 1821, 0, 0, 0}, {1.41, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {3495, 1821, 0, 0, 0}, {7.11, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {3507, 1821, 0, 0, 0}, {22.97, 0.00, 0.00, 0.00, 0.00}},
-    {14.0, {3506, 1821, 0, 0, 0}, {24.65, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3500, 1821, 0, 0, 0}, {20.49, 1.01, 0.00, 0.00, 0.00}},
-    {2.0, {3486, 1821, 0, 0, 0}, {14.16, 4.47, 0.00, 0.00, 0.00}},
-    {1.0, {3452, 1821, 0, 0, 0}, {13.05, 9.41, 0.00, 0.00, 0.00}},
-    {1.0, {3493, 1817, 0, 0, 0}, {0.00, 12.47, 0.00, 0.00, 0.00}},
-    {3.0, {3493, 1805, 0, 0, 0}, {0.00, 29.04, 0.00, 0.00, 0.00}},
-    {15.0, {3493, 1804, 0, 0, 0}, {0.00, 30.86, 0.00, 0.00, 0.00}},
-    {2.0, {3493, 1804, 0, 0, 0}, {0.00, 19.87, 0.00, 0.00, 0.00}},
-    {1.0, {3493, 1803, 0, 0, 0}, {11.54, 15.94, 0.00, 0.00, 0.00}},
-    {2.0, {3501, 1803, 0, 0, 0}, {17.05, 10.26, 0.00, 0.00, 0.00}},
-    {1.0, {3506, 1803, 0, 0, 0}, {20.73, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3510, 1803, 0, 0, 0}, {25.20, 0.00, 0.00, 0.00, 0.00}},
-    {8.0, {3513, 1803, 0, 0, 0}, {26.47, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3512, 1803, 0, 0, 0}, {25.20, 0.47, 0.00, 0.00, 0.00}},
-    {1.0, {3511, 1802, 0, 0, 0}, {23.99, 1.62, 0.00, 0.00, 0.00}},
-    {1.0, {3509, 1802, 0, 0, 0}, {22.84, 3.61, 0.00, 0.00, 0.00}},
-    {1.0, {3505, 1802, 0, 0, 0}, {18.34, 8.04, 0.00, 0.00, 0.00}},
-    {2.0, {3495, 1802, 0, 0, 0}, {11.82, 18.57, 0.00, 0.00, 0.00}},
-    {1.0, {3491, 1802, 0, 0, 0}, {9.49, 22.02, 0.00, 0.00, 0.00}},
-    {1.0, {3469, 1803, 0, 0, 0}, {0.00, 26.11, 0.00, 0.00, 0.00}},
-    {1.0, {3469, 1803, 0, 0, 0}, {0.00, 30.96, 0.00, 0.00, 0.00}},
-    {10.0, {3469, 1809, 0, 0, 0}, {0.00, 25.78, 0.00, 0.00, 0.00}},
-    {2.0, {3469, 1817, 0, 0, 0}, {0.00, 13.98, 0.00, 0.00, 0.00}},
-    {1.0, {3469, 1821, 0, 0, 0}, {12.74, 10.30, 0.00, 0.00, 0.00}},
-    {2.0, {3497, 1823, 0, 0, 0}, {18.34, 2.98, 0.00, 0.00, 0.00}},
-    {1.0, {3500, 1824, 0, 0, 0}, {19.98, 1.61, 0.00, 0.00, 0.00}},
-    {1.0, {3503, 1822, 0, 0, 0}, {21.77, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {3509, 1822, 0, 0, 0}, {25.86, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3503, 1822, 0, 0, 0}, {22.12, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3498, 1822, 0, 0, 0}, {18.93, 1.17, 0.00, 0.00, 0.00}},
-    {2.0, {3488, 1822, 0, 0, 0}, {13.86, 4.96, 0.00, 0.00, 0.00}},
-    {1.0, {3463, 1822, 0, 0, 0}, {13.13, 10.23, 0.00, 0.00, 0.00}},
-    {1.0, {3463, 1817, 0, 0, 0}, {0.00, 13.90, 0.00, 0.00, 0.00}},
-    {2.0, {3463, 1808, 0, 0, 0}, {0.00, 25.65, 0.00, 0.00, 0.00}},
-    {15.0, {3463, 1804, 0, 0, 0}, {0.00, 31.00, 0.00, 0.00, 0.00}},
-    {26.0, {3463, 1805, 0, 0, 0}, {0.00, 15.96, 0.00, 0.00, 0.00}},
-    {16.0, {3463, 1805, 0, 0, 0}, {0.00, 6.83, 0.00, 0.00, 0.00}},
-    {8.0, {3463, 1805, 0, 0, 0}, {0.00, 2.03, 0.00, 0.00, 0.00}},
-    {5.0, {3463, 1805, 0, 0, 0}, {0.00, 0.33, 0.00, 0.00, 0.00}},
-    {1.0, {3463, 1805, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {3463, 1805, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {2908, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2908, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2908, 0, 0, 0, 0}, {1.74, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {2910, 0, 0, 0, 0}, {11.64, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {2914, 0, 0, 0, 0}, {29.00, 0.00, 0.00, 0.00, 0.00}},
-    {31.0, {2912, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {2910, 0, 0, 0, 0}, {25.56, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {2907, 0, 0, 0, 0}, {12.20, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {2907, 0, 0, 0, 0}, {4.34, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {2907, 0, 0, 0, 0}, {0.70, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3884, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {9.0, {3884, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3884, 0, 0, 0, 0}, {1.15, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3903, 0, 0, 0, 0}, {4.60, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {3897, 0, 0, 0, 0}, {13.53, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {3918, 0, 0, 0, 0}, {28.13, 0.00, 0.00, 0.00, 0.00}},
-    {33.0, {3916, 0, 0, 0, 0}, {27.42, 0.00, 0.00, 0.00, 0.00}},
-    {29.0, {3918, 0, 0, 0, 0}, {13.85, 0.00, 0.00, 0.00, 0.00}},
-    {15.0, {3916, 0, 0, 0, 0}, {6.25, 0.00, 0.00, 0.00, 0.00}},
-    {9.0, {3917, 0, 0, 0, 0}, {2.02, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {3917, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {3917, 0, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {2085, 3618, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2085, 3618, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2085, 3618, 0, 0, 0}, {0.84, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {2086, 3618, 0, 0, 0}, {2.40, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {2086, 3618, 0, 0, 0}, {9.29, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {2086, 3618, 0, 0, 0}, {18.76, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {2082, 3618, 0, 0, 0}, {28.04, 0.00, 0.00, 0.00, 0.00}},
-    {24.0, {1961, 3618, 0, 0, 0}, {28.72, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1956, 3618, 0, 0, 0}, {28.75, 4.55, 0.00, 0.00, 0.00}},
-    {2.0, {1946, 3621, 0, 0, 0}, {28.82, 9.15, 0.00, 0.00, 0.00}},
-    {3.0, {1925, 3621, 0, 0, 0}, {28.76, 14.01, 0.00, 0.00, 0.00}},
-    {17.0, {1808, 3619, 0, 0, 0}, {28.55, 22.37, 0.00, 0.00, 0.00}},
-    {8.0, {1752, 3501, 0, 0, 0}, {28.53, 23.14, 0.00, 0.00, 0.00}},
-    {23.0, {1654, 3280, 0, 0, 0}, {29.03, 24.86, 0.00, 0.00, 0.00}},
-    {35.0, {1505, 3005, 0, 0, 0}, {30.12, 28.94, 0.00, 0.00, 0.00}},
-    {1.0, {1501, 3001, 0, 0, 0}, {30.15, 28.94, 0.00, 0.00, 0.00}},
-    {76.0, {1330, 2709, 0, 0, 0}, {31.00, 28.72, 0.00, 0.00, 0.00}},
-    {6.0, {1325, 2686, 0, 0, 0}, {29.86, 28.62, 0.00, 0.00, 0.00}},
-    {23.0, {1305, 2611, 0, 0, 0}, {25.88, 24.51, 0.00, 0.00, 0.00}},
-    {39.0, {1305, 2609, 0, 0, 0}, {24.36, 24.54, 0.00, 0.00, 0.00}},
-    {5.0, {1305, 2610, 0, 0, 0}, {24.17, 22.01, 0.00, 0.00, 0.00}},
-    {10.0, {1305, 2611, 0, 0, 0}, {15.99, 17.71, 0.00, 0.00, 0.00}},
-    {21.0, {1305, 2612, 0, 0, 0}, {6.71, 6.24, 0.00, 0.00, 0.00}},
-    {7.0, {1305, 2612, 0, 0, 0}, {2.79, 2.47, 0.00, 0.00, 0.00}},
-    {3.0, {1305, 2612, 0, 0, 0}, {1.24, 0.97, 0.00, 0.00, 0.00}},
-    {1.0, {1305, 2612, 0, 0, 0}, {0.77, 0.71, 0.00, 0.00, 0.00}},
-    {1.0, {1305, 2613, 0, 0, 0}, {0.49, 0.82, 0.00, 0.00, 0.00}},
-    {1.0, {1306, 2613, 0, 0, 0}, {0.49, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1306, 2613, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1306, 2613, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {716, 2705, 302, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {716, 2705, 302, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {0.5, {716, 2705, 302, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {716, 2705, 302, 0, 0}, {1.28, 0.00, 0.00, 0.00, 0.00}},
-    {0.5, {716, 2705, 302, 0, 0}, {1.28, 8.05, 0.00, 0.00, 0.00}},
-    {1.0, {716, 2708, 302, 0, 0}, {1.49, 3.89, 0.00, 0.00, 0.00}},
-    {3.0, {716, 2710, 302, 0, 0}, {2.33, 9.25, 0.00, 0.00, 0.00}},
-    {1.0, {716, 2710, 302, 0, 0}, {2.68, 9.99, 0.00, 0.00, 0.00}},
-    {3.0, {716, 2710, 302, 0, 0}, {2.68, 12.78, 0.00, 0.00, 0.00}},
-    {31.0, {716, 2709, 302, 0, 0}, {2.67, 12.87, 0.00, 0.00, 0.00}},
-    {1.8, {716, 2701, 302, 0, 0}, {2.66, 12.40, 0.00, 0.00, 0.00}},
-    {1.2, {716, 2696, 302, 0, 0}, {2.94, 12.11, 0.00, 0.00, 0.00}},
-    {2.0, {716, 2668, 302, 0, 0}, {3.49, 10.62, 0.00, 0.00, 0.00}},
-    {1.0, {716, 2708, 302, 0, 0}, {3.80, 15.95, 0.00, 0.00, 0.00}},
-    {1.0, {716, 901, 302, 0, 0}, {4.13, 0.00, 0.00, 0.00, 0.00}},
-    {9.8, {716, 901, 302, 0, 0}, {9.48, 0.00, 0.00, 0.00, 0.00}},
-    {14.2, {640, 901, 302, 0, 0}, {16.96, 0.00, 0.00, 0.00, 0.00}},
-    {0.7, {636, 901, 302, 0, 0}, {17.48, 0.00, 0.00, 0.00, 0.00}},
-    {0.5, {636, 901, 302, 0, 0}, {17.56, 13.06, 0.00, 0.00, 0.00}},
-    {5.0, {620, 902, 302, 0, 0}, {19.12, 16.49, 0.00, 0.00, 0.00}},
-    {1.0, {617, 902, 302, 0, 0}, {19.45, 17.28, 2.54, 0.00, 0.00}},
-    {4.0, {605, 903, 301, 0, 0}, {20.82, 20.83, 3.77, 0.00, 0.00}},
-    {2.7, {597, 903, 301, 0, 0}, {21.79, 20.25, 4.93, 0.00, 0.00}},
-    {7.3, {596, 902, 299, 0, 0}, {21.75, 18.76, 10.20, 0.00, 0.00}},
-    {4.0, {595, 902, 299, 0, 0}, {21.72, 17.99, 12.86, 0.00, 0.00}},
-    {6.0, {594, 900, 299, 0, 0}, {21.69, 13.66, 18.22, 0.00, 0.00}},
-    {3.0, {593, 900, 299, 0, 0}, {21.67, 11.90, 18.52, 0.00, 0.00}},
-    {14.6, {590, 898, 300, 0, 0}, {21.59, 3.07, 20.04, 0.00, 0.00}},
-    {1.4, {586, 898, 300, 0, 0}, {21.65, 2.68, 20.20, 0.00, 0.00}},
-    {1.0, {583, 899, 300, 0, 0}, {21.70, 3.61, 20.31, 0.00, 0.00}},
-    {1.0, {580, 281, 300, 0, 0}, {21.75, 0.00, 20.42, 0.00, 0.00}},
-    {5.5, {563, 281, 300, 0, 0}, {22.02, 0.00, 21.05, 0.00, 0.00}},
-    {10.5, {512, 281, 300, 0, 0}, {21.38, 0.00, 22.28, 0.00, 0.00}},
-    {1.0, {507, 281, 300, 0, 0}, {21.32, 0.00, 0.00, 0.00, 0.00}},
-    {7.5, {471, 281, 300, 0, 0}, {20.89, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {472, 281, 300, 0, 0}, {21.36, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {421, 281, 300, 0, 0}, {21.88, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {453, 281, 300, 0, 0}, {19.85, 0.00, 0.00, 0.00, 0.00}},
-    {0.5, {453, 281, 300, 0, 0}, {19.85, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {447, 281, 300, 0, 0}, {19.47, 17.55, 0.00, 0.00, 0.00}},
-    {1.0, {441, 307, 300, 0, 0}, {19.09, 20.06, 0.00, 0.00, 0.00}},
-    {1.0, {339, 334, 300, 0, 0}, {0.00, 22.94, 0.00, 0.00, 0.00}},
-    {1.0, {339, 361, 300, 0, 0}, {0.00, 26.22, 0.00, 0.00, 0.00}},
-    {2.0, {339, 360, 300, 0, 0}, {0.00, 25.45, 0.00, 0.00, 0.00}},
-    {2.0, {339, 417, 300, 0, 0}, {0.00, 16.80, 0.00, 0.00, 0.00}},
-    {2.0, {339, 424, 300, 0, 0}, {0.00, 15.00, 0.00, 0.00, 0.00}},
-    {1.0, {339, 406, 300, 0, 0}, {0.00, 16.27, 0.00, 0.00, 0.00}},
-    {0.5, {339, 406, 300, 0, 0}, {0.00, 16.28, 0.00, 0.00, 0.00}},
-    {1.0, {339, 406, 300, 0, 0}, {21.31, 0.00, 0.00, 0.00, 0.00}},
-    {0.5, {339, 406, 300, 0, 0}, {21.32, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {332, 406, 300, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {324, 406, 300, 0, 0}, {11.53, 0.00, 0.00, 0.00, 0.00}},
-    {0.6, {406, 406, 300, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {0.5, {406, 406, 300, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {0.6, {406, 406, 300, 0, 0}, {17.57, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {357, 406, 300, 0, 0}, {10.11, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {318, 406, 300, 0, 0}, {13.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {313, 406, 300, 0, 0}, {22.88, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {302, 406, 300, 0, 0}, {25.32, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {323, 406, 300, 0, 0}, {23.83, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {289, 406, 300, 0, 0}, {23.22, 0.00, 0.00, 0.00, 0.00}},
-    {15.0, {299, 406, 300, 0, 0}, {21.74, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {305, 406, 300, 0, 0}, {8.52, 0.00, 0.00, 0.00, 0.00}},
-    {10.0, {305, 406, 300, 0, 0}, {4.57, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {6.87, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {4.71, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {6.80, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {305, 406, 300, 0, 0}, {4.67, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {6.79, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {4.66, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {305, 406, 300, 0, 0}, {6.79, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {4.73, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {6.88, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {4.73, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {6.77, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {305, 406, 300, 0, 0}, {4.63, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {6.70, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {3.99, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {305, 406, 300, 0, 0}, {4.05, 0.00, 0.00, 0.00, 0.00}},
-    {8.0, {305, 406, 300, 0, 0}, {0.68, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {316, 406, 300, 0, 0}, {1.23, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {316, 406, 300, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {316, 406, 300, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {965, 1334, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {965, 1334, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {965, 1334, 0, 0, 0}, {3.18, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {968, 1334, 0, 0, 0}, {7.64, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {963, 1334, 0, 0, 0}, {17.75, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {960, 1334, 0, 0, 0}, {20.41, 17.54, 0.00, 0.00, 0.00}},
-    {3.0, {950, 1340, 0, 0, 0}, {31.00, 21.88, 0.00, 0.00, 0.00}},
-    {3.0, {950, 1346, 0, 0, 0}, {30.99, 27.30, 0.00, 0.00, 0.00}},
-    {84.0, {950, 1341, 0, 0, 0}, {30.66, 27.11, 0.00, 0.00, 0.00}},
-    {3.0, {950, 1341, 0, 0, 0}, {30.65, 25.67, 0.00, 0.00, 0.00}},
-    {18.0, {950, 1342, 0, 0, 0}, {17.88, 18.53, 0.00, 0.00, 0.00}},
-    {23.0, {949, 1342, 0, 0, 0}, {8.99, 6.41, 0.00, 0.00, 0.00}},
-    {6.0, {949, 1342, 0, 0, 0}, {5.35, 4.86, 0.00, 0.00, 0.00}},
-    {3.0, {949, 1342, 0, 0, 0}, {4.13, 3.02, 0.00, 0.00, 0.00}},
-    {3.0, {949, 1342, 0, 0, 0}, {2.36, 1.88, 0.00, 0.00, 0.00}},
-    {1.0, {949, 1342, 0, 0, 0}, {1.96, 1.36, 0.00, 0.00, 0.00}},
-    {2.0, {949, 1342, 0, 0, 0}, {0.98, 0.72, 0.00, 0.00, 0.00}},
-    {1.0, {949, 1342, 0, 0, 0}, {0.69, 0.43, 0.00, 0.00, 0.00}},
-    {1.0, {950, 1342, 0, 0, 0}, {0.79, 0.26, 0.00, 0.00, 0.00}},
-    {1.0, {950, 1344, 0, 0, 0}, {0.00, 0.30, 0.00, 0.00, 0.00}},
-    {1.0, {950, 1344, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {950, 1344, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {690, 1231, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {690, 1231, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {690, 1231, 0, 0, 0}, {3.77, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {697, 1231, 0, 0, 0}, {8.78, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {701, 1231, 0, 0, 0}, {13.38, 12.47, 0.00, 0.00, 0.00}},
-    {1.0, {705, 1213, 0, 0, 0}, {20.40, 17.27, 0.00, 0.00, 0.00}},
-    {4.0, {707, 1214, 0, 0, 0}, {31.00, 25.89, 0.00, 0.00, 0.00}},
-    {90.0, {701, 1215, 0, 0, 0}, {30.46, 20.47, 0.00, 0.00, 0.00}},
-    {13.0, {701, 1215, 0, 0, 0}, {20.16, 19.78, 0.00, 0.00, 0.00}},
-    {20.0, {701, 1215, 0, 0, 0}, {10.69, 10.64, 0.00, 0.00, 0.00}},
-    {8.0, {701, 1215, 0, 0, 0}, {8.29, 6.40, 0.00, 0.00, 0.00}},
-    {4.0, {701, 1215, 0, 0, 0}, {5.59, 4.97, 0.00, 0.00, 0.00}},
-    {5.0, {701, 1215, 0, 0, 0}, {3.42, 2.50, 0.00, 0.00, 0.00}},
-    {2.0, {701, 1215, 0, 0, 0}, {2.09, 1.90, 0.00, 0.00, 0.00}},
-    {4.0, {700, 1215, 0, 0, 0}, {0.78, 0.50, 0.00, 0.00, 0.00}},
-    {1.0, {700, 1215, 0, 0, 0}, {0.61, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {700, 1215, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {700, 1215, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {714, 1350, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {714, 1350, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {714, 1350, 0, 0, 0}, {3.28, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {693, 1350, 0, 0, 0}, {4.11, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {692, 1350, 0, 0, 0}, {6.72, 4.53, 0.00, 0.00, 0.00}},
-    {2.0, {690, 1343, 0, 0, 0}, {17.89, 14.05, 0.00, 0.00, 0.00}},
-    {4.0, {704, 1346, 0, 0, 0}, {30.98, 22.51, 0.00, 0.00, 0.00}},
-    {1.0, {704, 1347, 0, 0, 0}, {30.98, 25.33, 0.00, 0.00, 0.00}},
-    {90.0, {701, 1341, 0, 0, 0}, {31.00, 21.88, 0.00, 0.00, 0.00}},
-    {7.0, {701, 1341, 0, 0, 0}, {26.18, 21.63, 0.00, 0.00, 0.00}},
-    {19.0, {701, 1341, 0, 0, 0}, {16.55, 12.46, 0.00, 0.00, 0.00}},
-    {6.0, {701, 1341, 0, 0, 0}, {12.34, 10.47, 0.00, 0.00, 0.00}},
-    {10.0, {701, 1341, 0, 0, 0}, {7.57, 5.50, 0.00, 0.00, 0.00}},
-    {4.0, {701, 1341, 0, 0, 0}, {4.82, 4.26, 0.00, 0.00, 0.00}},
-    {4.0, {701, 1341, 0, 0, 0}, {3.07, 2.18, 0.00, 0.00, 0.00}},
-    {2.0, {701, 1341, 0, 0, 0}, {1.79, 1.56, 0.00, 0.00, 0.00}},
-    {1.0, {701, 1341, 0, 0, 0}, {1.37, 1.05, 0.00, 0.00, 0.00}},
-    {2.0, {701, 1341, 0, 0, 0}, {0.57, 0.48, 0.00, 0.00, 0.00}},
-    {1.0, {701, 1341, 0, 0, 0}, {0.36, 0.25, 0.00, 0.00, 0.00}},
-    {1.0, {701, 1341, 0, 0, 0}, {0.38, 0.13, 0.00, 0.00, 0.00}},
-    {1.0, {701, 1342, 0, 0, 0}, {0.00, 0.15, 0.00, 0.00, 0.00}},
-    {1.0, {701, 1342, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {701, 1342, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {699, 1489, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {699, 1489, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {699, 1489, 0, 0, 0}, {2.30, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {699, 1489, 0, 0, 0}, {4.24, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {699, 1489, 0, 0, 0}, {7.83, 10.19, 0.00, 0.00, 0.00}},
-    {1.0, {699, 1487, 0, 0, 0}, {14.47, 11.73, 0.00, 0.00, 0.00}},
-    {5.0, {706, 1479, 0, 0, 0}, {31.00, 23.66, 0.00, 0.00, 0.00}},
-    {89.0, {701, 1480, 0, 0, 0}, {30.55, 20.34, 0.00, 0.00, 0.00}},
-    {9.0, {701, 1480, 0, 0, 0}, {25.08, 20.04, 0.00, 0.00, 0.00}},
-    {15.0, {701, 1480, 0, 0, 0}, {18.04, 13.25, 0.00, 0.00, 0.00}},
-    {6.0, {701, 1480, 0, 0, 0}, {13.71, 11.23, 0.00, 0.00, 0.00}},
-    {13.0, {701, 1480, 0, 0, 0}, {7.56, 5.50, 0.00, 0.00, 0.00}},
-    {2.0, {701, 1480, 0, 0, 0}, {6.04, 4.93, 0.00, 0.00, 0.00}},
-    {7.0, {701, 1480, 0, 0, 0}, {2.76, 1.85, 0.00, 0.00, 0.00}},
-    {1.0, {701, 1480, 0, 0, 0}, {2.03, 1.61, 0.00, 0.00, 0.00}},
-    {4.0, {701, 1480, 0, 0, 0}, {0.59, 0.35, 0.00, 0.00, 0.00}},
-    {1.0, {701, 1480, 0, 0, 0}, {0.43, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {701, 1480, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {701, 1480, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {794, 1202, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {794, 1202, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {794, 1202, 0, 0, 0}, {5.90, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {780, 1202, 0, 0, 0}, {15.68, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {775, 1202, 0, 0, 0}, {21.73, 18.39, 0.00, 0.00, 0.00}},
-    {4.0, {773, 1216, 0, 0, 0}, {30.98, 26.27, 0.00, 0.00, 0.00}},
-    {87.0, {773, 1215, 0, 0, 0}, {31.00, 21.14, 0.00, 0.00, 0.00}},
-    {15.0, {773, 1215, 0, 0, 0}, {23.03, 20.36, 0.00, 0.00, 0.00}},
-    {7.0, {772, 1215, 0, 0, 0}, {20.05, 15.47, 0.00, 0.00, 0.00}},
-    {20.0, {773, 1215, 0, 0, 0}, {9.23, 7.05, 0.00, 0.00, 0.00}},
-    {4.0, {773, 1215, 0, 0, 0}, {6.49, 6.03, 0.00, 0.00, 0.00}},
-    {6.0, {773, 1215, 0, 0, 0}, {3.83, 2.93, 0.00, 0.00, 0.00}},
-    {1.0, {773, 1215, 0, 0, 0}, {2.96, 2.60, 0.00, 0.00, 0.00}},
-    {5.0, {773, 1215, 0, 0, 0}, {0.82, 0.65, 0.00, 0.00, 0.00}},
-    {1.0, {773, 1215, 0, 0, 0}, {0.48, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {773, 1215, 0, 0, 0}, {0.28, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {773, 1215, 0, 0, 0}, {0.09, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {773, 1215, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {773, 1215, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {765, 1354, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {765, 1354, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {765, 1354, 0, 0, 0}, {2.21, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {765, 1354, 0, 0, 0}, {7.72, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {765, 1354, 0, 0, 0}, {14.41, 14.60, 0.00, 0.00, 0.00}},
-    {5.0, {772, 1348, 0, 0, 0}, {31.00, 23.16, 0.00, 0.00, 0.00}},
-    {1.0, {772, 1346, 0, 0, 0}, {30.99, 25.40, 0.00, 0.00, 0.00}},
-    {89.0, {773, 1342, 0, 0, 0}, {30.52, 20.40, 0.00, 0.00, 0.00}},
-    {12.0, {773, 1341, 0, 0, 0}, {23.04, 19.80, 0.00, 0.00, 0.00}},
-    {13.0, {773, 1341, 0, 0, 0}, {16.99, 11.77, 0.00, 0.00, 0.00}},
-    {19.0, {773, 1341, 0, 0, 0}, {6.84, 5.50, 0.00, 0.00, 0.00}},
-    {7.0, {773, 1341, 0, 0, 0}, {2.94, 2.33, 0.00, 0.00, 0.00}},
-    {5.0, {772, 1342, 0, 0, 0}, {0.54, 0.48, 0.00, 0.00, 0.00}},
-    {1.0, {772, 1342, 0, 0, 0}, {0.39, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {772, 1342, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {772, 1342, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {780, 1476, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {780, 1476, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {780, 1476, 0, 0, 0}, {4.49, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {758, 1476, 0, 0, 0}, {5.03, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {758, 1476, 0, 0, 0}, {7.82, 4.24, 0.00, 0.00, 0.00}},
-    {1.0, {758, 1470, 0, 0, 0}, {12.17, 10.89, 0.00, 0.00, 0.00}},
-    {1.0, {757, 1473, 0, 0, 0}, {18.93, 14.95, 0.00, 0.00, 0.00}},
-    {4.0, {771, 1479, 0, 0, 0}, {31.00, 24.40, 0.00, 0.00, 0.00}},
-    {91.0, {773, 1480, 0, 0, 0}, {30.28, 23.33, 0.00, 0.00, 0.00}},
-    {1.0, {773, 1480, 0, 0, 0}, {29.31, 23.32, 0.00, 0.00, 0.00}},
-    {27.0, {773, 1480, 0, 0, 0}, {12.10, 11.78, 0.00, 0.00, 0.00}},
-    {13.0, {773, 1481, 0, 0, 0}, {7.91, 5.91, 0.00, 0.00, 0.00}},
-    {2.0, {773, 1481, 0, 0, 0}, {6.39, 5.31, 0.00, 0.00, 0.00}},
-    {7.0, {773, 1481, 0, 0, 0}, {3.03, 2.14, 0.00, 0.00, 0.00}},
-    {1.0, {773, 1481, 0, 0, 0}, {2.27, 1.88, 0.00, 0.00, 0.00}},
-    {5.0, {773, 1480, 0, 0, 0}, {0.54, 0.28, 0.00, 0.00, 0.00}},
-    {1.0, {773, 1480, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {773, 1480, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {895, 1220, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {895, 1220, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {895, 1220, 0, 0, 0}, {5.77, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {862, 1220, 0, 0, 0}, {4.45, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {856, 1220, 0, 0, 0}, {11.19, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {852, 1220, 0, 0, 0}, {17.76, 8.60, 0.00, 0.00, 0.00}},
-    {1.0, {854, 1212, 0, 0, 0}, {19.85, 18.94, 0.00, 0.00, 0.00}},
-    {4.0, {861, 1214, 0, 0, 0}, {31.00, 27.18, 0.00, 0.00, 0.00}},
-    {92.0, {856, 1214, 0, 0, 0}, {27.69, 25.70, 0.00, 0.00, 0.00}},
-    {3.0, {856, 1214, 0, 0, 0}, {27.59, 23.24, 0.00, 0.00, 0.00}},
-    {25.0, {855, 1215, 0, 0, 0}, {13.95, 10.07, 0.00, 0.00, 0.00}},
-    {11.0, {855, 1215, 0, 0, 0}, {7.51, 6.97, 0.00, 0.00, 0.00}},
-    {3.0, {855, 1215, 0, 0, 0}, {6.35, 5.12, 0.00, 0.00, 0.00}},
-    {5.0, {855, 1215, 0, 0, 0}, {3.17, 3.06, 0.00, 0.00, 0.00}},
-    {2.0, {855, 1215, 0, 0, 0}, {2.40, 1.78, 0.00, 0.00, 0.00}},
-    {3.0, {855, 1215, 0, 0, 0}, {0.73, 0.78, 0.00, 0.00, 0.00}},
-    {1.0, {856, 1215, 0, 0, 0}, {0.49, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {856, 1215, 0, 0, 0}, {0.33, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {856, 1215, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {856, 1215, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {878, 1360, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {878, 1360, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {878, 1360, 0, 0, 0}, {2.56, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {853, 1360, 0, 0, 0}, {3.07, 0.00, 0.00, 0.00, 0.00}},
-    {2.0, {850, 1360, 0, 0, 0}, {9.08, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {849, 1360, 0, 0, 0}, {15.60, 8.53, 0.00, 0.00, 0.00}},
-    {1.0, {852, 1344, 0, 0, 0}, {17.90, 17.35, 0.00, 0.00, 0.00}},
-    {4.0, {860, 1346, 0, 0, 0}, {31.00, 26.07, 0.00, 0.00, 0.00}},
-    {90.0, {856, 1342, 0, 0, 0}, {30.44, 23.89, 0.00, 0.00, 0.00}},
-    {4.0, {856, 1342, 0, 0, 0}, {27.55, 23.80, 0.00, 0.00, 0.00}},
-    {25.0, {856, 1342, 0, 0, 0}, {14.76, 9.98, 0.00, 0.00, 0.00}},
-    {13.0, {855, 1342, 0, 0, 0}, {7.33, 6.35, 0.00, 0.00, 0.00}},
-    {1.0, {855, 1342, 0, 0, 0}, {6.94, 5.66, 0.00, 0.00, 0.00}},
-    {8.0, {855, 1342, 0, 0, 0}, {2.40, 2.24, 0.00, 0.00, 0.00}},
-    {1.0, {855, 1342, 0, 0, 0}, {2.10, 1.59, 0.00, 0.00, 0.00}},
-    {4.0, {854, 1342, 0, 0, 0}, {0.47, 0.41, 0.00, 0.00, 0.00}},
-    {1.0, {854, 1342, 0, 0, 0}, {0.32, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {854, 1342, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {854, 1342, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {865, 1486, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {865, 1486, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {865, 1486, 0, 0, 0}, {3.72, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {861, 1486, 0, 0, 0}, {5.67, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {858, 1486, 0, 0, 0}, {8.64, 7.37, 0.00, 0.00, 0.00}},
-    {2.0, {850, 1478, 0, 0, 0}, {20.07, 16.23, 0.00, 0.00, 0.00}},
-    {4.0, {860, 1480, 0, 0, 0}, {31.00, 25.01, 0.00, 0.00, 0.00}},
-    {92.0, {856, 1480, 0, 0, 0}, {29.91, 23.41, 0.00, 0.00, 0.00}},
-    {2.0, {856, 1480, 0, 0, 0}, {27.99, 23.37, 0.00, 0.00, 0.00}},
-    {37.0, {856, 1481, 0, 0, 0}, {8.21, 7.04, 0.00, 0.00, 0.00}},
-    {2.0, {856, 1481, 0, 0, 0}, {7.68, 5.73, 0.00, 0.00, 0.00}},
-    {8.0, {856, 1481, 0, 0, 0}, {3.01, 2.51, 0.00, 0.00, 0.00}},
-    {1.0, {856, 1482, 0, 0, 0}, {2.68, 1.97, 0.00, 0.00, 0.00}},
-    {5.0, {856, 1483, 0, 0, 0}, {0.49, 0.59, 0.00, 0.00, 0.00}},
-    {1.0, {856, 1483, 0, 0, 0}, {0.35, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {856, 1483, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {856, 1483, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {936, 1211, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {936, 1211, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {936, 1211, 0, 0, 0}, {5.07, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {937, 1211, 0, 0, 0}, {20.72, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {940, 1211, 0, 0, 0}, {22.92, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {944, 1211, 0, 0, 0}, {25.35, 21.74, 0.00, 0.00, 0.00}},
-    {2.0, {950, 1214, 0, 0, 0}, {31.00, 25.90, 0.00, 0.00, 0.00}},
-    {1.0, {950, 1215, 0, 0, 0}, {31.00, 28.27, 0.00, 0.00, 0.00}},
-    {87.0, {949, 1215, 0, 0, 0}, {30.65, 27.86, 0.00, 0.00, 0.00}},
-    {34.0, {948, 1216, 0, 0, 0}, {11.60, 11.60, 0.00, 0.00, 0.00}},
-    {5.0, {948, 1216, 0, 0, 0}, {10.05, 7.80, 0.00, 0.00, 0.00}},
-    {10.0, {948, 1216, 0, 0, 0}, {4.57, 3.53, 0.00, 0.00, 0.00}},
-    {2.0, {948, 1216, 0, 0, 0}, {3.30, 3.01, 0.00, 0.00, 0.00}},
-    {1.0, {948, 1217, 0, 0, 0}, {2.80, 3.75, 0.00, 0.00, 0.00}},
-    {1.0, {948, 1217, 0, 0, 0}, {2.38, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {948, 1217, 0, 0, 0}, {0.93, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {949, 1217, 0, 0, 0}, {1.11, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {949, 1217, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {949, 1217, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {953, 1470, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {953, 1470, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {953, 1470, 0, 0, 0}, {8.48, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {945, 1470, 0, 0, 0}, {8.22, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {946, 1470, 0, 0, 0}, {11.58, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {947, 1470, 0, 0, 0}, {16.30, 15.30, 0.00, 0.00, 0.00}},
-    {1.0, {947, 1473, 0, 0, 0}, {22.95, 17.90, 0.00, 0.00, 0.00}},
-    {2.0, {948, 1477, 0, 0, 0}, {26.67, 24.51, 0.00, 0.00, 0.00}},
-    {2.0, {949, 1478, 0, 0, 0}, {31.00, 24.94, 0.00, 0.00, 0.00}},
-    {5.0, {950, 1479, 0, 0, 0}, {30.89, 26.03, 0.00, 0.00, 0.00}},
-    {81.0, {950, 1479, 0, 0, 0}, {29.12, 25.79, 0.00, 0.00, 0.00}},
-    {6.0, {950, 1479, 0, 0, 0}, {28.99, 22.86, 0.00, 0.00, 0.00}},
-    {19.0, {949, 1480, 0, 0, 0}, {18.08, 15.61, 0.00, 0.00, 0.00}},
-    {7.0, {949, 1479, 0, 0, 0}, {15.19, 11.98, 0.00, 0.00, 0.00}},
-    {8.0, {949, 1479, 0, 0, 0}, {9.92, 8.86, 0.00, 0.00, 0.00}},
-    {7.0, {949, 1479, 0, 0, 0}, {6.83, 5.17, 0.00, 0.00, 0.00}},
-    {4.0, {949, 1479, 0, 0, 0}, {4.19, 3.81, 0.00, 0.00, 0.00}},
-    {3.0, {949, 1479, 0, 0, 0}, {2.90, 2.10, 0.00, 0.00, 0.00}},
-    {3.0, {949, 1479, 0, 0, 0}, {1.24, 1.16, 0.00, 0.00, 0.00}},
-    {3.0, {949, 1478, 0, 0, 0}, {0.53, 0.29, 0.00, 0.00, 0.00}},
-    {1.0, {949, 1478, 0, 0, 0}, {0.00, 0.19, 0.00, 0.00, 0.00}},
-    {1.0, {949, 1478, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {949, 1478, 0, 0, 0}, {0, 0, 0, 0, 0}},
-    {1.0, {1732, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1732, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1732, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1784, 0, 0, 0, 0}, {19.71, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1810, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1826, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1786, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1810, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1789, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1836, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1818, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1838, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1822, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1841, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1799, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1815, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1778, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1822, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {1784, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {1795, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1851, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1816, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {1803, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {11.0, {1837, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {14.0, {1798, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {9.0, {1834, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1790, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1832, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1818, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1838, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {1826, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1785, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1803, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1795, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1828, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1802, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {8.0, {1795, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {9.0, {1826, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1777, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1821, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1804, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {24.0, {1812, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1787, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1797, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1782, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1796, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1844, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1810, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1787, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {5.0, {1808, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1797, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1818, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {8.0, {1765, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {7.0, {1806, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {6.0, {1791, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1802, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1783, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1799, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {10.0, {1782, 0, 0, 0, 0}, {31.00, 0.00, 0.00, 0.00, 0.00}},
-    {503.0, {1783, 0, 0, 0, 0}, {6.77, 0.00, 0.00, 0.00, 0.00}},
-    {20.0, {1783, 0, 0, 0, 0}, {4.28, 0.00, 0.00, 0.00, 0.00}},
-    {113.0, {1783, 0, 0, 0, 0}, {3.57, 0.00, 0.00, 0.00, 0.00}},
-    {13.0, {1783, 0, 0, 0, 0}, {2.44, 0.00, 0.00, 0.00, 0.00}},
-    {107.0, {1783, 0, 0, 0, 0}, {2.53, 0.00, 0.00, 0.00, 0.00}},
-    {12.0, {1783, 0, 0, 0, 0}, {1.33, 0.00, 0.00, 0.00, 0.00}},
-    {84.0, {1783, 0, 0, 0, 0}, {1.30, 0.00, 0.00, 0.00, 0.00}},
-    {4.0, {1783, 0, 0, 0, 0}, {0.98, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1783, 0, 0, 0, 0}, {0.41, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1794, 0, 0, 0, 0}, {0.70, 0.00, 0.00, 0.00, 0.00}},
-    {1.0, {1794, 0, 0, 0, 0}, {0.00, 0.00, 0.00, 0.00, 0.00}},
-    {3.0, {1794, 0, 0, 0, 0}, {0, 0, 0, 0, 0}},
-};
-
-static const struct {
-  short first, count;
-} fx2_index[] = {
-    {0, 15},
-    {15, 30},
-    {45, 27},
-    {72, 35},
-    {107, 45},
-    {152, 31},
-    {183, 48},
-    {231, 57},
-    {288, 61},
-    {349, 57},
-    {406, 67},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {473, 38},
-    {511, 72},
-    {583, 24},
-    {607, 55},
-    {662, 49},
-    {711, 22},
-    {733, 14},
-    {747, 23},
-    {770, 50},
-    {820, 30},
-    {850, 36},
-    {886, 18},
-    {904, 46},
-    {950, 22},
-    {972, 30},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {1002, 83},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {0, 0},
-    {1085, 22},
-    {1107, 18},
-    {1125, 23},
-    {1148, 19},
-    {1167, 19},
-    {1186, 16},
-    {1202, 18},
-    {1220, 20},
-    {1240, 19},
-    {1259, 17},
-    {1276, 19},
-    {1295, 23},
-    {1318, 71},
-    {0, 0},
-    {0, 0}
-};
-
-/* A4 is not a sine: on unit B of the VoxRecord recording its tone carries its
- * third harmonic, exactly three times its frequency all the way up, 10 to
- * 14dB under it, and no fifth; the harmonic is gone as it nears 4kHz, half the
- * chip's rate. the noise under it before (see fx_noise) is not there on the
- * chip. with the harmonic on oscillator 2 at the level that fitted best and no
- * noise, 1.33 to 1.00. no other effect has a harmonic to speak of */
+/* A4 is not a sine: its tone carries its third harmonic, exactly three times
+ * its frequency, 10 to 14dB under it, gone as it nears 4kHz. it plays on
+ * oscillator 2 */
 static const struct {
   short code;
   double db;
@@ -5110,17 +2174,66 @@ static void contour2(sound *s, const fx2_point *p, int n, int code) {
     hold(s, p[i].ms, p[i].ms, f);
   }
 }
+/* contour_tones plays an effect from its tones' knots (see fx_knots): a part
+ * at every knot of any of them, each tone at its straight line's value there.
+ * false if the effect has no tones */
+static bool contour_tones(sound *s, int code) {
+  int times[MAX_PARTS], n = 0;
+  for (int k = 0; k < (int)(sizeof(fx_tones) / sizeof(fx_tones[0])); k++) {
+    if (fx_tones[k].code != code)
+      continue;
+    for (int i = 0; i < fx_tones[k].count; i++) {
+      const int t = fx_knots[3 * (fx_tones[k].first + i)];
+      int j = 0;
+      while (j < n && times[j] < t)
+        j++;
+      if (j < n && times[j] == t)
+        continue;
+      for (int m = n; m > j; m--)
+        times[m] = times[m - 1];
+      times[j] = t;
+      n++;
+    }
+  }
+  if (n == 0)
+    return false;
+  static fx2_point p[MAX_PARTS];
+  memset(p, 0, sizeof(p));
+  for (int i = 0; i < n; i++) {
+    p[i].ms = (float)((times[i] - (i > 0 ? times[i - 1] : 0)) / 10.0);
+    for (int k = 0; k < (int)(sizeof(fx_tones) / sizeof(fx_tones[0])); k++) {
+      if (fx_tones[k].code != code)
+        continue;
+      const short *q = &fx_knots[3 * fx_tones[k].first];
+      const int c = fx_tones[k].count;
+      double f, v;
+      if (times[i] <= q[0]) {
+        f = q[1];
+        v = q[2];
+      } else if (times[i] >= q[3 * (c - 1)]) {
+        f = q[3 * (c - 1) + 1];
+        v = q[3 * (c - 1) + 2];
+      } else {
+        int j = 0;
+        while (q[3 * (j + 1)] <= times[i])
+          j++;
+        const double w = (double)(times[i] - q[3 * j]) / (q[3 * (j + 1)] - q[3 * j]);
+        f = q[3 * j + 1] + w * (q[3 * (j + 1) + 1] - q[3 * j + 1]);
+        v = q[3 * j + 2] + w * (q[3 * (j + 1) + 2] - q[3 * j + 2]);
+      }
+      p[i].freq[fx_tones[k].osc] = (float)f;
+      p[i].vol[fx_tones[k].osc] = (float)(v / 100);
+    }
+  }
+  contour2(s, p, n, code);
+  return true;
+}
 /* FX2-END */
 
 /* FXV-BEGIN */
-/* the sound effects that are a buzz, voiced at the default speech pitch
- * with formants that move, played as the chip plays
- * them, pulse by pulse: measured the same way as the allophones played from
- * the chip's frames (see vf_points), on both units. each point is a pulse:
- * its time after the one before (glided to in a straight line), the three
- * formants and their volumes. A2 is played this way; A1, A3 and M2 measured
- * this way came out further from the recordings, and keep their traces (A1's
- * traced again: see fx_points) */
+/* the buzz effects played as the chip plays them, pulse by pulse (measured as
+ * vf_points are): each point is a pulse's time after the one before, the three
+ * formants and their volumes */
 typedef struct fxv_point {
   float ms;
   float freq[3];
@@ -5271,30 +2384,13 @@ static void contour_voiced(sound *s, const fxv_point *p, int n) {
 }
 /* FXV-END */
 
-/* C1 is voiced: a harmonic series whose own pitch sweeps, with three
- * formants moving through it. on both units, in Man Goes Down (C1 at speed 62,
- * where it is slow enough to see), every line is a whole multiple of the
- * pitch, and the pitch steps a whole voicing tick (see voice_hz()) at a time:
- * 24 ticks (333Hz) for the first 40ms, up to 14 (570Hz) by 80ms, then one tick
- * slower every few milliseconds to 40 ticks (200Hz) at the end, the same on
- * both units within 4Hz. the fourth VoxProbe recording plays it at pitch 60,
- * 88 and 150 and at bend 0 and 15, and the sweep is the same at all of them
- * but pitch 150 (a tick or two faster there), so the Pitch control doesn't
- * move it (see sound.own_pitch); Bend moves the formants as usual. over the
- * last 200ms one line rises from 2.0 to 2.9kHz (3.35kHz at bend 15) straight
+/* C1 is voiced: a harmonic series whose own pitch sweeps, in whole voicing
+ * ticks (see voice_hz()), from 333Hz up to 570Hz by 80ms and down to 200Hz,
+ * with three formants moving through it; the Pitch control doesn't move it
+ * (see sound.own_pitch). over its last 200ms one line rises from 2.0 to 2.9kHz
  * through the harmonics: oscillator 3 there runs free of the voicing (see
- * frame.free_osc). the trace this replaces took the loudest harmonic for a
- * tone, jumping from one to the next, under broad noise: at speed 62 it was
- * noise and 4.3dB too loud against the speech.
- *
- * the points are every 1.9ms of the sweep at the default speed: the pitch as
- * measured, and the formants and volumes, as knots every 5 to 20ms, fitted to
- * both units of Man Goes Down and of the fourth VoxProbe recording at the
- * default and bend 15, with C1's level against the game's first phrase, full
- * band (150Hz to 16kHz, see docs/design.md). fitted: Man Goes Down 0.60 to
- * 0.85 and level +4.3 to 0.0dB, default 0.81 to 0.81, bend 15 0.78 to 0.80.
- * left out: pitch 150 0.74 to 0.77, bend 0 0.73 to 0.78 (5.4 to 3.0dB), the
- * VoxRecord recording 0.813 to 0.817, pitch 60 0.81 to 0.79 */
+ * frame.free_osc). each point: its time after the one before, the pitch, the
+ * formants and their volumes */
 typedef struct c1_point {
   float ms, pitch;
   float freq[3];
@@ -5305,34 +2401,23 @@ static const c1_point c1_points[] = {
     {1.00, 332.8, {877, 1443, 1997}, {10.15, 1.21, 0.00}},
     {1.90, 332.8, {765, 1439, 2089}, {6.63, 0.64, 0.00}},
     {1.90, 332.8, {848, 1354, 2096}, {11.68, 3.93, 0.00}},
-    {1.90, 332.8, {996, 1242, 2074}, {19.58, 8.50, 0.00}},
-    {1.90, 332.8, {1112, 1172, 2064}, {25.95, 12.43, 0.00}},
-    {1.90, 347.2, {1004, 1388, 2133}, {21.57, 11.86, 0.00}},
-    {1.90, 347.2, {896, 1604, 2203}, {17.19, 11.29, 0.00}},
+    {3.80, 332.8, {1112, 1172, 2064}, {25.95, 12.43, 0.00}},
+    {3.80, 347.2, {896, 1604, 2203}, {17.19, 11.29, 0.00}},
     {1.90, 347.2, {823, 1626, 2249}, {16.38, 14.57, 0.00}},
-    {1.90, 347.2, {784, 1454, 2273}, {19.14, 21.71, 0.00}},
-    {1.90, 347.2, {745, 1282, 2297}, {21.90, 28.86, 0.00}},
-    {1.90, 347.2, {660, 1407, 2243}, {22.42, 23.50, 0.00}},
-    {1.90, 347.2, {569, 1574, 2179}, {22.61, 16.36, 0.00}},
+    {3.80, 347.2, {745, 1282, 2297}, {21.90, 28.86, 0.00}},
+    {3.80, 347.2, {569, 1574, 2179}, {22.61, 16.36, 0.00}},
     {1.90, 347.2, {557, 1662, 2137}, {23.54, 12.43, 0.19}},
-    {1.90, 347.2, {786, 1510, 2163}, {26.68, 18.14, 0.95}},
-    {1.90, 347.2, {1014, 1357, 2190}, {29.82, 23.86, 1.71}},
+    {3.80, 347.2, {1014, 1357, 2190}, {29.82, 23.86, 1.71}},
     {1.90, 347.2, {1076, 1440, 2217}, {25.70, 23.50, 1.52}},
-    {1.90, 347.2, {1038, 1665, 2243}, {17.23, 19.50, 0.76}},
-    {1.90, 347.2, {1000, 1890, 2270}, {8.75, 15.50, 0.00}},
-    {1.90, 380.3, {1335, 1981, 2205}, {17.23, 20.64, 2.67}},
-    {1.90, 399.3, {1670, 2073, 2140}, {25.70, 25.79, 5.33}},
+    {3.80, 347.2, {1000, 1890, 2270}, {8.75, 15.50, 0.00}},
+    {3.80, 399.3, {1670, 2073, 2140}, {25.70, 25.79, 5.33}},
     {1.90, 399.3, {1791, 2064, 2103}, {28.79, 28.14, 7.57}},
-    {1.90, 420.3, {1555, 1888, 2110}, {22.88, 25.86, 9.10}},
-    {1.90, 420.3, {1319, 1712, 2118}, {16.98, 23.57, 10.62}},
-    {1.90, 420.3, {1211, 1607, 2040}, {17.50, 22.14, 9.57}},
-    {1.90, 420.3, {1147, 1526, 1933}, {20.17, 21.00, 7.67}},
+    {3.80, 420.3, {1319, 1712, 2118}, {16.98, 23.57, 10.62}},
+    {3.80, 420.3, {1147, 1526, 1933}, {20.17, 21.00, 7.67}},
     {1.90, 443.7, {1076, 1474, 1832}, {22.58, 19.74, 5.90}},
-    {1.90, 443.7, {966, 1625, 1771}, {23.25, 17.64, 5.14}},
-    {1.90, 443.7, {855, 1777, 1710}, {23.92, 15.55, 4.38}},
+    {3.80, 443.7, {855, 1777, 1710}, {23.92, 15.55, 4.38}},
     {1.90, 469.8, {747, 1667, 1730}, {23.49, 15.17, 4.76}},
-    {1.90, 469.8, {640, 1297, 1829}, {21.96, 16.50, 6.29}},
-    {1.90, 469.8, {533, 926, 1928}, {20.44, 17.83, 7.81}},
+    {3.80, 469.8, {533, 926, 1928}, {20.44, 17.83, 7.81}},
     {1.90, 499.1, {433, 1078, 2032}, {17.58, 19.17, 12.00}},
     {1.90, 499.1, {334, 1303, 2136}, {14.54, 20.50, 16.57}},
     {1.90, 499.1, {264, 1418, 2218}, {11.13, 20.60, 20.00}},
@@ -5341,125 +2426,39 @@ static const c1_point c1_points[] = {
     {1.90, 532.4, {369, 900, 2258}, {1.51, 11.05, 20.48}},
     {1.90, 532.4, {480, 909, 2272}, {3.13, 9.52, 21.24}},
     {1.90, 570.4, {590, 918, 2285}, {4.75, 8.00, 22.00}},
-    {1.90, 570.4, {361, 1086, 2298}, {5.61, 11.43, 23.14}},
-    {1.90, 570.4, {133, 1255, 2312}, {6.46, 14.86, 24.29}},
+    {3.80, 570.4, {133, 1255, 2312}, {6.46, 14.86, 24.29}},
     {1.90, 570.4, {59, 1412, 2295}, {6.00, 18.32, 24.00}},
     {1.90, 570.4, {241, 1550, 2228}, {3.33, 21.85, 21.33}},
     {1.90, 532.4, {424, 1688, 2162}, {0.67, 25.37, 18.67}},
     {1.90, 532.4, {376, 1632, 2164}, {3.57, 22.61, 18.29}},
     {1.90, 532.4, {250, 1511, 2188}, {8.33, 17.75, 18.67}},
     {1.90, 532.4, {128, 1447, 2183}, {11.90, 14.08, 18.50}},
-    {1.90, 532.4, {29, 1779, 1966}, {7.14, 18.75, 14.50}},
-    {1.90, 532.4, {-70, 2111, 1749}, {2.38, 23.42, 10.50}},
+    {3.80, 532.4, {-70, 2111, 1749}, {2.38, 23.42, 10.50}},
     {1.90, 532.4, {-125, 2182, 1667}, {0.33, 24.96, 8.79}},
-    {1.90, 532.4, {-134, 1992, 1721}, {1.00, 23.39, 9.36}},
-    {1.90, 532.4, {-143, 1803, 1775}, {1.67, 21.82, 9.93}},
-    {1.90, 532.4, {-152, 1612, 1829}, {2.33, 20.25, 10.50}},
+    {5.70, 532.4, {-152, 1612, 1829}, {2.33, 20.25, 10.50}},
     {1.90, 499.1, {-161, 1422, 1882}, {3.00, 18.68, 11.07}},
     {1.90, 499.1, {-158, 1288, 1931}, {3.46, 17.39, 11.64}},
-    {1.90, 499.1, {-120, 1320, 1963}, {3.30, 16.94, 12.21}},
-    {1.90, 499.1, {-83, 1351, 1996}, {3.14, 16.50, 12.79}},
-    {1.90, 499.1, {-45, 1383, 2028}, {2.98, 16.06, 13.36}},
-    {1.90, 499.1, {-7, 1415, 2060}, {2.83, 15.61, 13.93}},
-    {1.90, 499.1, {31, 1447, 2092}, {2.67, 15.17, 14.50}},
-    {1.90, 499.1, {69, 1478, 2125}, {2.51, 14.72, 15.07}},
-    {1.90, 499.1, {106, 1510, 2157}, {2.35, 14.28, 15.64}},
+    {13.30, 499.1, {106, 1510, 2157}, {2.35, 14.28, 15.64}},
     {1.90, 499.1, {130, 1545, 2182}, {2.17, 14.33, 15.43}},
     {1.90, 469.8, {131, 1586, 2195}, {1.96, 15.21, 13.90}},
-    {1.90, 469.8, {132, 1627, 2208}, {1.74, 16.09, 12.38}},
-    {1.90, 469.8, {133, 1668, 2221}, {1.53, 16.97, 10.86}},
-    {1.90, 469.8, {134, 1709, 2234}, {1.31, 17.85, 9.33}},
-    {1.90, 469.8, {135, 1750, 2247}, {1.10, 18.74, 7.81}},
-    {1.90, 469.8, {136, 1791, 2260}, {0.88, 19.62, 6.29}},
-    {1.90, 469.8, {137, 1832, 2272}, {0.67, 20.50, 4.76}},
-    {1.90, 469.8, {138, 1873, 2285}, {0.46, 21.38, 3.24}},
-    {1.90, 469.8, {139, 1914, 2298}, {0.24, 22.26, 1.71}},
+    {15.20, 469.8, {139, 1914, 2298}, {0.24, 22.26, 1.71}},
     {1.90, 443.7, {140, 1955, 2311}, {0.03, 23.14, 0.19}},
     {1.90, 443.7, {202, 1904, 2288}, {0.25, 21.98, 1.33}},
-    {1.90, 443.7, {274, 1840, 2259}, {0.54, 20.53, 2.86}},
-    {1.90, 443.7, {345, 1777, 2230}, {0.82, 19.07, 4.38}},
-    {1.90, 443.7, {417, 1713, 2201}, {1.11, 17.62, 5.90}},
-    {1.90, 443.7, {488, 1649, 2172}, {1.39, 16.17, 7.43}},
-    {1.90, 443.7, {560, 1585, 2143}, {1.68, 14.72, 8.95}},
-    {1.90, 420.3, {631, 1521, 2114}, {1.96, 13.26, 10.48}},
-    {1.90, 420.3, {702, 1458, 2085}, {2.25, 11.81, 12.00}},
-    {1.90, 420.3, {774, 1394, 2056}, {2.54, 10.36, 13.52}},
-    {1.90, 420.3, {845, 1330, 2027}, {2.82, 8.91, 15.05}},
+    {17.10, 420.3, {845, 1330, 2027}, {2.82, 8.91, 15.05}},
     {1.90, 420.3, {924, 1324, 2017}, {3.21, 8.00, 15.57}},
-    {1.90, 420.3, {1014, 1414, 2039}, {3.79, 8.00, 14.43}},
-    {1.90, 420.3, {1105, 1505, 2062}, {4.36, 8.00, 13.29}},
+    {3.80, 420.3, {1105, 1505, 2062}, {4.36, 8.00, 13.29}},
     {1.90, 399.3, {1195, 1595, 2084}, {4.93, 8.00, 12.14}},
-    {1.90, 399.3, {1286, 1686, 2107}, {5.50, 8.00, 11.00}},
-    {1.90, 399.3, {1376, 1776, 2129}, {6.07, 8.00, 9.86}},
-    {1.90, 399.3, {1467, 1867, 2152}, {6.64, 8.00, 8.71}},
-    {1.90, 399.3, {1557, 1957, 2174}, {7.21, 8.00, 7.57}},
-    {1.90, 399.3, {1648, 2048, 2197}, {7.79, 8.00, 6.43}},
-    {1.90, 399.3, {1738, 2138, 2219}, {8.36, 8.00, 5.29}},
-    {1.90, 399.3, {1829, 2229, 2241}, {8.93, 8.00, 4.14}},
-    {1.90, 380.3, {1762, 2207, 2256}, {8.75, 7.96, 4.17}},
-    {1.90, 380.3, {1674, 2170, 2270}, {8.46, 7.91, 4.36}},
-    {1.90, 380.3, {1585, 2133, 2284}, {8.18, 7.86, 4.55}},
-    {1.90, 363.0, {1497, 2096, 2298}, {7.89, 7.82, 4.74}},
-    {1.90, 363.0, {1408, 2059, 2312}, {7.61, 7.77, 4.93}},
-    {1.90, 363.0, {1320, 2022, 2326}, {7.32, 7.72, 5.12}},
-    {1.90, 363.0, {1231, 1985, 2340}, {7.04, 7.67, 5.31}},
-    {1.90, 363.0, {1142, 1948, 2354}, {6.75, 7.62, 5.50}},
-    {1.90, 347.2, {1054, 1910, 2367}, {6.46, 7.58, 5.69}},
-    {1.90, 347.2, {965, 1873, 2381}, {6.18, 7.53, 5.88}},
+    {13.30, 399.3, {1829, 2229, 2241}, {8.93, 8.00, 4.14}},
+    {7.60, 363.0, {1497, 2096, 2298}, {7.89, 7.82, 4.74}},
+    {11.40, 347.2, {965, 1873, 2381}, {6.18, 7.53, 5.88}},
     {1.90, 347.2, {915, 1842, 2391}, {5.95, 7.34, 6.04}},
-    {1.90, 347.2, {928, 1821, 2393}, {5.80, 6.91, 6.13}},
-    {1.90, 347.2, {942, 1800, 2396}, {5.66, 6.48, 6.23}},
-    {1.90, 332.8, {955, 1779, 2398}, {5.52, 6.05, 6.32}},
-    {1.90, 332.8, {968, 1758, 2401}, {5.37, 5.62, 6.42}},
-    {1.90, 332.8, {982, 1737, 2403}, {5.23, 5.20, 6.51}},
-    {1.90, 332.8, {995, 1716, 2406}, {5.09, 4.77, 6.61}},
-    {1.90, 319.4, {1008, 1695, 2408}, {4.95, 4.34, 6.70}},
-    {1.90, 319.4, {1022, 1675, 2411}, {4.80, 3.91, 6.80}},
-    {1.90, 319.4, {1035, 1654, 2413}, {4.66, 3.48, 6.89}},
-    {1.90, 307.2, {1048, 1633, 2415}, {4.52, 3.05, 6.99}},
-    {1.90, 307.2, {1035, 1629, 2433}, {4.29, 2.94, 6.75}},
-    {1.90, 307.2, {1018, 1628, 2452}, {4.05, 2.87, 6.46}},
-    {1.90, 307.2, {1001, 1627, 2472}, {3.82, 2.79, 6.18}},
-    {1.90, 295.8, {984, 1626, 2492}, {3.58, 2.72, 5.89}},
-    {1.90, 295.8, {966, 1625, 2511}, {3.34, 2.65, 5.61}},
-    {1.90, 295.8, {949, 1624, 2531}, {3.10, 2.58, 5.32}},
-    {1.90, 295.8, {932, 1623, 2550}, {2.86, 2.51, 5.04}},
-    {1.90, 285.2, {915, 1622, 2570}, {2.62, 2.44, 4.75}},
-    {1.90, 285.2, {898, 1622, 2590}, {2.39, 2.37, 4.46}},
-    {1.90, 275.4, {881, 1621, 2609}, {2.15, 2.29, 4.18}},
-    {1.90, 275.4, {866, 1619, 2624}, {1.96, 2.17, 3.96}},
-    {1.90, 275.4, {854, 1615, 2633}, {1.84, 1.96, 3.87}},
-    {1.90, 266.2, {843, 1611, 2641}, {1.72, 1.74, 3.77}},
-    {1.90, 266.2, {831, 1607, 2649}, {1.60, 1.53, 3.68}},
-    {1.90, 266.2, {820, 1603, 2657}, {1.48, 1.31, 3.58}},
-    {1.90, 257.6, {809, 1600, 2665}, {1.36, 1.10, 3.49}},
-    {1.90, 257.6, {797, 1596, 2673}, {1.24, 0.88, 3.39}},
-    {1.90, 249.6, {786, 1592, 2682}, {1.12, 0.67, 3.30}},
-    {1.90, 249.6, {774, 1588, 2690}, {1.00, 0.46, 3.20}},
-    {1.90, 249.6, {763, 1584, 2698}, {0.88, 0.24, 3.11}},
-    {1.90, 242.0, {751, 1580, 2706}, {0.76, 0.03, 3.01}},
-    {1.90, 234.9, {732, 1592, 2714}, {0.69, 0.00, 2.94}},
-    {1.90, 234.9, {711, 1605, 2722}, {0.62, 0.00, 2.87}},
-    {1.90, 234.9, {690, 1618, 2731}, {0.54, 0.00, 2.79}},
-    {1.90, 228.2, {669, 1632, 2739}, {0.47, 0.00, 2.72}},
-    {1.90, 221.8, {648, 1645, 2747}, {0.40, 0.00, 2.65}},
-    {1.90, 221.8, {627, 1658, 2755}, {0.33, 0.00, 2.58}},
-    {1.90, 221.8, {606, 1672, 2763}, {0.26, 0.00, 2.51}},
-    {1.90, 215.8, {585, 1685, 2771}, {0.19, 0.00, 2.44}},
-    {1.90, 210.2, {564, 1698, 2780}, {0.12, 0.00, 2.37}},
-    {1.90, 210.2, {543, 1712, 2788}, {0.04, 0.00, 2.29}},
-    {1.90, 210.2, {530, 1720, 2802}, {0.00, 0.04, 2.14}},
+    {19.00, 307.2, {1048, 1633, 2415}, {4.52, 3.05, 6.99}},
+    {22.80, 275.4, {854, 1615, 2633}, {1.84, 1.96, 3.87}},
+    {17.10, 242.0, {751, 1580, 2706}, {0.76, 0.03, 3.01}},
+    {20.90, 210.2, {530, 1720, 2802}, {0.00, 0.04, 2.14}},
     {1.90, 199.7, {530, 1720, 2825}, {0.00, 0.13, 1.86}},
-    {1.90, 199.7, {530, 1720, 2848}, {0.00, 0.23, 1.57}},
-    {1.90, 199.7, {530, 1720, 2872}, {0.00, 0.32, 1.29}},
-    {1.90, 199.7, {530, 1720, 2895}, {0.00, 0.42, 1.00}},
-    {1.90, 199.7, {530, 1720, 2919}, {0.00, 0.51, 0.71}},
-    {1.90, 199.7, {530, 1720, 2942}, {0.00, 0.61, 0.43}},
-    {1.90, 199.7, {530, 1720, 2965}, {0.00, 0.70, 0.14}},
-    {1.90, 199.7, {530, 1720, 2970}, {0.00, 0.68, 0.00}},
-    {1.90, 199.7, {530, 1720, 2955}, {0.00, 0.54, 0.00}},
-    {1.90, 199.7, {530, 1720, 2940}, {0.00, 0.39, 0.00}},
-    {1.90, 199.7, {530, 1720, 2926}, {0.00, 0.25, 0.00}},
+    {11.40, 199.7, {530, 1720, 2965}, {0.00, 0.70, 0.14}},
+    {7.60, 199.7, {530, 1720, 2926}, {0.00, 0.25, 0.00}},
 };
 
 static void c1(sound *s) {
@@ -5485,39 +2484,20 @@ static void effect(sound *s, int code) {
     contour_voiced(s, &fxv_points[fxv_index[code - 200].first], fxv_index[code - 200].count);
     return;
   }
-  if (fx2_index[code - 200].count > 0) {
-    contour2(s, &fx2_points[fx2_index[code - 200].first], fx2_index[code - 200].count, code);
+  if (contour_tones(s, code))
     return;
-  }
   if (fx_index[code - 200].count > 0) {
     contour(s, &fx_points[fx_index[code - 200].first], fx_index[code - 200].count,
             code);
     return;
   }
   switch (code) {
-  case 240: dtmf(s, 215, 304); break; /* D0 */
-  case 241: dtmf(s, 159, 275); break; /* D1 */
-  case 242: dtmf(s, 159, 304); break; /* D2 */
-  case 243: dtmf(s, 159, 335); break; /* D3 */
-  case 244: dtmf(s, 175, 275); break; /* D4 */
-  case 245: dtmf(s, 175, 304); break; /* D5 */
-  case 246: dtmf(s, 175, 335); break; /* D6 */
-  case 247: dtmf(s, 194, 275); break; /* D7 */
-  case 248: dtmf(s, 194, 304); break; /* D8 */
-  case 249: dtmf(s, 194, 335); break; /* D9 */
-  case 250: dtmf(s, 215, 275); break; /* D10 */
-  case 251: dtmf(s, 215, 335); break; /* D11 */
   case 238: c_noise(s, c8_db, (int)(sizeof(c8_db) / sizeof(c8_db[0]))); break; /* C8 */
   case 239: c_noise(s, c9_db, (int)(sizeof(c9_db) / sizeof(c9_db[0]))); break; /* C9 */
 
   case 253: { /* M1 */
-    /* measured from the vox_test recording (see STEADY_LENGTH): 30ms of
-     * noise with most of its energy under 2kHz, then noise around 1 to 2kHz
-     * that dies away by 30dB, fastest at the start and the end. on both units
-     * of the VoxRecord recording the hiss holds within 3dB of the bang for
-     * 80ms, is 8dB down by 130ms, 13 by 200ms, 17 by 250ms and 27 by 290ms,
-     * and stops at 300ms: these fades, where it had been faded sooner and
-     * stopped at 250ms */
+    /* a bang of noise, then hiss around 1 to 2kHz that dies away by 27dB and
+     * stops at 300ms */
     const frame bang = noise_frame(lGlottal, 500, 1400, 31, 26, 255);
     const frame hiss = noise_frame(lGlottal, 1000, 1700, 31, 26, 160);
     hold(s, 30, 2, bang);
@@ -5537,24 +2517,9 @@ static void effect(sound *s, int code) {
 /* lookup builds the sound for an MSA code. the Go version builds every sound
  * once into a table; here each is built when it is needed, which costs a few
  * struct copies per command and keeps the library free of global state */
-/* the noise refitted at the chip's own rate. the noise sounds were fitted
- * while this library ran at 8192 samples a second; at CHIP_RATE the same
- * values make different noise (it is a frequency jittered every sample, so
- * its spread, and where it folds back around half the rate, move with the
- * rate), and those sounds matched both units 1 to 15 points worse. so each
- * sound with noise was fitted again at CHIP_RATE, with changes to the noise
- * oscillators (4 and 5) in all its parts: a scale on their frequencies, a
- * change to their width (distortion) and the balance of their levels, against
- * both units of the VoxRecord recording with the background taken out and
- * clipped sounds left out. the sound's overall level is held where it was
- * (each sound is scored against its own loudest, so a fit left free to
- * change it made SE and others louder against the vowels, and the connected
- * groups, which nothing was fitted to, worse). each is kept only where it
- * matches both units better, by at least 0.05dB or half a point, and doesn't
- * match the second take (which nothing was fitted to) worse: TS 28 to 54%,
- * CH 67 to 83%, TT 29 to 45%, KE 62 to 72%, C9 51 to 58% on unit B. HO, WH,
- * FF, SO, SH, TH, R5, R8, A7, A9, B0, B1, B2, B5, B8, C5, M0 and M1 (clipped
- * on both units) keep theirs */
+/* the noise sounds refitted at the chip's own rate (the noise is a frequency
+ * jittered every sample, so it moves with the rate): a scale on oscillators 4
+ * and 5's frequencies, a change to their width (distortion) and their levels */
 static const struct {
   short code;
   double freq_scale, distortion, db4, db5;
@@ -5598,29 +2563,12 @@ static const struct {
     {239, 1.0203, 39.1, 2.42, -6.94}
 };
 
-/* the consonants shaped further than the oscillators can. on both units of
- * the VoxRecord recording, measured at full band, each consonant's spectrum
- * differed from the chip's by much the same shape every time: taken that
- * shape away, what is left is no more than the two units differ from each
- * other (GO 5.4 to 0.7dB, ED 4.2 to 0.9, SE 5.2 to 1.3, against 1.5, 1.8 and
- * 2.0 between the units). so each is played through peaking filters half an
- * octave apart (see synth_eq()), their gains fitted to that recording, and
- * the voiceless ones whose hiss is broader on the chip than oscillators 4 and
- * 5 make (SH's runs flat from 100Hz to 2kHz, 15dB above here) get broadband
- * noise as well, at the level that fitted best of 0, 0.15, 0.3 and 0.6 of
- * theirs. an overall gain then puts each back at the level it had, which was
- * fitted among the vowels (louder, SE lost 3 to 5 points next to AW and in
- * Man Goes Down). the gains glide with the frames from one sound into the
- * next.
- *
- * on the fourth VoxProbe recording, left out: GO 0.839 to 0.869 and 4.78 to
- * 2.61dB, ED 4.30 to 1.87dB, OD 2.53 to 1.34dB, ZZ 1.95 to 1.11dB, BO 0.775
- * to 0.791 and 2.28 to 1.12dB, KO 0.850 to 0.870 (the mean of six noise
- * sequences: a hiss's match moves 2 to 4 points with the sequence alone), and
- * BE EH and EH DE a point closer. CH, SO, TT and OK fitted to nothing; EB,
- * SH, TS and KE came out worse there, and SE, its spectrum 5.4 to 2.0dB, lost
- * 3 to 5 points of spectrogram match on every recording, so they have none.
- * the code, the filters' gains, the broadband noise and the overall gain */
+/* the sounds shaped further than the oscillators can: each is played through
+ * peaking filters half an octave apart (see synth_eq()), the voiceless ones
+ * whose hiss is broader on the chip with broadband noise as well, and an
+ * overall gain that keeps each at its level. the gains glide with the frames
+ * from one sound into the next. the code, the filters' gains in dB, the
+ * broadband noise and the overall gain */
 static const struct {
   short code;
   double db[EQ_BANDS];
@@ -5739,15 +2687,10 @@ static void sound_shaping(sound *s, int code) {
   }
 }
 
-/* the chip starts most tones at once: on both units of the VoxRecord
- * recording D1, D5, B3 and R3 come up from the background to within 5dB in a
- * millisecond, where their traces (5ms frames) ramp up over 5 to 10ms. so the
- * effects below start sharply: the parts before the first whose summed volume
- * reaches the given fraction of the sound's loudest are silent, and that part
- * is reached at once (its glide 0), the sound's length unchanged. the fraction
- * is each effect's own, fitted on every recording of both units and kept only
- * where none came out worse; the rest (the buzzes, the C series' gradual
- * starts, R1) keep their ramps. the VoxRecord effects 0.936 to 0.819 */
+/* the chip starts most tones at once, where the traces (5ms frames) ramp up.
+ * so these effects start sharply: the parts before the first whose summed
+ * volume reaches the given fraction of the sound's loudest are silent, and
+ * that part is reached at once, the sound's length unchanged */
 static const struct {
   short code;
   double fraction;
@@ -5823,12 +2766,6 @@ static bool lookup(uint8_t code, sound *s) {
   memset(s, 0, sizeof(*s));
   if (code >= 128 && code < 128 + NUM_ALLOPHONES) {
     allophone(s, code);
-    /* see refit_length */
-    s->length *= refit_length[code - 128];
-    const double g = pow(10, refit_gain_db[code - 128] / 20);
-    for (int i = 0; i < s->nparts; i++)
-      for (int j = 0; j < 5; j++)
-        s->parts[i].target.vol[j] *= g;
     sound_shaping(s, code);
     s->copy_length = copy_length[code - 128];
     s->no_slow = code >= 182; /* the voiceless consonants (see msa_expand()) */
@@ -5869,12 +2806,8 @@ const char *sj_sound_name(uint8_t code) {
 /* msa.go                                                                   */
 /* ======================================================================== */
 
-/* pause lengths in milliseconds for codes 0 to 6. the manual gives 0, 100,
- * 200, 700, 30, 60 and 90. the VoxProbe recording plays AW, a pause and AW
- * three times for each pause, and these lengths give the same silence between
- * the AWs as the chip, within about 5ms (the AWs measured the same way on
- * both): 21, 109, 212, 661, 26, 47 and 73ms. pause 0 is not nothing: the chip
- * still leaves a gap between the sounds */
+/* pause lengths in milliseconds for codes 0 to 6, measured as the silence the
+ * chip leaves between two AWs. pause 0 is not nothing */
 static const double pause_ms[] = {14, 107, 203, 645, 25, 43, 70};
 
 /* Delay is longer than its 10ms intervals: on the chip (the VoxProbe
@@ -5963,18 +2896,9 @@ static void msa_init(msa *m) {
   m->current.pitch = SJ_DEFAULT_PITCH;
 }
 
-/* Bend doesn't multiply the frequencies but adds to them. the manual only
- * says that bend goes from a "deep-hollow" to a "High-metallic" sounding voice.
- * measured from three takes of the VoxRecord recording (see
- * msa_speed_factor()): D1's two tones move together and keep their 512Hz
- * spacing, by -198, -154, 0, +220 and +439Hz at Bends 0, 1, 5, 10 and 15, and
- * A5 by the same at 0 and 1; AW's three formants all move by about 40Hz a
- * step (F3 from 2480 to 2912Hz at Bend 15, where a multiplier would put it
- * near 4400). that is 44Hz a step from 5 up, and from 1 down; between 1 and 5
- * it is 22Hz short, which these Bends can't place, so the shortfall is taken
- * up at 5. it moves oscillators 1 to 3, the formants and tones; SE's hiss
- * (oscillators 4 and 5) doesn't move at all. in the chip's frequency steps
- * (FREQ_STEP_HZ) a Bend is 10 steps, and the short step from 4 to 5 is 5 */
+/* Bend adds to the frequencies of oscillators 1 to 3 (the formants and tones),
+ * not multiplies them: 10 of the chip's frequency steps (FREQ_STEP_HZ) a Bend,
+ * 5 from 4 to 5. the hiss on oscillators 4 and 5 doesn't move */
 static double msa_bend_hz(const msa *m) {
   if (m->bend >= SJ_DEFAULT_BEND)
     return 10 * FREQ_STEP_HZ * (m->bend - SJ_DEFAULT_BEND);
@@ -5994,19 +2918,11 @@ static double fold_hz(double hz) {
 }
 
 
-/* the voicing frequency for a Pitch setting. the chip counts each voicing
- * period in whole ticks of a VOICE_TICK_HZ clock: 8000 / Pitch ticks
- * (dividing in whole numbers) and one more. on the second VoxProbe recording,
- * which plays every Pitch from 0 to 254, the frequency holds flat over runs
- * of Pitch settings and steps exactly where that count changes (201 to 205
- * all give 199.7Hz), and at 12 settings the count is one more again, measured
- * consistently on both halves of each test; no simple arithmetic gives those,
- * so they are listed.
- *
- * not emulated: at very low pitch the chip also starts each sound (and each
- * copy of a repeated one) with a pulse, so pitch 0 gives a pulse a sound; but
- * at pitch 33 and 38 the pulses run on evenly across a repeat, and what
- * decides it isn't known. here pitch 0 is silent */
+/* the voicing frequency for a Pitch setting: the chip counts each voicing
+ * period in whole ticks of a VOICE_TICK_HZ clock, 8000 / Pitch ticks (whole
+ * numbers) and one more, and at 12 settings one more again. not emulated: at
+ * very low pitch the chip starts each sound with a pulse; here pitch 0 is
+ * silent */
 #define VOICE_TICK_HZ 7986.0
 static double voice_hz(double pitch) {
   const int p = (int)pitch;
@@ -6024,13 +2940,9 @@ static double voice_hz(double pitch) {
   return VOICE_TICK_HZ / ticks;
 }
 
-/* the duration multiplier from the Speed control. the manual gives the range
- * and default but not the curve. measured from a recording of a real
- * AtariVox playing the VoxRecord ROM (TT AW EYIY SE at speeds 0 to 127): the
- * length falls in a straight line with speed, 2115ms at speed 0 and 955ms at
- * 80, and the line predicts speeds 20, 40 and 60 to within 2%. it reaches
- * zero at about 146, so relative to the default speed the multiplier is
- * (146 - speed) / 32: 4.6 at speed 0, 0.59 at 127. pauses are lengthened by
+/* the duration multiplier from the Speed control: lengths fall in a straight
+ * line with speed, reaching zero at SPEED_ZERO, so against the default it is
+ * (146 - speed) / 32 (4.6 at speed 0, 0.59 at 127). pauses are lengthened by
  * it too (see execute()) */
 #define SPEED_ZERO 146.0
 static double msa_speed_factor(const msa *m) {
@@ -6096,15 +3008,8 @@ static void msa_expand(msa *m, const sound *s) {
   if (s->speech) {
     scale *= s->length;
 
-    /* fast and slow, measured from the VoxProbe recording: fast plays OWIY and
-     * AXRR at 0.66 and 0.63 of their length, and slow at 1.42 and 1.31 times.
-     * slow doesn't lengthen the voiceless consonants: the vox_test recording
-     * has a slow SE 1.11 times and a slow TH 0.95 times its usual length, and
-     * in Man Goes Down (both AtariVoxes) Slow SE Slow SE is 200ms, Slow TT's
-     * burst 20ms and Slow Slow TH 50ms, where stretching them as the vowels
-     * are made them 290, 60 and 70ms. its vowels, DH and GO stretch as here.
-     * it takes that game's second and fourth phrases from 0.75 to 0.86 and
-     * 0.63 to 0.80 (both units, full band) */
+    /* Fast and Slow (FAST_SCALE, SLOW_SCALE). Slow doesn't lengthen the
+     * voiceless consonants */
     if (m->fast)
       scale *= FAST_SCALE;
     if (m->slow && !s->no_slow)
@@ -6148,17 +3053,9 @@ static void msa_expand(msa *m, const sound *s) {
     /* M2 doesn't follow Bend: on both units of the fourth VoxProbe recording
      * it is the same at bend 0 and bend 15, its formants within half a hertz
      * of each other over its whole length */
-    /* a tone Bend takes under nothing wraps round: on both units of the
-     * fourth VoxProbe recording, at bend 0 A1's third formant, which starts
-     * at 120Hz, isn't 197Hz lower but mirrored, a line falling from 2.4kHz as
-     * the formant rises, reaching nothing and rising again as the formant
-     * passes 2.5kHz, and its first formant is a steady line near 2.4kHz.
-     * both are the tone WRAP_HZ higher, played at the chip's rate (which
-     * folds it under half that rate), and it stays there as the effect goes
-     * on. a tone of an effect quieter than WRAP_MIN_VOL is one its trace
-     * couldn't read, its frequency borrowed from a neighbour (see contour()),
-     * and doesn't wrap: wrapping those put a line near 2.4kHz into C0, C3
-     * and C7 at bend 0 that neither unit has */
+    /* a tone that Bend takes under nothing wraps round: it plays WRAP_HZ
+     * higher, folded under half the chip's rate, and stays there. a tone
+     * quieter than WRAP_MIN_VOL (one its trace couldn't read) doesn't wrap */
     /* C8's and C9's gate keeps time with Speed (see c_noise()) */
     if (s->speed_gate)
       t.pitch /= scale;
@@ -6170,16 +3067,9 @@ static void msa_expand(msa *m, const sound *s) {
           t.freq[j] = wrapped[j] ? fold_hz(t.freq[j] + bend_hz + WRAP_HZ)
                                  : fmax2(t.freq[j] + bend_hz, 0);
         }
-    /* Bend moves an effect's noise as well: on both units of the fourth
-     * VoxProbe recording C8's and C9's noise moves about 200Hz down at bend 0
-     * and 440Hz up at bend 15, as their tones do. it moves as a block, its
-     * width unchanged: at bend 15 nothing is left under 560Hz within 20dB,
-     * where moving the oscillators, whose spread is in proportion to their
-     * frequency, widened it and left the noise reaching down to 300Hz. so the
-     * Bend is added after the spread (see synth_sample()): C8 and C9 at bend
-     * 15 10.0 to 8.8 and 10.0 to 7.5dB, and on the first VoxProbe recording,
-     * left out, C8 at bend 0 3.2 to 3.0 and at bend 15 9.8 to 8.6dB. whether
-     * the hiss of speech moves too isn't measured, so it doesn't here */
+    /* Bend moves an effect's noise as a block, its width unchanged (the Bend
+     * is added after the spread: see synth_sample()). the hiss of speech
+     * doesn't move */
     if (!s->speech)
       t.noise_shift = bend_hz;
     segment *sg = &m->segs[m->nsegs++];
@@ -6208,14 +3098,8 @@ static void msa_expand(msa *m, const sound *s) {
   m->repeat = 0;
 }
 
-/* a pause before a stop takes the place of that much of its closure: on both
- * AtariVoxes playing Man Goes Down, UX, pause 1, EK leaves 140ms between the
- * UX and EK's burst, where the pause (107ms) and EK's closure (105ms) one
- * after the other left 226ms, and TT, pause 1, BE starts BE's voicing as the
- * pause ends. the closure keeps MIN_CLOSURE_MS, which gives the 140ms. after a
- * sound the closure is all there (AW TT on the fourth VoxProbe recording).
- * the two phrases go from 0.75 to 0.81 and 0.63 to 0.68 (both units, full
- * band), and with the change to Slow (see msa_expand()) to 0.875 */
+/* a pause before a stop takes the place of that much of its closure, which
+ * keeps MIN_CLOSURE_MS. after a sound the closure is all there */
 #define MIN_CLOSURE_MS 20.0
 static void msa_closure(msa *m) {
   if (m->nsegs < 2)
@@ -6230,15 +3114,11 @@ static void msa_closure(msa *m) {
 }
 
 /* the sounds played from the chip's frames (see vf_points) were measured
- * alone, and their first and last frames are the voicing coming up from
- * silence and dying away. between two sounds the chip doesn't do that: in Man
- * Goes Down, OWWW ZZ is voiced throughout on both AtariVoxes, where those
- * frames left a gap of 25 to 35ms. so after a voiced sound the frames before
- * the first at FRAMED_JOIN of the sound's loudest take its volumes, and before
- * another sound the frames after the last at FRAMED_JOIN take that one's. the
- * timing is unchanged. "man goes down" 0.824 to 0.833 (both units, full
- * band); nothing on the VoxProbe or VoxRecord recordings joins these sounds
- * to others, and none of their scores moves */
+ * alone: their first and last frames are the voicing coming up from silence
+ * and dying away. between two sounds the chip doesn't do that, so after a
+ * voiced sound the frames before the first at FRAMED_JOIN of the sound's
+ * loudest take its volumes, and before another sound the frames after the last
+ * take that one's */
 #define FRAMED_JOIN 0.7
 static double frame_volume(const frame *f) { return f->vol[0] + f->vol[1] + f->vol[2]; }
 static void msa_join(const msa *m, sound *s, bool more) {

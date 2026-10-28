@@ -467,9 +467,32 @@ reference samples are regenerated.
   tone trace loses, and the C series' pulsing is better served by the traces
   they have.
 
+Consolidated: the library's tables cut down to what the sound needs, with no
+loss (752 items 0.8558 to 0.8553). speakjet.c 351 to 163 kB; the Go port's
+tables.go 340 to 100 kB (its point tables written as plain rows of numbers).
+
+- The 30 traces in `fx_points` that newer traces had replaced, never played,
+  are gone, and with them `dtmf()` and `tone()` (the DTMF codes play from
+  their traces). The output was identical, sample for sample.
+- The tone effects are kept as each tone's knots (`fx_knots`, `fx_tones`)
+  instead of rows of all five oscillators (`fx2_points`), the rows rebuilt as
+  a sound is played (`contour_tones()`). Each trace, the voiced sounds' frames
+  (`vf_points`) and C1's points are thinned to the points a straight line
+  can't pass close enough to, each sound at the loosest tolerance that moves
+  its score by no more than 0.02: 2089 trace points to 1180 knots and 366
+  points, 499 frames to 229.
+- `refit_length` is folded into `allophone_length`, which now holds the length
+  every allophone plays (framed ones too, and the old 28 ms `TRANSITION_MS`
+  with it); `refit_gain_db` into `allophone_gain_db`, which the framed sounds
+  now use too. Class-wide values for `final_length`, `copy_length` and the
+  gains were tried and cost too much, so they stay per sound.
+- The long comments are cut to what explains the code; the measurements and
+  fitting history they held are in `docs/notes.md`.
+
 text2speakjet:
 
-- Its length estimate applies `refit_length` and `final_length`.
+- Its length estimate applies `final_length`; its lengths are the library's
+  `allophone_length`.
 
 - Its length estimate follows the changes above: Slow skips the voiceless
   consonants, a pause shortens a following stop's closure, C1 is 302 ms and
