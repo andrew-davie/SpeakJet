@@ -489,6 +489,25 @@ tables.go 340 to 100 kB (its point tables written as plain rows of numbers).
 - The long comments are cut to what explains the code; the measurements and
   fitting history they held are in `docs/notes.md`.
 
+The point tables kept in the chip's own kind of numbers, small integers, with no
+loss (752 items 0.8553 to 0.8549; Go == C to 2e-12, both working from the
+same integers). speakjet.c 163 to 155 kB, the Go port's tables.go 100 to 92
+kB.
+
+- Frequencies in FREQ_STEP_HZ steps, the grid the chip's oscillators run on
+  and the one the synth rounds them to as it plays.
+- Volumes in eighths of a level; levels in tenths of a dB.
+- The tone knots' times in half milliseconds. The frames played pulse by pulse
+  (`vf_points`, `fxv_points`, `c1_points`) keep hundredths of a millisecond:
+  half milliseconds moved frame changes across voicing pulses (A2 0.27 and
+  EHLL 0.20 worse).
+- C1's pitch in voicing ticks (`VOICE_TICK_HZ` / ticks), as the chip counts
+  it.
+- Whole volume levels (0 to 31) and whole milliseconds were tried and cost up
+  to 0.10 and 0.13 on single effects: the traces are measurements, scaled so
+  each effect's loudest point is 31, so the chip's own integers can't be read
+  back from them.
+
 text2speakjet:
 
 - Its length estimate applies `final_length`; its lengths are the library's
