@@ -138,7 +138,7 @@ typedef struct segment {
  * FX_EXPDECAY settling toward fb); FX_DECAY fades the level to nothing over
  * the part, FX_BUMP shapes it as a half sine; gate pulses it on and off;
  * FX_PULSED pulses the plain tones with the voice's envelope at Pitch */
-enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64 };
+enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128 };
 
 /* the tables' units: frequencies in 16 Hz steps, lengths in 5 ms, so every
  * field is a byte */
@@ -847,6 +847,8 @@ static double tick(sj_chip *sj) {
     v = 0.0;
   if (s->flags & FX_DECAY)
     v *= sj_exp(-T.decay_db * t / 20.0 * M_LN10);
+  if (s->flags & FX_FADE)
+    v *= 1.0 - t; /* the tones' ending, measured: the level falls straight to nothing (-6 dB at half way, -20 at nine tenths) */
   if (s->flags & FX_BUMP)
     v *= sj_sin2pi(0.5 * t);
 

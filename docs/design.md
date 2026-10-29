@@ -100,6 +100,15 @@ followed at once by another sound is cut short (`OVERLAP`): SE before IY is
 **Level over time.** Every sound ramps in over about 35 ms and out over 30
 (`ATTACK`, `RELEASE`; the effects 10 and 15).
 
+**Tones end in a fade.** Every tone effect holds its level and then falls
+straight to nothing over about 55 ms, linear in amplitude (-6 dB at half
+way, -20 dB at nine tenths), on both units: a part flag (`F`) does that,
+and the tones' tables carry the measured hold followed by a 55 ms fading
+part. B0 is 2600 Hz; B3 is 598 + 3105 Hz at -8 dB for 100 ms then 1400 +
+600 Hz; B7 is 2906 Hz for 40 ms, a 10 ms fade and a 5 ms gap, then 3908 Hz
+at -6 dB. The chip holds these tones constant where the earlier fit had
+them drifting or sweeping.
+
 **DTMF.** D0 to D11 are the standard DTMF pairs (697, 770, 852, 941 Hz by
 1209, 1336, 1477 Hz, in keypad order with 0, * and # on the bottom row) at
 equal amplitude, held about 155 ms. Measured on both units within 3 Hz of

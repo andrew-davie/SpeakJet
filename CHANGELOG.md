@@ -8,6 +8,11 @@ tables, to see whether the same method lands in the same place. The brief
 was the smallest footprint: rules wherever a rule could be found, a few
 bytes of parameters per sound otherwise.
 
+- The tones end in a 55 ms linear fade (a part flag); B0, B3 and B7 are
+  rebuilt from the chip's envelopes and tone tracks, constant where the
+  fit swept them. The scorer gained a tone track in cents and a line-width
+  term for the effects, so it no longer prefers a drifting fit to the
+  measured tone.
 - D0 to D11 are a rule: the standard DTMF pairs at equal level (measured
   on both units within 3 Hz once each unit's rate is divided out); B0 is
   2600 Hz. Every per-sample sin, exp and log is the library's own series,
