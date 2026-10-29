@@ -10,7 +10,7 @@ all: libspeakjet.a sjwav
 libspeakjet.a: speakjet.o
 	$(AR) rcs $@ $^
 
-speakjet.o: speakjet.c speakjet.h
+speakjet.o: speakjet.c speakjet.h speakjet_tables.c
 	$(CC) $(CFLAGS) -c speakjet.c -o $@
 
 # render SpeakJet codes to a WAV file

@@ -1,5 +1,42 @@
 # Changelog
 
+## Rebuild (branch `rebuild`)
+
+A second implementation, written from scratch from the manual and the
+recordings alone, with none of the first implementation's findings or
+tables, to see whether the same method lands in the same place. The brief
+was the smallest footprint: rules wherever a rule could be found, a few
+bytes of parameters per sound otherwise.
+
+- `speakjet.c` is about 700 lines and `speakjet_tables.c` holds 72
+  allophones of 14 bytes and about 100 effect parts of 15 bytes (frequencies
+  in 16 Hz steps, lengths in 5 ms); the object is about 12.5 KB. Same API,
+  same 48 kHz output.
+- What the recordings gave (see `docs/design.md`): the chip's rate, 8026
+  Hz, with its arithmetic in 8000ths; the voicing period floor(Fs/Pitch)+1;
+  a triangular voicing envelope (1 ms up, 6 ms down) over three restarting
+  formant sines; an FM noise oscillator (the manual's distortion) whose
+  fold-over at Nyquist makes the hiss sounds' 4 kHz peak; two real poles
+  near 2.7 kHz after a sample hold; a noise floor under every sound; Bend
+  as +44 Hz a step on every oscillator; Volume spanning 6 dB; Fast 0.8 and
+  Slow 1.25; measured lengths that don't change with context or Pitch and
+  are linear in Speed; a 35/30 ms level ramp on every sound; copies of a
+  Repeat running on seamlessly at the manual's length; a sound followed at
+  once by another cut short by 10 ms.
+- Not found in the recordings: any effect of Stress, Relax or code 18.
+- Score M over the 752 recordings: 1.58: allophones alone 1.08, effects
+  alone 1.53, connected groups 1.62, Man Goes Down 2.34. The parameters were
+  refined by Nelder-Mead on each sound's recordings and then by simulated
+  annealing of the effects (which can also switch a part between plain
+  tones, voiced formants and pulsed tones). The distance that remains is in
+  the pulsed biological effects, M2, the effects at other Pitch and Bend
+  settings, connected timing and the voiced stops' repeats.
+- Each allophone also carries the length of its Repeat copies (one byte);
+  the chip's copies of ED and OD run 35 ms where the manual says 10, EG and
+  OG 25 where it says 55.
+- The tests are rewritten for the new internals; the reference samples are
+  regenerated.
+
 ## Unreleased
 
 Measurements of the real chip, where two independent sources agree, replace

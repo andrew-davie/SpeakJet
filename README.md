@@ -111,40 +111,25 @@ part is divided by how far the two real chips are from each other on that
 part, and the parts furthest off count most. So 0 means as close as a second
 chip, 1 about twice the chips' own difference, and lower is better.
 
-Over the 752 recordings the fitting used (both units: VoxRecord, its
-connected groups, the fourth VoxProbe, Man Goes Down) and the 1,383 it never
-saw (VoxProbe 1, 2, 3 and 5 on both units, and vox_test):
+This branch is the second, from-scratch implementation (see
+[How it works](#how-it-works)). Scored the same way over the 752 recordings
+(both units: VoxRecord, its connected groups, the fourth VoxProbe, Man Goes
+Down): 1.58 after two days, with the allophones alone at 1.08, the sound
+effects alone at 1.53, the connected groups at 1.62 and Man Goes Down's
+phrases at 2.34. The two real chips are about 0.5 from each other. The
+first implementation's figures are in its own branch's README, for whoever
+wants to compare.
 
-| Library | Fitted recordings | Held-out recordings |
-|---|---|---|
-| The first version, from the manual and published formants | 2.77 | 2.46 |
-| Fitted to the first recordings (14181cc) | 2.29 | |
-| Rebuilt from the recordings, checked against held-out data (708ed16) | 2.14 | |
-| The chip's output above 4 kHz (bb90c14) | 1.61 | |
-| Every sound refitted on all recordings at once (bc97573) | 1.29 | |
-| Tables consolidated and in the chip's integers (921abb1) | 1.22 | 1.36 |
-| Now | 1.18 | 1.18 |
+What is still known to be off:
 
-On the same measure the two real chips are about 0.5 from each other, so the
-library is about two and a half times as far from either chip as the chips
-are from each other. The allophones alone are at 0.72, the sound effects
-alone at 1.00, and Man Goes Down's phrases, the slowest to improve, at 1.62.
-
-What is still known to be off, with the measurements behind it in
-[`CHANGELOG.md`](CHANGELOG.md):
-
-- PE's burst is spectrally far off on every recording and needs tracing.
-- B9's middle is a pulsed tone sweeping 1 kHz to 550 Hz and back under its
-  second burst, which its three-tone trace misses; M2 is the worst effect.
-- The robots (R0 to R9) match less well at Bend 0 and 15 than at the default.
-- At a pitch under 12 the chip starts a sound with two pulses 7 ms apart,
-  and the two chips themselves differ most at Pitch 40 and under, where the
-  measure can say little.
-- Repeated voiced stops at Repeat 5 and over: the fourth and fifth VoxProbe
-  recordings disagree about EB's and BE's later copies.
-- Several sounds (SH, UX, SE, ZZ) play about 15% shorter on the VoxProbe
-  recordings than on VoxRecord, on both units, and it isn't the buffer
-  state; the library sits between.
+- The pulsed biological effects (C2, C3, C7) and M2 are the worst effects;
+  their gating and the noise under it are only roughly right.
+- Connected timing: the phrases run long against the chip even with the
+  overlap rule, and the copies of a repeated glide are not timed as the
+  chip's.
+- The valley between the first two formants of the vowels is a few dB too
+  full.
+- Stress and Relax do nothing, because nothing measurable was found.
 
 Numbers aren't everything: listening against the chip is the final check.
 
@@ -180,49 +165,43 @@ regenerates them.
 
 ## How it works
 
-[`docs/design.md`](docs/design.md) describes the input buffer, the MSA
-sequencer and the synthesizer, what each takes from the SpeakJet User's
-Manual, and every measurement of the real chip behind them.
+[`docs/design.md`](docs/design.md) describes the model and every
+measurement of the real chip behind it.
 
-The manual documents the synthesizer's structure and the timings, but not the
-oscillator settings behind each allophone or effect. The first version filled
-those in from published formant measurements of English speech. Since then
-nearly all of them have been measured from the chip itself, from recordings
-of two AtariVoxes playing test ROMs made for the purpose: Alex Herbert's
-vox_test, three takes of VoxRecord (every allophone and effect, and sweeps of
-each control), VoxProbe 1 to 5 (single voicing pulses, every Pitch,
-sustained and repeated sounds, the move from one sound to the next, the
-effects at other Pitch and Bend settings, sounds sent alone with nothing
-behind them in the buffer) and the game Man Goes Down. From them:
+This branch is a second implementation, written from scratch from the
+SpeakJet User's Manual and recordings of two AtariVoxes only, with none of
+the first implementation's findings or tables, to see whether the same
+method lands in the same place. The brief was the smallest footprint: a rule
+wherever a rule could be found, a few bytes of parameters per sound
+otherwise. `speakjet.c` is about 700 lines; the tables are 72 allophones of
+14 bytes and about 100 effect parts of 15 bytes (frequencies in 16 Hz steps,
+lengths in 5 ms), about 2.5 KB; the object is about 12.5 KB.
 
-- **The chip's output.** It makes its samples at about 8028 Hz (not the
-  manual's 8192), holds each until the next, and a measured low pass shapes
-  what that puts above 4 kHz, up to 23 kHz.
-- **The voice.** Each voicing pulse restarts the formant oscillators, which
-  then fade along a measured curve, gone by 7.75 ms; the pitch is a whole
-  number of ticks of a 7986 Hz clock, with the chip's 12 exceptions; the
-  oscillators run on a 4.3845 Hz grid. Formants, volumes and phases come from
-  single pulses, and 26 sounds (most diphthongs, most voiced stops, ZZ, ZH,
-  DH, IH, NO and LO) are played from the chip's own formants, pulse by pulse.
-  Voicing fades in over 40 ms from silence (25 ms for the nasals); below a
-  20 Hz voicing pitch a sound starts with a full pulse at once. DH, ZH, JH
-  and BO are voiced a little faster than the vowels.
-- **Timing and controls.** The lengths of sounds alone and in connected
-  speech, the longer last sound before a pause or a command, the pauses,
-  Speed, Fast and Slow, Bend, Stress and Volume. A repeated sound's second
-  play runs longer than the copies after it, and a stop's copies keep their
-  burst and put the extra time into the closure.
-- **Noise.** The hiss of each fricative and stop, fitted to both units at the
-  chip's own rate, with its level against the vowels kept; SE and SH are
-  broad hiss, as on the chip, and each sound has its own peaking filters.
-- **Sound effects.** Traced from the recordings: tones on their own
-  oscillators, buzzes, gated and swept noise (C8 and C9 are a narrow band
-  swept 650 Hz to 3 kHz and back every 19.5 ms), A4's third harmonic, and
-  the noise the chip puts under its tones.
+What the recordings gave:
 
-The method is described there too. Each recording's background is measured
-and taken out, clipped sounds are left out, and every change is kept only if
-it holds on both units and on recordings it wasn't fitted to.
+- **The chip's output.** Samples at 8026 Hz (the two units: 8039 and 8013),
+  with the chip's own arithmetic in 8000ths, each held until the next, then
+  two real poles near 2.7 kHz, and a noise floor under every sound.
+- **The voice.** A period of floor(Fs / Pitch) + 1 ticks; at each period
+  three formant sines restart under a triangular envelope, 1 ms up and 6 ms
+  down. The pulse is the same on both units to the sample.
+- **Noise.** An oscillator whose frequency is thrown about by white noise
+  every sample (the manual's distortion): a flat band with sharp edges, and
+  when thrown past the chip's Nyquist it folds back into the hiss sounds'
+  peak at 4 kHz. Each noise sound is a centre, a throw and a level.
+- **Timing and controls.** A sound's length is the same streamed, alone or
+  before a pause, and the same at every Pitch; it is linear in Speed; Fast
+  is 0.8 and Slow 1.25; every sound ramps in over 35 ms and out over 30; a
+  Repeat's copies run on seamlessly at the manual's length; a sound followed
+  at once by another is cut 10 ms short; Bend moves every oscillator by 44
+  Hz a step; Volume 16 to 127 spans 6 dB; Stress, Relax and code 18 do
+  nothing measurable.
+- **Sound effects.** Each is one to six parts of up to three sweeping tones,
+  a noise band, a gate and a few flags, written from the spectrograms and
+  then fitted. The robots are a tone at 800 + 300·n Hz over a voiced glide.
+
+The parameters were first read off the recordings, then refined with the
+same score as above, sound by sound.
 
 ## Other versions
 
@@ -282,12 +261,12 @@ direction. He decided what to build and how it should behave, designed and
 recorded the test ROMs on his own AtariVoxes, reviewed and tested the
 results, including in an Atari 2600 emulator's AtariVox, and edited them.
 
-The emulation is written from the SpeakJet User's Manual, as described in
-[`docs/design.md`](docs/design.md), and measured from recordings of the real
-chip. No code or tables were taken from other SpeakJet emulations. Its
-behaviour is checked by the tests in `tests/` against the manual's figures
-and the reference samples, and its accuracy against the recordings as
-described above.
+The emulation is written from the SpeakJet User's Manual and recordings of
+the real chip, as described in [`docs/design.md`](docs/design.md). No code
+or tables were taken from other SpeakJet emulations, nor, on this branch,
+from the first implementation. Its behaviour is checked by the tests in
+`tests/` and the reference samples, and its accuracy against the recordings
+as described above.
 
 ## Credits
 

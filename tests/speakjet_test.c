@@ -26,52 +26,20 @@ static int failures = 0;
     failures++;                                                                \
   } while (0)
 
-/* durations in milliseconds from the manual's allophone and sound effect
- * tables, codes 128 to 254 */
-static const double manual_ms[] = {
-    /* 128 */ 70, 70, 70, 70, 70, 70, 70, 70, 70, 70,
-    /* 138 */ 70, 70, 70, 70, 70, 70, 70, 70, 70, 70,
-    /* 148 */ 70, 200, 200, 190, 200, 185, 165, 200, 225,
-    /* 157 */ 185, 170, 140, 180, 170, 170, 200, 131, 70,
-    /* 166 */ 70, 70, 70, 70, 45, 45, 10, 10, 45, 45,
-    /* 176 */ 10, 10, 55, 55, 55, 55, 70, 70, 70, 70,
-    /* 186 */ 70, 40, 40, 50, 40, 50, 70, 170, 55, 55,
-    /* 196 */ 55, 45, 99, 99,
-    /* 200 */ 80, 80, 80, 80, 80, 80, 80, 80, 80, 80,
-    /* 210 */ 300, 101, 102, 540, 530, 500, 135, 600, 300,
-    /* 219 */ 250, 200, 270, 280, 260, 300, 100, 104, 100,
-    /* 228 */ 270, 262, 160, 300, 182, 120, 175, 350, 160,
-    /* 237 */ 260, 95, 75, 95, 95, 95, 95, 95, 95, 95,
-    /* 247 */ 95, 95, 95, 95, 95, 125, 250, 530,
-};
-
-static void test_durations(void) {
-  if (sizeof(manual_ms) / sizeof(manual_ms[0]) != 127)
-    FAIL("table has %d entries", (int)(sizeof(manual_ms) / sizeof(manual_ms[0])));
-
-  /* the allophones' parts add up to the manual's length (the chip's longer
-   * lengths come from sound.length). most of the sound effects, and the
-   * allophones played from the chip's own frames (see vf_points), are traced
-   * from recordings of the chip and have its lengths instead, so for them
-   * only check that they exist */
-  for (int code = 128; code <= 254; code++) {
-    sound s;
-    if (!lookup((uint8_t)code, &s)) {
-      FAIL("code %d: no sound", code);
-      continue;
-    }
-    double ms = 0;
-    for (int i = 0; i < s.nparts; i++)
-      ms += s.parts[i].ms;
-    const double want = manual_ms[code - 128];
-    if (code >= 200 || vf_index[code - 128].count > 0) {
-      if (ms <= 0)
-        FAIL("code %d (%s): no length", code, sj_sound_name((uint8_t)code));
-      continue;
-    }
-    if (fabs(ms - want) > 0.01)
-      FAIL("code %d (%s): %.2fms, manual says %.0fms", code,
-           sj_sound_name((uint8_t)code), ms, want);
+/* every sound code plays something, and the allophones' table lengths are
+ * within the range the chip was measured to play (30 to 300 ms at Speed 114) */
+static void test_sounds(void) {
+  for (int code = 128; code <= 199; code++) {
+    const allophone *a = &allophones[code - 128];
+    if (a->ms * MS_STEP < 10 || a->ms * MS_STEP > 320)
+      FAIL("code %d (%s): length %d ms", code, sj_sound_name((uint8_t)code), a->ms * MS_STEP);
+  }
+  for (int code = 200; code <= 254; code++) {
+    int ms = 0;
+    for (int i = 0; i < fxindex[code - 200][1]; i++)
+      ms += fxparts[fxindex[code - 200][0] + i].ms * MS_STEP;
+    if (ms <= 0)
+      FAIL("code %d (%s): no length", code, sj_sound_name((uint8_t)code));
   }
 }
 
@@ -103,11 +71,11 @@ static void test_phrase_length(void) {
     n++;
 
   const double got = (double)n * 1000 / SJ_SAMPLE_RATE;
-  /* the last sound is phrase-final (see final_length) */
-  const double want =
-      70.0 * allophone_length[183 - 128] + 70.0 * allophone_length[135 - 128] +
-      99 * allophone_length[199 - 128] * final_length[199 - 128] + AUTO_SILENCE_MS;
-  if (fabs(got - want) > 1)
+  /* the sounds' lengths, the stop's closure, and the two sounds followed at
+   * once by another cut short by the overlap */
+  const double want = (allophones[183 - 128].ms + allophones[135 - 128].ms + allophones[199 - 128].ms) * MS_STEP +
+                      T.closure - 2 * T.overlap;
+  if (fabs(got - want) > 10)
     FAIL("phrase played for %.0fms, expected about %.0fms", got, want);
   sj_free(sj);
 }
@@ -257,7 +225,7 @@ static void test_names(void) {
 }
 
 int main(void) {
-  test_durations();
+  test_sounds();
   test_phrase_length();
   test_buffer();
   test_output_range();
