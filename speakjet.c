@@ -366,6 +366,49 @@ static double bend_hz(const sj_chip *sj) {
   return T.bend_hz * (sj->bend - 5) + (sj->bend < 5 ? T.bend_hz / 2 : 0.0);
 }
 
+/* the library's own sin, exp and log for everything done per sample: libm's
+ * last bits differ from one platform to another, and the output quantiser
+ * turns a last bit on the wrong side of a step into a whole step. plain
+ * series in doubles, the same to the bit everywhere the build keeps fused
+ * multiply-add off. sj_sin2pi takes cycles */
+static double sj_sin2pi(double x) {
+  x -= floor(x + 0.5); /* [-0.5, 0.5) */
+  if (x > 0.25)
+    x = 0.5 - x;
+  else if (x < -0.25)
+    x = -0.5 - x; /* [-0.25, 0.25] */
+  const double y = 2.0 * M_PI * x, y2 = y * y;
+  double term = y, sum = y;
+  for (int n = 1; n <= 9; n++) { /* to y^19: under 1e-15 at pi/2 */
+    term *= -y2 / ((2.0 * n) * (2.0 * n + 1.0));
+    sum += term;
+  }
+  return sum;
+}
+
+static double sj_exp(double x) {
+  if (x < -700.0)
+    return 0.0;
+  const double k = floor(x / M_LN2 + 0.5), r = x - k * M_LN2; /* |r| <= ln2 / 2 */
+  double term = 1.0, sum = 1.0;
+  for (int n = 1; n <= 15; n++) {
+    term *= r / n;
+    sum += term;
+  }
+  return ldexp(sum, (int)k);
+}
+
+static double sj_log(double x) {
+  int e;
+  const double m = frexp(x, &e), s = (m - 1.0) / (m + 1.0), s2 = s * s; /* m in [0.5, 1): |s| <= 1/3 */
+  double term = s, sum = s;
+  for (int n = 1; n <= 15; n++) {
+    term *= s2;
+    sum += term / (2.0 * n + 1.0);
+  }
+  return 2.0 * sum + e * M_LN2;
+}
+
 /* the master volume: measured on AW, 16 to 127 is only 6 dB */
 static double volume_gain(const sj_chip *sj) {
   static const double db[5] = {-3.3, -1.3, -0.6, 0.0, 2.5};
@@ -382,7 +425,7 @@ static double volume_gain(const sj_chip *sj) {
       i++;
     d = db[i] + (db[i + 1] - db[i]) * (v - at[i]) / (at[i + 1] - at[i]);
   }
-  return pow(10.0, d / 20.0);
+  return sj_exp(d / 20.0 * M_LN10);
 }
 
 static float bent(double hz, double bend) { return hz > 0 ? (float)(hz + bend) : 0.0f; }
@@ -693,9 +736,9 @@ static double tick(sj_chip *sj) {
   for (int k = 0; k < 3; k++) {
     const double fa = s->from.f[k], fb = s->to.f[k];
     if ((s->flags & FX_EXP) && fa > 0 && fb > 0)
-      f.f[k] = (float)(fa * pow(fb / fa, t));
+      f.f[k] = (float)(fa * sj_exp(t * sj_log(fb / fa)));
     else if (s->flags & FX_EXPDECAY)
-      f.f[k] = (float)(fb + (fa - fb) * exp(-4.0 * t));
+      f.f[k] = (float)(fb + (fa - fb) * sj_exp(-4.0 * t));
     else
       f.f[k] = (float)lerp(fa, fb, t);
     f.a[k] = (float)lerp(s->from.a[k], s->to.a[k], t);
@@ -726,7 +769,7 @@ static double tick(sj_chip *sj) {
      * envelope-shaped term beside the sines, against their starting direction */
     double sum = -f.dc;
     for (int k = 0; k < nf; k++) {
-      sum += f.a[k] * sin(2.0 * M_PI * sj->phase[k]);
+      sum += f.a[k] * sj_sin2pi(sj->phase[k]);
       sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
     }
     /* mixer 1's limit: the manual says the three volumes must total 63 or
@@ -735,7 +778,7 @@ static double tick(sj_chip *sj) {
       sum = sum > T.clip ? T.clip : sum < -T.clip ? -T.clip : sum;
     v += env * sum / 128.0 * (s->flags & FX_PULSED ? 0.6 : 1.0);
     if (nf == 2) {
-      v += f.a[2] / 128.0 * 0.6 * sin(2.0 * M_PI * sj->phase[2]);
+      v += f.a[2] / 128.0 * 0.6 * sj_sin2pi(sj->phase[2]);
       sj->phase[2] += f.f[2] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
     }
     sj->ptick--;
@@ -744,7 +787,7 @@ static double tick(sj_chip *sj) {
     /* plain tones (the effects) */
     for (int k = 0; k < 3; k++) {
       if (f.f[k] > 0.0f && f.a[k] > 0.0f)
-        v += f.a[k] / 128.0 * 0.6 * sin(2.0 * M_PI * sj->phase[k]);
+        v += f.a[k] / 128.0 * 0.6 * sj_sin2pi(sj->phase[k]);
       sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
     }
   }
@@ -760,7 +803,7 @@ static double tick(sj_chip *sj) {
      * to 3 kHz and back every 20 ms with a 13 dB dip, both units; the gate's
      * off half scores better than a dip alone) */
     if ((s->flags & FX_NSWEEP) && s->gate > 0) {
-      const double sw = sin(M_PI * (sj->tick % s->gate) / s->gate);
+      const double sw = sj_sin2pi(0.5 * (sj->tick % s->gate) / s->gate);
       nf *= 0.4 + 1.6 * sw;
       lvl = 1.0 - 0.75 * sw;
     }
@@ -769,7 +812,7 @@ static double tick(sj_chip *sj) {
      * a tone; FF, TH and HE are flat to 4 kHz, SH and CH peak near 2.3 kHz,
      * WH at 800 Hz, SE and SO at the top of the band). the gain holds the
      * output power at the input's whatever the band (the AR(2) variance) */
-    const double r = exp(-M_PI * (f.nw > 10.0f ? f.nw : 10.0) / RATE), c = cos(2.0 * M_PI * nf / RATE);
+    const double r = sj_exp(-M_PI * (f.nw > 10.0f ? f.nw : 10.0) / RATE), c = sj_sin2pi(nf / RATE + 0.25);
     const double r2 = r * r, g = sqrt((1.0 - r2) * ((1.0 + r2) * (1.0 + r2) - 4.0 * r2 * c * c) / (1.0 + r2));
     const double y = g * rnd(sj) + 2.0 * r * c * sj->nz[0] - r2 * sj->nz[1];
     sj->nz[1] = sj->nz[0];
@@ -780,9 +823,9 @@ static double tick(sj_chip *sj) {
   if (s->gate > 0 && sj->tick % s->gate >= s->gate / 2)
     v = 0.0;
   if (s->flags & FX_DECAY)
-    v *= pow(10.0, -T.decay_db * t / 20.0);
+    v *= sj_exp(-T.decay_db * t / 20.0 * M_LN10);
   if (s->flags & FX_BUMP)
-    v *= sin(M_PI * t);
+    v *= sj_sin2pi(0.5 * t);
 
   /* the sound's attack and release */
   {
