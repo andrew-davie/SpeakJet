@@ -8,6 +8,11 @@ tables, to see whether the same method lands in the same place. The brief
 was the smallest footprint: rules wherever a rule could be found, a few
 bytes of parameters per sound otherwise.
 
+- VoxProbe 6 on both units: every sound has a measured level byte (the
+  consonants were 5 to 26 dB too loud), Volume 16 is 15 dB down, the
+  output quantiser is gone, a stop's closure is the sound before fading
+  through it, and the pulsed effects C0 and M2 are silent between pulses
+  (M0 is continuous).
 - The tones end in a 55 ms linear fade (a part flag); B0, B3 and B7 are
   rebuilt from the chip's envelopes and tone tracks, constant where the
   fit swept them. The scorer gained a tone track in cents and a line-width

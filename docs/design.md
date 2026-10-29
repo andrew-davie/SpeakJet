@@ -100,6 +100,31 @@ followed at once by another sound is cut short (`OVERLAP`): SE before IY is
 **Level over time.** Every sound ramps in over about 35 ms and out over 30
 (`ATTACK`, `RELEASE`; the effects 10 and 15).
 
+**Levels.** Each sound carries its level as a half-decibel byte, measured
+on both VoxRecord units against AX (above 300 Hz; full band for PE and PO),
+with the two units within 1 dB on every sound: the nasals sit 15 dB under
+the vowels, the liquids 5, the voiced fricatives 10 to 19, the stops 5 to
+22, the hiss 19 to 29, PE and PO 28. The formant and noise amplitudes keep
+their measured balance; the byte scales them. The pairs then sit within a
+decibel of both chips (IY SE -14, EH LE -5, OW MM -11).
+
+**No output quantiser.** Both chips put out their quiet consonants and the
+stops' tails whole, far below a 48th of full scale; a quantiser there
+silenced them.
+
+**Volume.** 16 is 15 dB under 32; from 32 up the level barely moves (-1.3,
+-1.1, 0, +2.2 dB at 32, 64, 96, 127), measured on both units at Pitch 20.
+
+**Closure.** A stop's closure is the sound before fading away through it,
+scaled with Speed: both units fall 30 dB over 50 to 60 ms at Speed 114 and
+twice that at Speed 60, with no cut to silence.
+
+**Pulsed effects.** At Pitch 20 each pulse stands alone: C0 and M2 are
+silent between pulses, so every tone and the noise of such an effect pulse
+with the voice (the `A` flag); M0 is continuous, plain tones; A1, A3 and
+C8 pulse as the voice does. C3 (one pulse then a hold) and C7 (its own
+accelerating rhythm) are measured and not yet modelled.
+
 **Tones end in a fade.** Every tone effect holds its level and then falls
 straight to nothing over about 55 ms, linear in amplitude (-6 dB at half
 way, -20 dB at nine tenths), on both units: a part flag (`F`) does that,
