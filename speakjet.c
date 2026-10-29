@@ -75,7 +75,8 @@ static struct tune {
   double jitter;                  /* every oscillator's frequency wanders by this fraction each sample
                                    * (the skirts around the chip's tones) */
   double clip;                    /* mixer 1 clips the formants' sum at this level (manual: 63; 0 = none) */
-  double quant;                   /* the output's steps per full scale (0 = none): the chip's output is
+  double quant;                   /* the output's steps per full scale (0 = none, measured: the chip puts out its
+                                   * quiet consonants and the stops' tails whole, far below a 48th of full scale); it was
                                    * coarse, about 5 bits across a vowel, which is the broadband hiss
                                    * under its voice */
   double decay_db;                /* an FX_DECAY part falls this many dB */
@@ -88,7 +89,7 @@ static struct tune {
   double copy_extra;              /* a Repeat copy adds this to the manual's length, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms (the manual's) */
-} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.018, 0, 0, 0.03, 0, 48, 35, 25, 30, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
+} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.018, 0, 0, 0.03, 0, 0, 35, 25, 30, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
@@ -119,7 +120,7 @@ static void tune_from_env(void) {
  * envelope, the level the pulse sits below the formants' sum) and one noise
  * band (centre Hz, half width Hz, level 0 to 31) */
 typedef struct frame {
-  float f[3], a[3], dc;
+  float f[3], a[3], lv; /* lv: the sound's level as a factor */
   float nf, nw, na;
 } frame;
 
@@ -129,7 +130,7 @@ typedef struct segment {
   frame from, to;
   bool voiced;
   int gate;      /* ticks of the on/off period for a pulsed effect, 0 = none */
-  uint8_t flags; /* FX_* */
+  uint16_t flags; /* FX_* */
 } segment;
 
 /* the sound effects: each is a few parts. a part plays up to three tones
@@ -138,7 +139,7 @@ typedef struct segment {
  * FX_EXPDECAY settling toward fb); FX_DECAY fades the level to nothing over
  * the part, FX_BUMP shapes it as a half sine; gate pulses it on and off;
  * FX_PULSED pulses the plain tones with the voice's envelope at Pitch */
-enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128 };
+enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128, FX_ALL = 256 };
 
 /* the tables' units: frequencies in 16 Hz steps, lengths in 5 ms, so every
  * field is a byte */
@@ -150,7 +151,8 @@ typedef struct fxpart {
   uint8_t fa[3], fb[3]; /* HZ_STEP */
   uint8_t v[3];
   uint8_t nf, nw;     /* HZ_STEP */
-  uint8_t nv, gate, flags; /* gate in ms */
+  uint8_t nv, gate;
+  uint16_t flags; /* gate in ms */
 } fxpart;
 
 #define MAX_SEGMENTS 8
@@ -182,6 +184,7 @@ struct sj_chip {
   int period, ptick;
   double phase[3];
   double nz[2]; /* the noise resonator's two delays */
+  double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   uint32_t rnd;
   double lastr; /* the previous noise sample, for the floor's high pass */
 
@@ -207,7 +210,7 @@ typedef struct allophone {
   uint8_t nf, nw;     /* the noise band's centre and bandwidth, HZ_STEP */
   uint8_t na;
   uint8_t cp;         /* the length of each further copy of a Repeat, MS_STEP */
-  int8_t dc;          /* the voice's offset under the envelope, formant level units */
+  int8_t lv;          /* the sound's level, half-decibels (measured against the vowels, both units) */
 } allophone;
 
 /* TABLES-BEGIN */
@@ -446,6 +449,7 @@ static float bent(double hz, double bend) { return hz > 0 ? (float)(hz + bend) :
 static frame silent_frame(void) {
   frame f;
   memset(&f, 0, sizeof f);
+  f.lv = 1.0f;
   return f;
 }
 
@@ -523,7 +527,7 @@ static frame allo_frame(const allophone *a, bool second, double bend) {
   f.a[0] = a->a1;
   f.a[1] = a->a2;
   f.a[2] = a->a3;
-  f.dc = a->dc;
+  f.lv = (float)sj_exp(a->lv * (0.5 * M_LN10 / 20.0));
   f.nf = (float)(a->nf * HZ_STEP);
   f.nw = (float)(a->nw * HZ_STEP);
   f.na = a->na;
@@ -558,7 +562,6 @@ static frame from_frame(const sj_chip *sj, frame tgt) {
   if (sj->last.a[0] > 0 || sj->last.a[1] > 0 || sj->last.a[2] > 0 || sj->last.na > 0)
     return sj->last;
   tgt.a[0] = tgt.a[1] = tgt.a[2] = 0.0f;
-  tgt.dc = 0.0f;
   tgt.na = 0.0f;
   return tgt;
 }
@@ -604,12 +607,16 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     /* the closure ("silence already added" says the manual; a voiced stop
      * hums through it on its first formant alone, quietly) then the burst and
      * release, which is the measured length */
-    frame bar = silent_frame();
+    /* the closure: the sound before fades away through it (both units: a
+     * vowel before a stop falls 30 dB over 50 to 60 ms at Speed 114, twice
+     * that at Speed 60), not a cut to silence; a voiced stop hums through it
+     * on its first formant */
+    frame bar = from, gone = silent_frame();
     if (a->kind == K_VSTOP) {
-      bar.f[0] = tgt.f[0];
-      bar.a[0] = tgt.a[0] / 4.0f;
+      gone.f[0] = tgt.f[0];
+      gone.a[0] = tgt.a[0] / 4.0f;
     }
-    add_segment(sj, TICKS(T.closure), bar, bar, a->kind == K_VSTOP);
+    add_segment(sj, TICKS(T.closure * speed_factor(sj, false)), bar, gone, a->kind == K_VSTOP || bar.a[0] + bar.a[1] + bar.a[2] > 0.0f);
     add_segment(sj, ticks, tgt, tgt, a->kind == K_VSTOP);
     break;
   }
@@ -768,7 +775,7 @@ static double tick(sj_chip *sj) {
       f.f[k] = (float)lerp(fa, fb, t);
     f.a[k] = (float)lerp(s->from.a[k], s->to.a[k], t);
   }
-  f.dc = (float)lerp(s->from.dc, s->to.dc, t);
+  f.lv = (float)lerp(s->from.lv, s->to.lv, t);
   f.nf = (float)lerp(s->from.nf, s->to.nf, t);
   f.nw = (float)lerp(s->from.nw, s->to.nw, t);
   f.na = (float)lerp(s->from.na, s->to.na, t);
@@ -789,10 +796,10 @@ static double tick(sj_chip *sj) {
     if (env < 0.0)
       env = 0.0;
     /* an effect's third tone is a plain tone beside the voice */
-    const int nf = s->flags & FX_VOICED ? 2 : 3;
+    const int nf = (s->flags & FX_VOICED) && !(s->flags & FX_ALL) ? 2 : 3; /* FX_ALL: every tone pulses with the voice */
     /* the offset: measured on every voiced sound's pulse (both units), an
      * envelope-shaped term beside the sines, against their starting direction */
-    double sum = -f.dc;
+    double sum = 0.0;
     for (int k = 0; k < nf; k++) {
       sum += f.a[k] * sj_sin2pi(sj->phase[k]);
       sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
@@ -801,7 +808,8 @@ static double tick(sj_chip *sj) {
      * less; past it the sum clips */
     if (T.clip > 0)
       sum = sum > T.clip ? T.clip : sum < -T.clip ? -T.clip : sum;
-    v += env * sum / 128.0 * (s->flags & FX_PULSED ? 0.6 : 1.0);
+    v += env * sum / 128.0 * f.lv * (s->flags & FX_PULSED ? 0.6 : 1.0);
+    sj->venv = env;
     if (nf == 2) {
       v += f.a[2] / 128.0 * 0.6 * sj_sin2pi(sj->phase[2]);
       sj->phase[2] += f.f[2] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
@@ -809,6 +817,7 @@ static double tick(sj_chip *sj) {
     sj->ptick--;
   } else {
     sj->ptick = 0;
+    sj->venv = 1.0;
     /* plain tones (the effects) */
     for (int k = 0; k < 3; k++) {
       if (f.f[k] > 0.0f && f.a[k] > 0.0f)
@@ -842,7 +851,9 @@ static double tick(sj_chip *sj) {
     const double y = g * rnd(sj) + 2.0 * r * c * sj->nz[0] - r2 * sj->nz[1];
     sj->nz[1] = sj->nz[0];
     sj->nz[0] = y;
-    v += lvl * f.na / 128.0 * 0.86 * y;
+    if (s->flags & FX_ALL)
+      lvl *= sj->venv; /* both units: C0 and M2 are silent between their pulses */
+    v += lvl * f.lv * f.na / 128.0 * 0.86 * y;
   }
 
   if (s->gate > 0 && sj->tick % s->gate >= s->gate / 2)
