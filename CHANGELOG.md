@@ -43,10 +43,33 @@ bytes of parameters per sound otherwise.
   against each other; lower is better): 1.33, against 1.54 for the fitted
   parameters: allophones alone 0.90 (1.08), effects alone 1.44 (1.66),
   connected groups 1.48 (1.66), Man Goes Down 2.42 (2.66). The 24 measured
-  sounds alone: 0.90 against 1.13. What remains is in the effects (fitted
-  recipes, not measured mechanisms), the stops, connected timing, and one
-  open detail of the pulse: a notch between the first two formants that the
-  model fills by about 10 dB.
+  sounds alone: 0.90 against 1.13.
+- Listening to phrases from a game (WenHop, text2speakjet output) found what
+  the single-sound recordings could not, and the chip's phrase recordings
+  confirmed each: a sound followed at once by another neither fades out nor
+  fades the next in (the 35/30 ms ramps belong to the edges of a run; inside
+  a phrase the chip's level never drops more than 14-30 dB between sounds);
+  the look-ahead for "followed at once" steps over the Fast, Slow, Stress,
+  Relax, Pitch, Speed, Volume, Bend and Repeat bytes that text puts between
+  words (every such seam had been a full fade); Fast and Slow are x0.77 and
+  x1.22 of the played length and leave the stops alone; a transition after
+  silence starts at the sound's own formants (not a sweep up from 0 Hz); and
+  the offset term is switched off: the chip's raw spectra carry no energy
+  from it at the voice fundamental, where the library had 15-20 dB too much
+  on the big-offset sounds. The `dc` field stays, at zero, until the pulse
+  component it stood in for is understood (it fits the high-passed pulse
+  like an envelope-shaped offset but has no low-frequency energy: a
+  transient of some kind). P 1.32 (allophones 0.88, connected 1.46, Man Goes
+  Down 2.33).
+- Unresolved: the output carries the sample hold's images above 4 kHz at the
+  level the AtariVox's jack delivers them (about -30 dB, measured); through a
+  console and a television they would be largely filtered, and a listener on
+  full-range speakers hears them as a thin second voice doubling the first.
+  Whether the library should present the jack or the television is undecided;
+  the first implementation produced nothing above 4 kHz. Also open: the
+  effects (fitted recipes, not measured mechanisms), the stops' soft closures
+  and tails, and a notch between the first two formants that the pulse model
+  fills by about 10 dB.
 - Each allophone also carries the length of its Repeat copies (one byte);
   the chip's copies of ED and OD run 35 ms where the manual says 10, EG and
   OG 25 where it says 55.

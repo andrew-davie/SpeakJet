@@ -73,11 +73,11 @@ static struct tune {
   double overlap, overlap_v;      /* a sound followed at once by another is cut short by this, ms; more when both are voiced */
   double speed_a, speed_b;        /* length factor (speed_a - Speed) / speed_b */
   double fx_speed_a, fx_speed_b;  /* the effects' (they shorten faster) */
-  double fast, slow;              /* Fast and Slow add this times the manual's length */
+  double fast, slow;              /* Fast and Slow: factors on the played length */
   double copy_extra;              /* a Repeat copy adds this to the manual's length, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms (the manual's) */
-} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.018, 0, 0, 0.03, 0, 48, 35, 25, 30, 15, 30, 162, 48, 149, 35, -0.3, 0.35, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
+} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.018, 0, 0, 0.03, 0, 48, 35, 25, 30, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
@@ -155,6 +155,7 @@ struct sj_chip {
   /* the controls */
   uint8_t volume, speed, pitch, bend, repeat;
   bool fast, slow, stress, relax;
+  bool joined;        /* the last sound ran straight into the next: no ramps at that join */
 
   /* what is playing */
   segment seg[MAX_SEGMENTS];
@@ -347,10 +348,15 @@ static double speed_factor(const sj_chip *sj, bool effect) {
  * SE +20, EYIY +75 ms under Slow): the manual's "1/2" and "1 1/2 times" are
  * of its own length column */
 static double modified_ms(const sj_chip *sj, const allophone *a, double ms) {
+  /* measured (VoxRecord section 7, both units): Fast x0.77 and Slow x1.22 of
+   * the played length on vowels, nasals and fricatives; the stops don't
+   * change (TT is 45-50 ms plain, fast or slow) */
+  if (a->kind == K_STOP || a->kind == K_VSTOP || a->kind == K_AFFR)
+    return ms;
   if (sj->fast)
-    ms += T.fast * manual_ms[a - allophones];
+    ms *= T.fast;
   if (sj->slow)
-    ms += T.slow * manual_ms[a - allophones];
+    ms *= T.slow;
   return ms > 10 ? ms : 10;
 }
 
@@ -467,11 +473,24 @@ static int copy_segments(sj_chip *sj, const allophone *a) {
   return ticks;
 }
 
+/* the frame a sound's transition starts from: the last frame, or, after
+ * silence, the sound's own frame at no level (the formants don't sweep up
+ * from 0 Hz at the start of a phrase or after a pause) */
+static frame from_frame(const sj_chip *sj, frame tgt) {
+  if (sj->last.a[0] > 0 || sj->last.a[1] > 0 || sj->last.a[2] > 0 || sj->last.na > 0)
+    return sj->last;
+  tgt.a[0] = tgt.a[1] = tgt.a[2] = 0.0f;
+  tgt.dc = 0.0f;
+  tgt.na = 0.0f;
+  return tgt;
+}
+
 /* expand an allophone into segments: its first play */
 static void play_allophone(sj_chip *sj, const allophone *a) {
   const double bend = bend_hz(sj);
   const int ticks = TICKS(modified_ms(sj, a, a->ms * MS_STEP) * speed_factor(sj, false));
   const frame tgt = allo_frame(a, false, bend);
+  const frame from = from_frame(sj, tgt);
   sj->nseg = 0;
   switch (a->kind) {
   case K_VOWEL:
@@ -480,7 +499,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     int tr = TICKS(T.transition);
     if (tr > ticks)
       tr = ticks;
-    add_segment(sj, tr, sj->last, tgt, true);
+    add_segment(sj, tr, from, tgt, true);
     add_segment(sj, ticks - tr, tgt, tgt, true);
     break;
   }
@@ -489,7 +508,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     int tr = TICKS(T.transition);
     if (tr > ticks / 2)
       tr = ticks / 2;
-    add_segment(sj, tr, sj->last, tgt, true);
+    add_segment(sj, tr, from, tgt, true);
     add_segment(sj, ticks - tr, tgt, tgt2, true);
     break;
   }
@@ -539,6 +558,26 @@ static void play_pause(sj_chip *sj, double ms) {
 
 static int peek(const sj_chip *sj, int i) { return sj->buf[(sj->head + i) % SJ_BUFFER_SIZE]; }
 
+/* the next sound in the buffer after offset i, looking past the modifiers and
+ * settings that sit between sounds (Fast, Slow, Stress, Relax, Pitch, Speed,
+ * Volume, Bend, Repeat): a phrase from text puts a pitch or a stress before
+ * most sounds. a pause, a delay, a reset or the end of the buffer means the
+ * sound is not followed at once: -1 */
+static int next_sound(const sj_chip *sj, int i) {
+  while (i < sj->count) {
+    const int c = peek(sj, i);
+    if (c >= 128 && c <= 254)
+      return c;
+    if (c == 7 || c == 8 || c == 14 || c == 15 || c == 16)
+      i += 1;
+    else if (c == 20 || c == 21 || c == 22 || c == 23 || c == 26)
+      i += 2;
+    else
+      return -1;
+  }
+  return -1;
+}
+
 /* take the next command from the buffer and start it. the command stays
  * counted in the buffer until it has finished */
 static void next_command(sj_chip *sj) {
@@ -549,25 +588,37 @@ static void next_command(sj_chip *sj) {
     sj->executing = n;
     if (code <= 6) {
       play_pause(sj, T.pause[code]);
+      sj->joined = false;
     } else if (code >= 128 && code <= 199) {
       play_allophone(sj, &allophones[code - 128]);
       sj->repeat = 0;
+      /* the level ramps were measured on sounds played alone. inside a
+       * phrase the chip's level never drops more than 14-30 dB between
+       * sounds (Man Goes Down, both units) where ramping every sound out and
+       * in drops it 40-65 dB: a sound that follows straight on starts without
+       * its attack, and one followed straight on ends without its release */
+      if (sj->joined)
+        sj->attack = 0;
+      sj->joined = false;
       /* followed at once by another sound: the next one's start covers this
        * one's end, by more when both are voiced (measured on the pairs:
        * vowel to vowel 51 ms, with a hiss or a stop on either side 10 to 24) */
-      if (sj->count > n && peek(sj, n) >= 128 && peek(sj, n) <= 254 && sj->nseg > 0) {
+      const int next = next_sound(sj, n);
+      if (next >= 0 && sj->nseg > 0) {
         segment *l = &sj->seg[sj->nseg - 1];
-        const int next = peek(sj, n);
         const bool both = l->voiced && next <= 199 && allophones[next - 128].kind != K_FRIC && allophones[next - 128].kind != K_STOP;
         const int cut = TICKS(both ? T.overlap_v : T.overlap);
         if (l->ticks > cut + 1) {
           l->ticks -= cut;
           sj->stotal -= cut;
         }
+        sj->release = 0;
+        sj->joined = true;
       }
     } else if (code >= 200 && code <= 254) {
       play_effect(sj, code);
       sj->repeat = 0;
+      sj->joined = false;
     } else {
       switch (code) {
       case 7: sj->fast = true; break;
