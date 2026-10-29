@@ -14,23 +14,39 @@ bytes of parameters per sound otherwise.
   same 48 kHz output.
 - What the recordings gave (see `docs/design.md`): the chip's rate, 8026
   Hz, with its arithmetic in 8000ths; the voicing period floor(Fs/Pitch)+1;
-  a triangular voicing envelope (1 ms up, 6 ms down) over three restarting
-  formant sines; an FM noise oscillator (the manual's distortion) whose
-  fold-over at Nyquist makes the hiss sounds' 4 kHz peak; two real poles
-  near 2.7 kHz after a sample hold; a noise floor under every sound; Bend
+  a voicing envelope that steps to full at once and falls linearly over
+  about 7 ms (measured tick by tick: there is no rise) over three formant
+  sines restarting at one phase, plus a per-sound offset under the same
+  envelope (a fourth oscillator at 0 Hz; one signed byte); an FM noise
+  oscillator (the manual's distortion) whose fold-over at Nyquist makes the
+  hiss sounds' 4 kHz peak; two real poles near 2 kHz and 2.9 kHz after a
+  sample hold (fitted on the pulses; the tones' images agree); a noise
+  floor under every sound; Bend
   as +44 Hz a step on every oscillator; Volume spanning 6 dB; Fast 0.8 and
   Slow 1.25; measured lengths that don't change with context or Pitch and
   are linear in Speed; a 35/30 ms level ramp on every sound; copies of a
   Repeat running on seamlessly at the manual's length; a sound followed at
   once by another cut short by 10 ms.
 - Not found in the recordings: any effect of Stress, Relax or code 18.
-- Score M over the 752 recordings: 1.58: allophones alone 1.08, effects
-  alone 1.53, connected groups 1.62, Man Goes Down 2.34. The parameters were
-  refined by Nelder-Mead on each sound's recordings and then by simulated
-  annealing of the effects (which can also switch a part between plain
-  tones, voiced formants and pulsed tones). The distance that remains is in
-  the pulsed biological effects, M2, the effects at other Pitch and Bend
-  settings, connected timing and the voiced stops' repeats.
+- The voicing pulse was then measured directly rather than fitted (both
+  units, VoxProbe 3 and 4): the envelope's first ticks, the restart phase,
+  the offset term and the output poles each came out of the pulses
+  themselves, and the 24 vowels, nasals and liquids with isolated pulses
+  carry measured formants, levels and offsets. The library's pulse for those
+  sounds is within 0.09–0.15 of the chip's (rms of the difference over the
+  pulse's rms; it was 0.4–0.7 with the fitted parameters), and within 1 dB
+  per sixth-octave band from 150 Hz to 1.3 kHz. The other 48 allophones and
+  the effects were refitted under the measured mechanism.
+- Score P over the 741 scorable recordings (P: physical distances — length,
+  level contour, time-frequency cells, spectrum, formant peaks, pitch — each
+  over the two real chips' own disagreement; the two chips score 0.22
+  against each other; lower is better): 1.33, against 1.54 for the fitted
+  parameters: allophones alone 0.90 (1.08), effects alone 1.44 (1.66),
+  connected groups 1.48 (1.66), Man Goes Down 2.42 (2.66). The 24 measured
+  sounds alone: 0.90 against 1.13. What remains is in the effects (fitted
+  recipes, not measured mechanisms), the stops, connected timing, and one
+  open detail of the pulse: a notch between the first two formants that the
+  model fills by about 10 dB.
 - Each allophone also carries the length of its Repeat copies (one byte);
   the chip's copies of ED and OD run 35 ms where the manual says 10, EG and
   OG 25 where it says 55.

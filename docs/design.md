@@ -36,15 +36,41 @@ plateaus (Pitch 157–160 all give 157.6 Hz).
 Pitch 40, where each pulse stands alone. Averaged pulses are identical on both
 units to the sample. Fitting a forward model (formant sines restarting at the
 period, under a shared envelope, through the hold and the output filter) to
-them: the envelope is a triangle, about 1 ms rise and 6 ms fall
-(`ENV_RISE` 8, `ENV_FALL` 50 ticks), and every formant restarts each period
-(the phase step from pulse to pulse is zero at every pitch). The restart
-phases are not all zero; the library uses zero, since the score is spectral.
+them: the envelope steps to full at once and falls linearly over about 7 ms
+(`ENV_RISE` 0.5, `ENV_FALL` 58 ticks). There is no rise: with the formants,
+levels and phases held from the body of the pulse, the envelope's value at each
+of the first eight ticks was fitted free, and on both units it is zero for a few
+ticks (the gate's position in the period) and then 0.8–1.0 at once; a linear
+8-tick rise had been the best of the shapes tried before that measurement, and
+it left the valleys between the formants 10–16 dB too shallow. Every formant
+restarts each period (the phase step from pulse to pulse is zero at every
+pitch), and all three restart at one phase: a fit with one shared phase per
+sound beats a fit with three free ones on both units, and the value is the
+same for every sound (so the library restarts at zero and stores none).
 
-**Output stage.** Image levels from 6.5 to 23.5 kHz, after removing the
-hold's sinc, fall off like two real poles near 2.7 kHz (`LPF_FC`, `LPF_Q`
-0.25). Under every tone the chip's output carries a flat noise floor; a
-multiplicative floor of 8 % (`FLOOR`) scored best, for the vowels too.
+**The offset.** Beside the sines, every voiced sound's pulse carries an
+envelope-shaped term: the same step and fall, no oscillation, a level of its
+own per sound (up to 1.3 times the loudest formant on UH, LE, RR; a tenth of
+it on AX, AY, EH), the same on both units, and the sign varies. It is not the
+recording chain (no high-pass corner reproduces it), not a fixed mid-level
+(its size differs five-fold between sounds), and a free fourth oscillator
+fitted to replace it runs to zero frequency. The library carries it as a
+fourth oscillator at 0 Hz: one signed byte per sound (`dc`). With the
+envelope, the shared phase and the offset, the library's pulse for the
+cleanly measured vowels is within 1 dB of the chip's in every sixth-octave
+band from 150 Hz to 1.3 kHz, valleys included, and the residual is 0.09–0.15
+of the pulse's rms (0.015 is the chip's own pulse-to-pulse scatter).
+
+**Output stage.** Two real poles, near 2 kHz and 2.9 kHz (`LPF_FC` 2396,
+`LPF_Q` 0.491). The first comes from the forward model of the voicing pulses
+with free poles (1983 and 1972 Hz on the two units); the pulses say almost
+nothing above 4 kHz, so the second comes from the image levels of the tones
+from 6.5 to 23.5 kHz, after removing the hold's sinc, with the first pole held:
+2.9 kHz fits them to 2.3–2.6 dB rms on both units, 12 kHz to 9–10 dB. (An
+earlier version used 720 Hz/10 kHz from the images alone, which they fit
+equally well, with the formant levels fitted under it compensating for it.)
+Under every tone the chip's output carries a flat noise floor (`FLOOR`,
+measured 1.8 %).
 
 **Noise.** The unvoiced sounds are flat bands with sharp edges (SE, SO, TT
 and TS peak at 4 kHz, the chip's Nyquist). An oscillator whose frequency is

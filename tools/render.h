@@ -20,9 +20,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* the library's output peaks at about 0.36 at full Volume; this brings it
- * close to full scale without clipping */
-#define SJR_DEFAULT_GAIN 2.5
+/* the library's output peaks at about 0.6 at full Volume (the voice's offset
+ * term adds to the formants' sum); this brings it close to full scale without
+ * clipping */
+#define SJR_DEFAULT_GAIN 1.5
 
 /* render codes, a phrase as the serial byte stream, until the chip falls
  * silent. byte 255 outside a command is skipped as an end-of-phrase marker.

@@ -17,15 +17,18 @@
  *
  * What the chip was found to do (from the recordings):
  *   - it makes samples at about 8026 Hz (manual: 8192) and holds each one; the
- *     AtariVox then low-passes the held signal (about two real poles near 2.7
- *     kHz). the output here is at 48 kHz so the images the hold puts up to 20
- *     kHz are carried as the real thing's are
+ *     AtariVox then low-passes the held signal: two real poles, near 2 kHz
+ *     (fitted on the voicing pulses of both units) and 2.9 kHz (from the
+ *     images of the tones, 6.5 to 23 kHz, both units). the output here is at
+ *     48 kHz so the images the hold puts up to 20 kHz are carried as the
+ *     real thing's are
  *   - voicing: a period of N = floor(rate / Pitch) + 1 ticks. at the start of
  *     each period the three formant oscillators (sines, manual: oscillators 1
- *     to 3) restart and an envelope (manual: the envelope oscillator) rises
- *     linearly for about 1 ms and falls linearly over about 6 ms; the sum of
- *     the sines times the envelope is the voice. the pulse is the same on both
- *     units to the sample
+ *     to 3) restart and an envelope (manual: the envelope oscillator) steps
+ *     to full at once and falls linearly over about 7 ms (there is no rise:
+ *     measured tick by tick, the pulse starts abruptly); the sum of the sines
+ *     times the envelope is the voice. the pulse is the same on both units to
+ *     the sample
  *   - noise: an oscillator whose frequency is jittered ("disordered with white
  *     noise", manual register 6) makes a band of noise centred on its
  *     frequency; the unvoiced sounds are one such band each
@@ -52,11 +55,18 @@
  * build with -DSJ_TUNE reads overrides from the SJ_TUNE environment variable
  * ("ATTACK=35,FLOOR=0.06,...") so they can be fitted without recompiling */
 static struct tune {
-  double env_rise, env_fall;      /* voicing envelope: linear rise and fall, ticks */
+  double env_rise, env_fall;      /* voicing envelope: rise (under one tick: a step) and linear fall, ticks */
   double lpf_fc, lpf_q;           /* the output stage's two poles */
   double attack, release;         /* every sound's level ramp, ms */
   double fx_attack, fx_release;   /* the effects' */
   double floor;                   /* the output noise floor, relative */
+  double dist2, dist3;            /* the output stage's nonlinearity: v + dist2 v^2 + dist3 v^3 */
+  double jitter;                  /* every oscillator's frequency wanders by this fraction each sample
+                                   * (the skirts around the chip's tones) */
+  double clip;                    /* mixer 1 clips the formants' sum at this level (manual: 63; 0 = none) */
+  double quant;                   /* the output's steps per full scale (0 = none): the chip's output is
+                                   * coarse, about 5 bits across a vowel, which is the broadband hiss
+                                   * under its voice */
   double decay_db;                /* an FX_DECAY part falls this many dB */
   double transition;              /* the voice moves to a new sound's target over this, ms */
   double closure;                 /* silence before a stop's burst, ms */
@@ -67,12 +77,12 @@ static struct tune {
   double copy_extra;              /* a Repeat copy adds this to the manual's length, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms (the manual's) */
-} T = {8, 50, 2700, 0.25, 35, 30, 10, 15, 0.10, 35, 25, 30, 15, 30, 162, 48, 149, 35, -0.3, 0.35, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
+} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.018, 0, 0, 0.03, 0, 48, 35, 25, 30, 15, 30, 162, 48, 149, 35, -0.3, 0.35, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
 static void tune_from_env(void) {
-  static const char *const names[] = {"ENVR", "ENVF", "LPFFC", "LPFQ", "ATTACK", "RELEASE", "FXATT", "FXREL", "FLOOR", "DECAY", "TRANS", "CLOSURE", "OVERLAP", "OVERLAPV", "SPEEDA", "SPEEDB", "FXSPEEDA", "FXSPEEDB", "FAST", "SLOW", "COPY", "BENDHZ", "P0", "P1", "P2", "P3", "P4", "P5", "P6"};
+  static const char *const names[] = {"ENVR", "ENVF", "LPFFC", "LPFQ", "ATTACK", "RELEASE", "FXATT", "FXREL", "FLOOR", "DIST2", "DIST3", "JITTER", "CLIP", "QUANT", "DECAY", "TRANS", "CLOSURE", "OVERLAP", "OVERLAPV", "SPEEDA", "SPEEDB", "FXSPEEDA", "FXSPEEDB", "FAST", "SLOW", "COPY", "BENDHZ", "P0", "P1", "P2", "P3", "P4", "P5", "P6"};
   const char *e = getenv("SJ_TUNE");
   double *v = (double *)&T;
   while (e && *e) {
@@ -94,9 +104,11 @@ static void tune_from_env(void) {
 
 
 /* one target the synthesizer moves toward: three voiced formants (Hz, level 0
- * to 31) and one noise band (centre Hz, half width Hz, level 0 to 31) */
+ * to 31), the voice's offset (dc: a fourth oscillator at 0 Hz under the same
+ * envelope, the level the pulse sits below the formants' sum) and one noise
+ * band (centre Hz, half width Hz, level 0 to 31) */
 typedef struct frame {
-  float f[3], a[3];
+  float f[3], a[3], dc;
   float nf, nw, na;
 } frame;
 
@@ -183,6 +195,7 @@ typedef struct allophone {
   uint8_t nf, nw;     /* the noise band's centre and throw, HZ_STEP */
   uint8_t na;
   uint8_t cp;         /* the length of each further copy of a Repeat, MS_STEP */
+  int8_t dc;          /* the voice's offset under the envelope, formant level units */
 } allophone;
 
 /* TABLES-BEGIN */
@@ -431,6 +444,7 @@ static frame allo_frame(const allophone *a, bool second, double bend) {
   f.a[0] = a->a1;
   f.a[1] = a->a2;
   f.a[2] = a->a3;
+  f.dc = a->dc;
   f.nf = (float)(a->nf * HZ_STEP);
   f.nw = (float)(a->nw * HZ_STEP);
   f.na = a->na;
@@ -619,6 +633,7 @@ static double tick(sj_chip *sj) {
       f.f[k] = (float)lerp(fa, fb, t);
     f.a[k] = (float)lerp(s->from.a[k], s->to.a[k], t);
   }
+  f.dc = (float)lerp(s->from.dc, s->to.dc, t);
   f.nf = (float)lerp(s->from.nf, s->to.nf, t);
   f.nw = (float)lerp(s->from.nw, s->to.nw, t);
   f.na = (float)lerp(s->from.na, s->to.na, t);
@@ -640,15 +655,21 @@ static double tick(sj_chip *sj) {
       env = 0.0;
     /* an effect's third tone is a plain tone beside the voice */
     const int nf = s->flags & FX_VOICED ? 2 : 3;
-    double sum = 0.0;
+    /* the offset: measured on every voiced sound's pulse (both units), an
+     * envelope-shaped term beside the sines, against their starting direction */
+    double sum = -f.dc;
     for (int k = 0; k < nf; k++) {
       sum += f.a[k] * sin(2.0 * M_PI * sj->phase[k]);
-      sj->phase[k] += f.f[k] / NOMINAL;
+      sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
     }
+    /* mixer 1's limit: the manual says the three volumes must total 63 or
+     * less; past it the sum clips */
+    if (T.clip > 0)
+      sum = sum > T.clip ? T.clip : sum < -T.clip ? -T.clip : sum;
     v += env * sum / 128.0 * (s->flags & FX_PULSED ? 0.6 : 1.0);
     if (nf == 2) {
       v += f.a[2] / 128.0 * 0.6 * sin(2.0 * M_PI * sj->phase[2]);
-      sj->phase[2] += f.f[2] / NOMINAL;
+      sj->phase[2] += f.f[2] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
     }
     sj->ptick--;
   } else {
@@ -657,7 +678,7 @@ static double tick(sj_chip *sj) {
     for (int k = 0; k < 3; k++) {
       if (f.f[k] > 0.0f && f.a[k] > 0.0f)
         v += f.a[k] / 128.0 * 0.6 * sin(2.0 * M_PI * sj->phase[k]);
-      sj->phase[k] += f.f[k] / NOMINAL;
+      sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
     }
   }
 
@@ -698,6 +719,10 @@ static double tick(sj_chip *sj) {
   sj->stick++;
 
   v *= volume_gain(sj);
+  /* the output stage's nonlinearity and its step size */
+  v += T.dist2 * v * v + T.dist3 * v * v * v;
+  if (T.quant > 0)
+    v = floor(v * T.quant + 0.5) / T.quant;
   /* the output noise floor: white under the effects' tones, rising with
    * frequency under the voice (the valley between the first two formants is
    * deeper on the chip than a white floor leaves it) */

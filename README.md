@@ -181,10 +181,12 @@ What the recordings gave:
 
 - **The chip's output.** Samples at 8026 Hz (the two units: 8039 and 8013),
   with the chip's own arithmetic in 8000ths, each held until the next, then
-  two real poles near 2.7 kHz, and a noise floor under every sound.
+  two real poles near 2 kHz and 2.9 kHz, and a noise floor under every sound.
 - **The voice.** A period of floor(Fs / Pitch) + 1 ticks; at each period
-  three formant sines restart under a triangular envelope, 1 ms up and 6 ms
-  down. The pulse is the same on both units to the sample.
+  three formant sines restart at one phase under an envelope that steps to
+  full at once and falls linearly over about 7 ms, with a per-sound offset
+  under the same envelope. The pulse is the same on both units to the
+  sample.
 - **Noise.** An oscillator whose frequency is thrown about by white noise
   every sample (the manual's distortion): a flat band with sharp edges, and
   when thrown past the chip's Nyquist it folds back into the hiss sounds'
