@@ -422,7 +422,9 @@ static double sj_log(double x) {
 
 /* the master volume: measured on AW, 16 to 127 is only 6 dB */
 static double volume_gain(const sj_chip *sj) {
-  static const double db[5] = {-3.3, -1.3, -0.6, 0.0, 2.5};
+  /* measured on both units at Pitch 20 (VoxProbe 6): Volume 16 is 15 dB under
+   * 32, and from 32 up the level barely moves */
+  static const double db[5] = {-15.5, -1.3, -1.1, 0.0, 2.2};
   static const double at[5] = {16, 32, 64, 96, 127};
   const double v = sj->volume;
   if (v <= 0)
