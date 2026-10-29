@@ -152,8 +152,9 @@ typedef struct fxpart {
   uint8_t fa[3], fb[3]; /* HZ_STEP */
   uint8_t v[3];
   uint8_t nf, nw;     /* HZ_STEP */
-  uint8_t nv, gate;
-  uint16_t flags; /* gate in ms */
+  uint8_t nv, gate;   /* gate in ms */
+  uint16_t flags;
+  int8_t lv;          /* the part's level, half-decibels (measured against the voice, both units) */
 } fxpart;
 
 #define MAX_SEGMENTS 8
@@ -502,6 +503,7 @@ static void play_effect(sj_chip *sj, int code) {
       a.a[0] = b.a[0] = a.a[1] = b.a[1] = 31;
       a.a[2] = b.a[2] = 0;
     }
+    a.lv = b.lv = (float)sj_exp(p->lv * (0.5 * M_LN10 / 20.0));
     a.nf = b.nf = (float)(p->nf * HZ_STEP);
     a.nw = b.nw = (float)(p->nw * HZ_STEP);
     a.na = b.na = p->nv;
@@ -812,7 +814,7 @@ static double tick(sj_chip *sj) {
     v += env * sum / 128.0 * f.lv * (s->flags & FX_PULSED ? 0.6 : 1.0);
     sj->venv = env;
     if (nf == 2) {
-      v += f.a[2] / 128.0 * 0.6 * sj_sin2pi(sj->phase[2]);
+      v += f.a[2] / 128.0 * 0.6 * f.lv * sj_sin2pi(sj->phase[2]);
       sj->phase[2] += f.f[2] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
     }
     sj->ptick--;
@@ -822,7 +824,7 @@ static double tick(sj_chip *sj) {
     /* plain tones (the effects) */
     for (int k = 0; k < 3; k++) {
       if (f.f[k] > 0.0f && f.a[k] > 0.0f)
-        v += f.a[k] / 128.0 * 0.6 * sj_sin2pi(sj->phase[k]);
+        v += f.a[k] / 128.0 * 0.6 * f.lv * sj_sin2pi(sj->phase[k]);
       sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
     }
   }
