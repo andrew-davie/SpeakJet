@@ -170,7 +170,7 @@ struct sj_chip {
   /* synthesizer state */
   int period, ptick;
   double phase[3];
-  double nz[1]; /* the noise oscillator's phase */
+  double nz[2]; /* the noise resonator's two delays */
   uint32_t rnd;
   double lastr; /* the previous noise sample, for the floor's high pass */
 
@@ -190,9 +190,9 @@ enum { K_VOWEL, K_GLIDE, K_NASAL, K_VFRIC, K_FRIC, K_STOP, K_VSTOP, K_AFFR };
 typedef struct allophone {
   uint8_t kind;
   uint8_t ms;         /* the length played at Speed 114, measured, MS_STEP */
-  uint8_t f1, f2, f3; /* formants, HZ_STEP */
+  uint8_t f1, f2, f3; /* formants, HZ_STEP (a glide: f1, f2 = the two allophones it runs between) */
   uint8_t a1, a2, a3; /* their levels, 0 to 31 */
-  uint8_t g1, g2, g3; /* K_GLIDE: the second target */
+  uint8_t g1, g2, g3; /* unused since the glides became pairs; kept for the table's layout */
   uint8_t nf, nw;     /* the noise band's centre and throw, HZ_STEP */
   uint8_t na;
   uint8_t cp;         /* the length of each further copy of a Repeat, MS_STEP */
@@ -444,6 +444,11 @@ static void play_effect(sj_chip *sj, int code) {
 
 static frame allo_frame(const allophone *a, bool second, double bend) {
   frame f;
+  /* a glide runs from one allophone's frame to another's, levels included
+   * (measured on all 16: IYRR starts on IY and ends on RR); a glide's f1 and
+   * f2 hold the two allophones' indices and it has no formants of its own */
+  if (a->kind == K_GLIDE)
+    return allo_frame(&allophones[second ? a->f2 : a->f1], false, bend);
   f.f[0] = bent((second ? a->g1 : a->f1) * HZ_STEP, bend);
   f.f[1] = bent((second ? a->g2 : a->f2) * HZ_STEP, bend);
   f.f[2] = bent((second ? a->g3 : a->f3) * HZ_STEP, bend);
@@ -466,8 +471,13 @@ static int copy_segments(sj_chip *sj, const allophone *a) {
   const int ticks = TICKS((a->cp * MS_STEP + T.copy_extra) * speed_factor(sj, false));
   const frame tgt = allo_frame(a, false, bend);
   sj->nseg = 0;
-  if (a->kind == K_GLIDE)
-    add_segment(sj, ticks, tgt, allo_frame(a, true, bend), true);
+  if (a->kind == K_GLIDE) {
+    const frame tgt2 = allo_frame(a, true, bend);
+    const int hold = ticks / 5, move = ticks * 7 / 10;
+    add_segment(sj, hold, tgt, tgt, true);
+    add_segment(sj, move, tgt, tgt2, true);
+    add_segment(sj, ticks - hold - move, tgt2, tgt2, true);
+  }
   else
     add_segment(sj, ticks, tgt, tgt, a->a1 + a->a2 + a->a3 > 0);
   return ticks;
@@ -504,12 +514,18 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     break;
   }
   case K_GLIDE: {
+    /* measured on the chip's glides: the first frame holds for a fifth of the
+     * sound, the move takes the next seven tenths, the second frame holds the
+     * last tenth */
     const frame tgt2 = allo_frame(a, true, bend);
+    const int hold = ticks / 5, move = ticks * 7 / 10;
     int tr = TICKS(T.transition);
-    if (tr > ticks / 2)
-      tr = ticks / 2;
+    if (tr > hold)
+      tr = hold;
     add_segment(sj, tr, from, tgt, true);
-    add_segment(sj, ticks - tr, tgt, tgt2, true);
+    add_segment(sj, hold - tr, tgt, tgt, true);
+    add_segment(sj, move, tgt, tgt2, true);
+    add_segment(sj, ticks - hold - move, tgt2, tgt2, true);
     break;
   }
   case K_FRIC:
@@ -748,8 +764,17 @@ static double tick(sj_chip *sj) {
       nf *= 0.4 + 1.6 * sw;
       lvl = 1.0 - 0.75 * sw;
     }
-    sj->nz[0] += (nf + f.nw * 2.0 * rnd(sj)) / NOMINAL;
-    v += lvl * f.na / 128.0 * 0.7 * sin(2.0 * M_PI * sj->nz[0]);
+    /* white noise through a two-pole resonance at nf with bandwidth nw (the
+     * chip's hiss is random noise - Gaussian to the sample, both units - not
+     * a tone; FF, TH and HE are flat to 4 kHz, SH and CH peak near 2.3 kHz,
+     * WH at 800 Hz, SE and SO at the top of the band). the gain holds the
+     * output power at the input's whatever the band (the AR(2) variance) */
+    const double r = exp(-M_PI * (f.nw > 10.0f ? f.nw : 10.0) / RATE), c = cos(2.0 * M_PI * nf / RATE);
+    const double r2 = r * r, g = sqrt((1.0 - r2) * ((1.0 + r2) * (1.0 + r2) - 4.0 * r2 * c * c) / (1.0 + r2));
+    const double y = g * rnd(sj) + 2.0 * r * c * sj->nz[0] - r2 * sj->nz[1];
+    sj->nz[1] = sj->nz[0];
+    sj->nz[0] = y;
+    v += lvl * f.na / 128.0 * 0.86 * y;
   }
 
   if (s->gate > 0 && sj->tick % s->gate >= s->gate / 2)
