@@ -72,12 +72,20 @@ equally well, with the formant levels fitted under it compensating for it.)
 Under every tone the chip's output carries a flat noise floor (`FLOOR`,
 measured 1.8 %).
 
-**Noise.** The unvoiced sounds are flat bands with sharp edges (SE, SO, TT
-and TS peak at 4 kHz, the chip's Nyquist). An oscillator whose frequency is
-thrown about uniformly by ±nw Hz every sample (the manual's register 6,
-"disordered with white noise") makes exactly that: a flat band of width 2·nw
-centred on nf, and when thrown past Nyquist it folds back into a peak there.
-Each noise sound is a centre, a throw and a level.
+**Noise.** The chip's hiss is random noise, Gaussian to the sample on both
+units (kurtosis 2.8–3.2, 4–5 % of samples beyond two sigma), not a tone
+whose frequency is thrown about (that has a constant envelope: kurtosis
+1.9, nothing beyond two sigma). So the noise is white noise through a
+two-pole resonance at the tick rate, centre nf and bandwidth nw, with its
+gain holding the output power constant whatever the band. The bands are
+read off the chip's 1/6-octave spectra: FF, TH and HE are flat from 150 Hz
+to the stage's rolloff; SH and CH peak near 2.8 kHz; WH at 860 Hz; SE, SO,
+TS and ZZ at the top of the band (a resonance at Nyquist); PE and PO are
+low-passed. The voiced fricatives' bands are the floor between the voice's
+harmonics (VV 1.5 kHz, DH 2 kHz, ZH 2.4 kHz, JH 2.5 kHz). Levels are
+matched to the chip's rms. CH is unvoiced (no periodicity at the pitch
+period on either unit). Each noise sound is a centre, a bandwidth and a
+level.
 
 **Length.** A sound's length does not depend on whether it is streamed, sent
 alone, or followed by pauses (VoxProbe 5 sections 2–4 agree to 5 ms), nor on

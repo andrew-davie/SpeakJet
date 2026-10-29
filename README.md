@@ -187,10 +187,12 @@ What the recordings gave:
   full at once and falls linearly over about 7 ms, with a per-sound offset
   under the same envelope. The pulse is the same on both units to the
   sample.
-- **Noise.** An oscillator whose frequency is thrown about by white noise
-  every sample (the manual's distortion): a flat band with sharp edges, and
-  when thrown past the chip's Nyquist it folds back into the hiss sounds'
-  peak at 4 kHz. Each noise sound is a centre, a throw and a level.
+- **Noise.** White noise through a two-pole resonance at the chip's rate:
+  the hiss is Gaussian noise on both units, not a tone. Each band is read
+  off the chip's spectrum (FF flat, SH near 2.8 kHz, WH at 860 Hz, the
+  sibilants peaking at Nyquist, PE and PO low-passed; the voiced
+  fricatives' from the floor between their harmonics). Each noise sound
+  is a centre, a bandwidth and a level.
 - **Timing and controls.** A sound's length is the same streamed, alone or
   before a pause, and the same at every Pitch; it is linear in Speed; Fast
   is 0.8 and Slow 1.25; every sound ramps in over 35 ms and out over 30; a

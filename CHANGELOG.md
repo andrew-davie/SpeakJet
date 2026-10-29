@@ -17,9 +17,10 @@ bytes of parameters per sound otherwise.
   a voicing envelope that steps to full at once and falls linearly over
   about 7 ms (measured tick by tick: there is no rise) over three formant
   sines restarting at one phase, plus a per-sound offset under the same
-  envelope (a fourth oscillator at 0 Hz; one signed byte); an FM noise
-  oscillator (the manual's distortion) whose fold-over at Nyquist makes the
-  hiss sounds' 4 kHz peak; two real poles near 2 kHz and 2.9 kHz after a
+  envelope (a fourth oscillator at 0 Hz; one signed byte); white noise
+  through a two-pole resonance (the hiss is Gaussian noise on both units,
+  not a thrown tone), each band read off the chip's spectrum and the
+  sibilants' peak at Nyquist; two real poles near 2 kHz and 2.9 kHz after a
   sample hold (fitted on the pulses; the tones' images agree); a noise
   floor under every sound; Bend
   as +44 Hz a step on every oscillator; Volume spanning 6 dB; Fast 0.8 and

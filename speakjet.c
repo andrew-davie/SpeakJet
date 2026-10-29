@@ -193,7 +193,7 @@ typedef struct allophone {
   uint8_t f1, f2, f3; /* formants, HZ_STEP (a glide: f1, f2 = the two allophones it runs between) */
   uint8_t a1, a2, a3; /* their levels, 0 to 31 */
   uint8_t g1, g2, g3; /* unused since the glides became pairs; kept for the table's layout */
-  uint8_t nf, nw;     /* the noise band's centre and throw, HZ_STEP */
+  uint8_t nf, nw;     /* the noise band's centre and bandwidth, HZ_STEP */
   uint8_t na;
   uint8_t cp;         /* the length of each further copy of a Repeat, MS_STEP */
   int8_t dc;          /* the voice's offset under the envelope, formant level units */
