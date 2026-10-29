@@ -81,7 +81,8 @@ static struct tune {
                                    * under its voice */
   double decay_db;                /* an FX_DECAY part falls this many dB */
   double transition;              /* the voice moves to a new sound's target over this, ms */
-  double closure;                 /* silence before a stop's burst, ms */
+  double closure;                 /* the closure before a stop's burst, ms */
+  double gate_depth;              /* an effect's gate: its off half's level, a factor */
   double overlap, overlap_v;      /* a sound followed at once by another is cut short by this, ms; more when both are voiced */
   double speed_a, speed_b;        /* length factor (speed_a - Speed) / speed_b */
   double fx_speed_a, fx_speed_b;  /* the effects' (they shorten faster) */
@@ -89,7 +90,7 @@ static struct tune {
   double copy_extra;              /* a Repeat copy adds this to the manual's length, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms (the manual's) */
-} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.018, 0, 0, 0.03, 0, 0, 35, 25, 30, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
+} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.018, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
@@ -857,7 +858,7 @@ static double tick(sj_chip *sj) {
   }
 
   if (s->gate > 0 && sj->tick % s->gate >= s->gate / 2)
-    v = 0.0;
+    v *= T.gate_depth; /* measured on C8 and C9, both units: the gate's off half is 8 dB down, not silent */
   if (s->flags & FX_DECAY)
     v *= sj_exp(-T.decay_db * t / 20.0 * M_LN10);
   if (s->flags & FX_FADE)
