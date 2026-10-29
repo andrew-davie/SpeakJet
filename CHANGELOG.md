@@ -8,6 +8,9 @@ tables, to see whether the same method lands in the same place. The brief
 was the smallest footprint: rules wherever a rule could be found, a few
 bytes of parameters per sound otherwise.
 
+- Every effect has a measured level against the voice (a part byte), the
+  effects' gate dips 8 dB rather than cutting, and the voice's pulse
+  starts downward as the chip's does.
 - VoxProbe 6 on both units: every sound has a measured level byte (the
   consonants were 5 to 26 dB too loud), Volume 16 is 15 dB down, the
   output quantiser is gone, a stop's closure is the sound before fading

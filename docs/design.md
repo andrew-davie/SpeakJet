@@ -100,6 +100,14 @@ followed at once by another sound is cut short (`OVERLAP`): SE before IY is
 **Level over time.** Every sound ramps in over about 35 ms and out over 30
 (`ATTACK`, `RELEASE`; the effects 10 and 15).
 
+**Effects' levels.** Each effect part carries its level the same way,
+measured against the voice on both units; after it every recorded effect
+is within a decibel of the chip. An effect's gate dips 8 dB in its off
+half, not to silence (C8, C9, both units).
+
+**Polarity.** The voice's pulse starts downward on both units (every vowel
+at Pitch 20).
+
 **Levels.** Each sound carries its level as a half-decibel byte, measured
 on both VoxRecord units against AX (above 300 Hz; full band for PE and PO),
 with the two units within 1 dB on every sound: the nasals sit 15 dB under

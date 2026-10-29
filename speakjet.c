@@ -811,7 +811,7 @@ static double tick(sj_chip *sj) {
      * less; past it the sum clips */
     if (T.clip > 0)
       sum = sum > T.clip ? T.clip : sum < -T.clip ? -T.clip : sum;
-    v += env * sum / 128.0 * f.lv * (s->flags & FX_PULSED ? 0.6 : 1.0);
+    v -= env * sum / 128.0 * f.lv * (s->flags & FX_PULSED ? 0.6 : 1.0); /* the pulse starts downward (both units, every vowel at Pitch 20) */
     sj->venv = env;
     if (nf == 2) {
       v += f.a[2] / 128.0 * 0.6 * f.lv * sj_sin2pi(sj->phase[2]);
