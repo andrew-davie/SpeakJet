@@ -8,6 +8,11 @@ tables, to see whether the same method lands in the same place. The brief
 was the smallest footprint: rules wherever a rule could be found, a few
 bytes of parameters per sound otherwise.
 
+- D0 to D11 are a rule: the standard DTMF pairs at equal level (measured
+  on both units within 3 Hz once each unit's rate is divided out); B0 is
+  2600 Hz. Every per-sample sin, exp and log is the library's own series,
+  so the samples are the same to the bit on every platform; `M_PI` and
+  friends are defined where strict C99 leaves them out.
 - `speakjet.c` is about 700 lines and `speakjet_tables.c` holds 72
   allophones of 14 bytes and about 100 effect parts of 15 bytes (frequencies
   in 16 Hz steps, lengths in 5 ms); the object is about 12.5 KB. Same API,

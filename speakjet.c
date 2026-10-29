@@ -483,6 +483,18 @@ static void play_effect(sj_chip *sj, int code) {
       b.f[k] = bent(p->fb[k] * HZ_STEP, bend);
       a.a[k] = b.a[k] = p->v[k];
     }
+    /* D0 to D11 are the DTMF pairs, measured on both units within 3 Hz of
+     * the standard once each unit's rate is allowed for (keypad order: D1 to
+     * D9, then 0, * and #), at equal level; the table holds their length */
+    if (code >= 240 && code <= 251) {
+      static const double row[4] = {697, 770, 852, 941}, col[3] = {1209, 1336, 1477};
+      const int d = code - 240, r = d == 0 || d > 9 ? 3 : (d - 1) / 3, c = d == 0 ? 1 : d == 10 ? 0 : d == 11 ? 2 : (d - 1) % 3;
+      a.f[0] = b.f[0] = bent(row[r], bend);
+      a.f[1] = b.f[1] = bent(col[c], bend);
+      a.f[2] = b.f[2] = 0.0f;
+      a.a[0] = b.a[0] = a.a[1] = b.a[1] = 31;
+      a.a[2] = b.a[2] = 0;
+    }
     a.nf = b.nf = (float)(p->nf * HZ_STEP);
     a.nw = b.nw = (float)(p->nw * HZ_STEP);
     a.na = b.na = p->nv;

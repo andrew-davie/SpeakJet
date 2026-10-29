@@ -100,6 +100,13 @@ followed at once by another sound is cut short (`OVERLAP`): SE before IY is
 **Level over time.** Every sound ramps in over about 35 ms and out over 30
 (`ATTACK`, `RELEASE`; the effects 10 and 15).
 
+**DTMF.** D0 to D11 are the standard DTMF pairs (697, 770, 852, 941 Hz by
+1209, 1336, 1477 Hz, in keypad order with 0, * and # on the bottom row) at
+equal amplitude, held about 155 ms. Measured on both units within 3 Hz of
+the standard once each unit's rate is divided out, so the rule carries the
+standard values and the rate scaling does what the chip's does. B0 is 2600
+Hz for 170 ms.
+
 **Bend** moves every oscillator by the same +44 Hz per step (D1's 697 and
 1209 both step by 44, as do AW's three formants); below 5 there is a 22 Hz
 jump. **Volume** 16/32/64/96/127 gives −3.3/−1.3/−0.6/0/+2.5 dB. **Stress**,
