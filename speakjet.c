@@ -90,7 +90,7 @@ static struct tune {
   double copy_extra;              /* a Repeat copy adds this to the manual's length, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms (the manual's) */
-} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.018, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
+} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.05, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
