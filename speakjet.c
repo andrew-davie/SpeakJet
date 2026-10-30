@@ -73,7 +73,8 @@
  * ("ATTACK=35,FLOOR=0.06,...") so they can be fitted without recompiling */
 static struct tune {
   double env_rise, env_fall;      /* voicing envelope: rise (under one tick: a step) and linear fall, ticks */
-  double lpf_fc, lpf_q;           /* the output stage's two poles */
+  double lpf_fc, lpf_q;           /* the output stage's two poles (both units: the 12 DTMF pairs' level ratios and VoxProbe 7's
+                                   * direct tones at 125, 1000 and 3000 Hz, all 14 within 0.45 dB, rms 0.16) */
   double attack, release;         /* every sound's level ramp, ms */
   double fx_attack, fx_release;   /* the effects' (both units: a tone starts within 1-3 ms; its splatter is the bed round it) */
   double floor;                   /* the output noise floor, relative */
@@ -97,7 +98,7 @@ static struct tune {
   double copy_closure;            /* a stop's Repeat copy opens on this much silence, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms (the manual's) */
-} T = {0.5, 58, 2396, 0.491, 35, 30, 1, 15, 0.05, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 100, 200, 700, 30, 60, 90}};
+} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 15, 0.05, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 100, 200, 700, 30, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
