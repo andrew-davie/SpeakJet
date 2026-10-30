@@ -192,8 +192,8 @@ ED and OD adds 40 and 35 ms (both units).
 to an end frequency (linearly, geometrically, or settling), a noise band, a
 gate period for the pulsed ones, and flags for decay (exponential, 35 dB),
 a half-sine bump, and a per-gate noise sweep (C8, C9). The robots are a plain
-tone at 800 + 300·n Hz over a voiced glide; the DTMF tones are the standard
-pairs. The recipes were written from the recordings' spectrograms and then
+carrier at 800 + 300·n Hz beside a low tone and its octave (see the envelope
+oscillator); the DTMF tones are the standard pairs. The recipes were written from the recordings' spectrograms and then
 fitted.
 
 ## Fitting
