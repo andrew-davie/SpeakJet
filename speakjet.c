@@ -59,6 +59,7 @@
  * the voicing period is floor(8000 / Pitch) + 1 ticks */
 #define RATE 8026.0
 #define NOMINAL 8000.0
+#define SLEW 0.06 /* the effects' bed, measured: grows with the tone's frequency on both units (220 B0, 227 B7 against 215 A5) */
 #define WANDER_DEPTH 0.015 /* 252 M0, both units: its line wanders 1.45-1.59 % rms */
 #define WANDER_RATE 0.055 /* spread to about 70 Hz (a one-pole low-pass) */
 
@@ -190,6 +191,7 @@ struct sj_chip {
   double nz[2]; /* the noise resonator's two delays */
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   double wander; /* an FX_WANDER part's slow pitch drift, a fraction */
+  double vprev; /* the output's last tick */
   uint32_t rnd;
   double lastr; /* the previous noise sample, for the floor's high pass */
 
@@ -893,8 +895,12 @@ static double tick(sj_chip *sj) {
    * deeper on the chip than a white floor leaves it) */
   {
     const double r = rnd(sj);
-    v *= 1.0 + T.floor * 2.0 * (s->voiced && !(s->flags & (FX_VOICED | FX_PULSED)) ? r - sj->lastr : r);
+    if (s->voiced && !(s->flags & (FX_VOICED | FX_PULSED)))
+      v *= 1.0 + T.floor * 2.0 * (r - sj->lastr);
+    else
+      v += SLEW * 2.0 * r * (v - sj->vprev); /* the effects' bed grows with the tone's frequency (both units): timing error, proportional to the signal's change per tick */
     sj->lastr = r;
+    sj->vprev = v;
   }
 
   if (++sj->tick >= s->ticks) {
