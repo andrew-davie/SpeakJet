@@ -137,6 +137,7 @@ typedef struct segment {
   bool voiced;
   int gate;      /* ticks of the on/off period for a pulsed effect, 0 = none */
   uint16_t flags; /* FX_* */
+  float pa, pb;   /* an effect part's pulse rate: Pitch plus pa Hz at its start, pb at its end */
 } segment;
 
 /* the sound effects: each is a few parts. a part plays up to three tones
@@ -145,7 +146,8 @@ typedef struct segment {
  * FX_EXPDECAY settling toward fb); FX_DECAY fades the level to nothing over
  * the part, FX_BUMP shapes it as a half sine; gate pulses it on and off;
  * FX_PULSED pulses the plain tones with the voice's envelope at Pitch */
-enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128, FX_ALL = 256, FX_WANDER = 512 };
+enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128, FX_ALL = 256, FX_WANDER = 512, FX_SINE = 1024, FX_TRI = 2048, FX_SQUARE = 3072 };
+#define FX_SHAPE 3072 /* the envelope oscillator's waveform (manual, register 8): saw (the voice's measured pulse), sine, triangle, square */
 
 /* the tables' units: frequencies in 16 Hz steps, lengths in 5 ms, so every
  * field is a byte */
@@ -160,6 +162,7 @@ typedef struct fxpart {
   uint8_t nv, gate;   /* gate in ms */
   uint16_t flags;
   int8_t lv;          /* the part's level, half-decibels (measured against the voice, both units) */
+  int16_t pa, pb;     /* the part's pulse rate, Hz added to Pitch at its start and end (both units: the same offset at Pitch 60, 88 and 150) */
 } fxpart;
 
 #define MAX_SEGMENTS 32 /* C7 is seven chirps with gaps between */
@@ -473,6 +476,7 @@ static void add_segment(sj_chip *sj, int ticks, frame from, frame to, bool voice
   s->voiced = voiced;
   s->gate = 0;
   s->flags = 0;
+  s->pa = s->pb = 0.0f;
 }
 
 /* start playing the segments built so far */
@@ -520,6 +524,8 @@ static void play_effect(sj_chip *sj, int code) {
     if (sj->nseg > n) {
       sj->seg[n].gate = TICKS(p->gate);
       sj->seg[n].flags = p->flags;
+      sj->seg[n].pa = p->pa;
+      sj->seg[n].pb = p->pb;
     }
   }
   start(sj, true);
@@ -797,17 +803,32 @@ static double tick(sj_chip *sj) {
   /* voicing */
   if (s->voiced && sj->pitch > 0) {
     if (sj->ptick <= 0) {
-      sj->period = (int)(RATE / sj->pitch) + 1; /* measured: 92 ticks at Pitch 88 on both units */
+      /* measured: 92 ticks at Pitch 88 on both units. an effect's pulses run
+       * at Pitch plus the part's offset (C1, C2, C3, C6, C7: the same offset
+       * at Pitch 60, 88 and 150 on both units, gliding within the part) */
+      double f = sj->pitch + lerp(s->pa, s->pb, t);
+      if (f < 10.0)
+        f = 10.0;
+      sj->period = (int)(RATE / f) + 1;
       sj->ptick = sj->period;
-      if (!(s->flags & FX_PULSED)) /* pulsed tones run on; formants restart */
-        sj->phase[0] = sj->phase[1] = sj->phase[2] = 0.0;
     }
-    const int age = sj->period - sj->ptick;
-    double env = age < T.env_rise ? (double)age / T.env_rise : 1.0 - (double)(age - T.env_rise) / T.env_fall;
-    if (env < 0.0)
-      env = 0.0;
     /* an effect's third tone is a plain tone beside the voice */
     const int nf = (s->flags & FX_VOICED) && !(s->flags & FX_ALL) ? 2 : 3; /* FX_ALL: every tone pulses with the voice */
+    if (sj->ptick == sj->period && !(s->flags & FX_PULSED)) /* pulsed tones run on; the enveloped ones restart, a plain tone beside them runs on */
+      for (int k = 0; k < nf; k++)
+        sj->phase[k] = 0.0;
+    const int age = sj->period - sj->ptick;
+    double env;
+    const double x = (double)age / sj->period;
+    switch (s->flags & FX_SHAPE) {
+    case FX_SINE: env = 0.5 + 0.5 * sj_sin2pi(x + 0.25); break;
+    case FX_TRI: env = x < 0.5 ? 1.0 - 2.0 * x : 2.0 * x - 1.0; break;
+    case FX_SQUARE: env = x < 0.5 ? 1.0 : 0.0; break;
+    default:
+      env = age < T.env_rise ? (double)age / T.env_rise : 1.0 - (double)(age - T.env_rise) / T.env_fall;
+      if (env < 0.0)
+        env = 0.0;
+    }
     /* the offset: measured on every voiced sound's pulse (both units), an
      * envelope-shaped term beside the sines, against their starting direction */
     double sum = 0.0;
