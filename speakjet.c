@@ -828,7 +828,7 @@ static double tick(sj_chip *sj) {
     const double x = (double)age / sj->period;
     switch (s->flags & FX_SHAPE) {
     case FX_SINE: env = 0.5 + 0.5 * sj_sin2pi(x + 0.25); break;
-    case FX_TRI: env = x < 0.5 ? 1.0 - 2.0 * x : 2.0 * x - 1.0; break;
+    case FX_TRI: env = x; break; /* VoxProbe 7, both units: a rising ramp, then straight back to nothing */
     case FX_SQUARE: env = x < 0.5 ? 1.0 : 0.0; break;
     default:
       env = age < T.env_rise ? (double)age / T.env_rise : 1.0 - (double)(age - T.env_rise) / T.env_fall;
