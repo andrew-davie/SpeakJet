@@ -612,7 +612,9 @@ static int copy_segments(sj_chip *sj, const allophone *a) {
   if (a->kind == K_GLIDE) {
     const frame tgt2 = allo_frame(a, true, bend);
     const int hold = ticks / 5, move = ticks * 7 / 10;
-    add_segment(sj, hold, tgt, tgt, true);
+    /* the copy glides back from the last copy's end to the first frame (VoxProbe 4, both units: IYRR x5 rises
+     * 1383 -> 2083 Hz over its first 60 ms each time, not a jump) */
+    add_segment(sj, hold, tgt2, tgt, true);
     add_segment(sj, move, tgt, tgt2, true);
     add_segment(sj, ticks - hold - move, tgt2, tgt2, true);
   }
