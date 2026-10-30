@@ -148,8 +148,10 @@ typedef struct segment {
  * FX_EXPDECAY settling toward fb); FX_DECAY fades the level to nothing over
  * the part, FX_BUMP shapes it as a half sine; gate pulses it on and off;
  * FX_PULSED pulses the plain tones with the voice's envelope at Pitch */
-enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128, FX_ALL = 256, FX_WANDER = 512, FX_SINE = 1024, FX_TRI = 2048, FX_SQUARE = 3072 };
+enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128, FX_ALL = 256, FX_WANDER = 512, FX_SINE = 1024, FX_TRI = 2048, FX_SQUARE = 3072, FX_ONE = 4096 };
 #define FX_SHAPE 3072 /* the envelope oscillator's waveform (manual, register 8): saw (the voice's measured pulse), sine, triangle, square */
+/* FX_ONE: only the first tone pulses, the other two are plain tones beside it (A0, both units: a voice at Pitch under
+ * two smooth glides; register 8 envelopes oscillators 1-3 as a group, 4 and 5 run apart) */
 
 /* the tables' units: frequencies in 16 Hz steps, lengths in 5 ms, so every
  * field is a byte */
@@ -849,7 +851,7 @@ static double tick(sj_chip *sj) {
       sj->ptick = sj->period;
     }
     /* an effect's third tone is a plain tone beside the voice */
-    const int nf = (s->flags & FX_VOICED) && !(s->flags & FX_ALL) ? 2 : 3; /* FX_ALL: every tone pulses with the voice */
+    const int nf = !(s->flags & FX_VOICED) || (s->flags & FX_ALL) ? 3 : s->flags & FX_ONE ? 1 : 2; /* FX_ALL: every tone pulses with the voice */
     if (sj->ptick == sj->period && !(s->flags & FX_PULSED)) /* pulsed tones run on; the enveloped ones restart, a plain tone beside them runs on */
       for (int k = 0; k < nf; k++)
         sj->phase[k] = 0.0;
@@ -878,9 +880,9 @@ static double tick(sj_chip *sj) {
       sum = sum > T.clip ? T.clip : sum < -T.clip ? -T.clip : sum;
     v -= env * sum / 128.0 * f.lv * (s->flags & FX_PULSED ? 0.6 : 1.0); /* the pulse starts downward (both units, every vowel at Pitch 20) */
     sj->venv = env;
-    if (nf == 2) {
-      v += f.a[2] / 128.0 * 0.6 * f.lv * sj_sin2pi(sj->phase[2]);
-      sj->phase[2] += f.f[2] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
+    for (int k = nf; k < 3; k++) {
+      v += f.a[k] / 128.0 * 0.6 * f.lv * sj_sin2pi(sj->phase[k]);
+      sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
     }
     sj->ptick--;
   } else {
