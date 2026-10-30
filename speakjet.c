@@ -568,7 +568,9 @@ static int copy_segments(sj_chip *sj, const allophone *a) {
     add_segment(sj, ticks - hold - move, tgt2, tgt2, true);
   }
   else
-    add_segment(sj, ticks, tgt, tgt, a->a1 + a->a2 + a->a3 > 0);
+    /* a voiced stop's copies hold its release, the second frame (both units: BO repeated voices straight through on
+     * its release, 580/1406/2390 Hz); a sound without one holds its frame */
+    add_segment(sj, ticks, a->kind == K_VSTOP ? allo_frame(a, true, bend) : tgt, a->kind == K_VSTOP ? allo_frame(a, true, bend) : tgt, a->a1 + a->a2 + a->a3 > 0);
   return ticks;
 }
 
