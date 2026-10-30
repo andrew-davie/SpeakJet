@@ -622,7 +622,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   case K_STOP:
   case K_VSTOP: {
     /* the closure ("silence already added" says the manual; a voiced stop
-     * hums through it on its first formant alone, quietly) then the burst and
+     * hums through it on its first formant alone) then the burst and
      * release, which is the measured length */
     /* the closure: the sound before fades away through it (both units: a
      * vowel before a stop falls 30 dB over 50 to 60 ms at Speed 114, twice
@@ -631,7 +631,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     frame bar = from, gone = silent_frame();
     if (a->kind == K_VSTOP) {
       gone.f[0] = tgt.f[0];
-      gone.a[0] = tgt.a[0] / 4.0f;
+      gone.a[0] = tgt.a[0]; /* at full level: both units' voiced stops open on a voice bar 2-9 dB under the release (BE, BO, DE, DO, GE, GO) */
     }
     add_segment(sj, TICKS(T.closure * speed_factor(sj, false)), bar, gone, a->kind == K_VSTOP || bar.a[0] + bar.a[1] + bar.a[2] > 0.0f);
     add_segment(sj, ticks, tgt, tgt, a->kind == K_VSTOP);
