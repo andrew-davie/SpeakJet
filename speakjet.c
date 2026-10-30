@@ -59,6 +59,8 @@
  * the voicing period is floor(8000 / Pitch) + 1 ticks */
 #define RATE 8026.0
 #define NOMINAL 8000.0
+#define AM_DEPTH 0.1 /* the effects' tones hold their pitch (both units: 0.03-0.13 % rms on the DTMF tones and the robots' carriers) */
+#define AM_RATE 0.05 /* and the energy round their lines is a slow wobble in level, 10 % rms, spread to about 64 Hz */
 #define SLEW 0.06 /* the effects' bed, measured: grows with the tone's frequency on both units (220 B0, 227 B7 against 215 A5) */
 #define WANDER_DEPTH 0.015 /* 252 M0, both units: its line wanders 1.45-1.59 % rms */
 #define WANDER_RATE 0.055 /* spread to about 70 Hz (a one-pole low-pass) */
@@ -192,6 +194,7 @@ struct sj_chip {
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   double wander; /* an FX_WANDER part's slow pitch drift, a fraction */
   double vprev; /* the output's last tick */
+  double am; /* the effects' slow level wobble */
   uint32_t rnd;
   double lastr; /* the previous noise sample, for the floor's high pass */
 
@@ -828,12 +831,14 @@ static double tick(sj_chip *sj) {
     sj->venv = 1.0;
     /* FX_WANDER: 252 M0's tone drifts about +-1.5 % over tens of ms on both units: white noise through a one-pole low-pass */
     sj->wander += (WANDER_DEPTH / (0.57735 * sqrt(WANDER_RATE / 2.0)) * rnd(sj) - sj->wander) * WANDER_RATE; /* the input scaled so the drift's rms is WANDER_DEPTH */
+    sj->am += (AM_DEPTH / (0.57735 * sqrt(AM_RATE / 2.0)) * rnd(sj) - sj->am) * AM_RATE;
     /* plain tones (the effects) */
     for (int k = 0; k < 3; k++) {
       if (f.f[k] > 0.0f && f.a[k] > 0.0f)
         v += f.a[k] / 128.0 * 0.6 * f.lv * sj_sin2pi(sj->phase[k]);
-      sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj) + (s->flags & FX_WANDER ? sj->wander : 0.0)) / NOMINAL;
+      sj->phase[k] += f.f[k] * (1.0 + (s->flags & FX_WANDER ? sj->wander : 0.0)) / NOMINAL;
     }
+    v *= 1.0 + sj->am;
   }
 
   /* noise: an oscillator whose frequency is thrown about by white noise every
