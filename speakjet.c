@@ -171,6 +171,9 @@ typedef struct fxpart {
   int16_t pa, pb;     /* the part's pulse rate, Hz added to Pitch at its start and end (both units: the same offset at Pitch 60, 88 and 150) */
   int8_t lr;          /* the part's level ramp, half-decibels across it (both units: B1's tone falls and rises a steady
                        * 1.5 dB per 10 ms through its sweeps, the same up and down where the output stage alone can't) */
+  uint8_t ve[3];      /* each tone's level at the part's end, 0 to 31 (both units: A7's lowest tone fades in by 27 dB while
+                       * its highest fades out by 30, inside one sweep; the tones' volumes are registers swept like their
+                       * frequencies) */
 } fxpart;
 
 #define MAX_SEGMENTS 32 /* C7 is seven chirps with gaps between */
@@ -511,7 +514,8 @@ static void play_effect(sj_chip *sj, int code) {
     for (int k = 0; k < 3; k++) {
       a.f[k] = bent(p->fa[k] * HZ_STEP, bend);
       b.f[k] = bent(p->fb[k] * HZ_STEP, bend);
-      a.a[k] = b.a[k] = p->v[k];
+      a.a[k] = p->v[k];
+      b.a[k] = p->ve[k];
     }
     /* D0 to D11 are the DTMF pairs, measured on both units within 3 Hz of
      * the standard once each unit's rate is allowed for (keypad order: D1 to
