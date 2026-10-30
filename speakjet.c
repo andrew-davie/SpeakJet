@@ -157,7 +157,7 @@ typedef struct fxpart {
   int8_t lv;          /* the part's level, half-decibels (measured against the voice, both units) */
 } fxpart;
 
-#define MAX_SEGMENTS 8
+#define MAX_SEGMENTS 32 /* C7 is seven chirps with gaps between */
 
 
 struct sj_chip {
