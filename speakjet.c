@@ -93,14 +93,15 @@ static struct tune {
   double fx_speed_a, fx_speed_b;  /* the effects' (they shorten faster) */
   double fast, slow;              /* Fast and Slow: factors on the played length */
   double copy_extra;              /* a Repeat copy adds this to the manual's length, ms */
+  double copy_closure;            /* a stop's Repeat copy opens on this much silence, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms (the manual's) */
-} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.05, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 44, {0, 100, 200, 700, 30, 60, 90}};
+} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.05, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 100, 200, 700, 30, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
 static void tune_from_env(void) {
-  static const char *const names[] = {"ENVR", "ENVF", "LPFFC", "LPFQ", "ATTACK", "RELEASE", "FXATT", "FXREL", "FLOOR", "DIST2", "DIST3", "JITTER", "CLIP", "QUANT", "DECAY", "TRANS", "CLOSURE", "OVERLAP", "OVERLAPV", "SPEEDA", "SPEEDB", "FXSPEEDA", "FXSPEEDB", "FAST", "SLOW", "COPY", "BENDHZ", "P0", "P1", "P2", "P3", "P4", "P5", "P6"};
+  static const char *const names[] = {"ENVR", "ENVF", "LPFFC", "LPFQ", "ATTACK", "RELEASE", "FXATT", "FXREL", "FLOOR", "DIST2", "DIST3", "JITTER", "CLIP", "QUANT", "DECAY", "TRANS", "CLOSURE", "OVERLAP", "OVERLAPV", "SPEEDA", "SPEEDB", "FXSPEEDA", "FXSPEEDB", "FAST", "SLOW", "COPY", "COPYCL", "BENDHZ", "P0", "P1", "P2", "P3", "P4", "P5", "P6"};
   const char *e = getenv("SJ_TUNE");
   double *v = (double *)&T;
   while (e && *e) {
@@ -224,6 +225,7 @@ typedef struct allophone {
   uint8_t na;
   uint8_t cp;         /* the length of each further copy of a Repeat, MS_STEP */
   int8_t lv;          /* the sound's level, half-decibels (measured against the vowels, both units) */
+  uint8_t cb;         /* a stop's Repeat copies keep its voice bar through their closures */
 } allophone;
 
 /* TABLES-BEGIN */
@@ -551,15 +553,55 @@ static frame allo_frame(const allophone *a, bool second, double bend) {
   return f;
 }
 
+/* a stop: the closure ("silence already added" says the manual; a voiced
+ * stop hums through it on its first formant alone) then the burst and
+ * release, which is the measured length. the closure: the sound before fades
+ * away through it (both units: a vowel before a stop falls 30 dB over 50 to
+ * 60 ms at Speed 114, twice that at Speed 60), not a cut to silence; a voiced
+ * stop hums through it on its first formant */
+static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, double bend) {
+  const frame tgt = allo_frame(a, false, bend);
+  frame bar = from, gone = silent_frame();
+  if (a->kind == K_VSTOP) {
+    gone.f[0] = tgt.f[0];
+    gone.a[0] = tgt.a[0]; /* the first formant's level: both units' voiced stops open on a voice bar 2-9 dB under the release (BE, BO, DE, DO, GE, GO) */
+    gone.lv = tgt.lv;     /* at the sound's own level (VoxProbe 6, slowed: DE's bar 3-4 dB under its release, BE's 8) */
+  }
+  const int closure = TICKS(T.closure * speed_factor(sj, false));
+  add_segment(sj, closure, bar, gone, a->kind == K_VSTOP || bar.a[0] + bar.a[1] + bar.a[2] > 0.0f);
+  /* the release glides to the stop's second frame: the first formant falls into a labial or alveolar closure
+   * (both units: EB, OB, ED, OD); a stop without a measured target holds */
+  add_segment(sj, ticks, tgt, allo_frame(a, true, bend), a->kind == K_VSTOP);
+  return closure + ticks;
+}
+
 /* the segments of one copy of a Repeat: the sound's body for its own copy
- * length (about the manual's length for most sounds, not for the stops), no
- * transition (the copies run on seamlessly, measured on ZZ x10 and EYIY x5;
- * a stop's copies repeat its burst, BE x5 is 260 ms) */
+ * length (about the manual's length for most sounds), no transition (the
+ * copies run on seamlessly, measured on ZZ x10 and EYIY x5). a stop's copy is
+ * the stop again, closure and release (VoxProbe 4 and 7, both units: the 12
+ * voiced stops repeated 2 to 5 times, each copy a gap then a burst) */
 static int copy_segments(sj_chip *sj, const allophone *a) {
   const double bend = bend_hz(sj);
-  const int ticks = TICKS((a->cp * MS_STEP + T.copy_extra) * speed_factor(sj, false));
   const frame tgt = allo_frame(a, false, bend);
   sj->nseg = 0;
+  const int ticks = TICKS((a->cp * MS_STEP + T.copy_extra) * speed_factor(sj, false));
+  if (a->kind == K_STOP || a->kind == K_VSTOP) {
+    /* the copy opens on a closure, then the release; cp is the whole copy, measured from one copy's onset to the next.
+     * the closure is silent (VoxProbe 4 and 7, both units: GE, GO and the final stops dip 27-35 dB between copies,
+     * 33-50 dB in the voice bar's band) or, for BE, BO, DE and DO, holds the voice bar (they dip only about 22 dB) */
+    int closure = TICKS(T.copy_closure * speed_factor(sj, false));
+    if (closure > ticks - 1)
+      closure = ticks - 1;
+    frame gone = silent_frame();
+    if (a->cb) {
+      gone.f[0] = tgt.f[0];
+      gone.a[0] = tgt.a[0];
+      gone.lv = tgt.lv;
+    }
+    add_segment(sj, closure, gone, gone, a->cb != 0);
+    add_segment(sj, ticks - closure, tgt, allo_frame(a, true, bend), a->kind == K_VSTOP);
+    return ticks;
+  }
   if (a->kind == K_GLIDE) {
     const frame tgt2 = allo_frame(a, true, bend);
     const int hold = ticks / 5, move = ticks * 7 / 10;
@@ -568,9 +610,7 @@ static int copy_segments(sj_chip *sj, const allophone *a) {
     add_segment(sj, ticks - hold - move, tgt2, tgt2, true);
   }
   else
-    /* a voiced stop's copies hold its release, the second frame (both units: BO repeated voices straight through on
-     * its release, 580/1406/2390 Hz); a sound without one holds its frame */
-    add_segment(sj, ticks, a->kind == K_VSTOP ? allo_frame(a, true, bend) : tgt, a->kind == K_VSTOP ? allo_frame(a, true, bend) : tgt, a->a1 + a->a2 + a->a3 > 0);
+    add_segment(sj, ticks, tgt, tgt, a->a1 + a->a2 + a->a3 > 0);
   return ticks;
 }
 
@@ -622,26 +662,9 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     add_segment(sj, ticks, tgt, tgt, false);
     break;
   case K_STOP:
-  case K_VSTOP: {
-    /* the closure ("silence already added" says the manual; a voiced stop
-     * hums through it on its first formant alone) then the burst and
-     * release, which is the measured length */
-    /* the closure: the sound before fades away through it (both units: a
-     * vowel before a stop falls 30 dB over 50 to 60 ms at Speed 114, twice
-     * that at Speed 60), not a cut to silence; a voiced stop hums through it
-     * on its first formant */
-    frame bar = from, gone = silent_frame();
-    if (a->kind == K_VSTOP) {
-      gone.f[0] = tgt.f[0];
-      gone.a[0] = tgt.a[0]; /* the first formant's level: both units' voiced stops open on a voice bar 2-9 dB under the release (BE, BO, DE, DO, GE, GO) */
-      gone.lv = tgt.lv;     /* at the sound's own level (VoxProbe 6, slowed: DE's bar 3-4 dB under its release, BE's 8) */
-    }
-    add_segment(sj, TICKS(T.closure * speed_factor(sj, false)), bar, gone, a->kind == K_VSTOP || bar.a[0] + bar.a[1] + bar.a[2] > 0.0f);
-    /* the release glides to the stop's second frame: the first formant falls into a labial or alveolar closure
-     * (both units: EB, OB, ED, OD); a stop without a measured target holds */
-    add_segment(sj, ticks, tgt, allo_frame(a, true, bend), a->kind == K_VSTOP);
+  case K_VSTOP:
+    add_stop(sj, a, from, ticks, bend);
     break;
-  }
   case K_AFFR: {
     /* a stop's closure, then the fricative (voiced for JH) */
     add_segment(sj, TICKS(T.closure), silent_frame(), silent_frame(), false);

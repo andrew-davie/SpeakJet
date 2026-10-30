@@ -185,8 +185,14 @@ jump. **Volume** 16/32/64/96/127 gives −3.3/−1.3/−0.6/0/+2.5 dB. **Stress*
 **Stops.** A closure (`CLOSURE` 30 ms) the sound before fades through, a
 voiced stop humming through it on its first formant at full level: both
 units open BE, BO, DE, DO, GE and GO on a voice bar 2-9 dB under the release.
-Then the burst and release, which is the measured length. A Repeat copy of
-ED and OD adds 40 and 35 ms (both units).
+Then the burst and release, which is the measured length. Each Repeat copy
+of a stop is the stop again: a closure (`COPYCL` 20 ms) then the release, the
+whole copy lasting the sound's own copy length, measured onset to onset on
+both units (VoxProbe 4 and 7, the 12 voiced stops at 2 to 5 copies): BE 75,
+BO 70, DE 60, DO 55, GE and GO 65, EG and OG 55, OB 60, EB, ED and OD 45 ms.
+GE, GO and the final stops close silently between copies (27-35 dB dips,
+33-50 dB under 600 Hz); BE, BO, DE and DO keep their voice bar through it
+(about 22 dB dips).
 
 **Effects.** Each is one to six parts: up to three tones sweeping from a start
 to an end frequency (linearly, geometrically, or settling), a noise band, a
