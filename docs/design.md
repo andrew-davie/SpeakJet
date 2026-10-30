@@ -23,6 +23,15 @@ finding is a rule in the code with its constant in `struct tune`.
 at k·Fs ± f. From the images of the DTMF tones: unit A 8039 Hz, unit B 8013
 Hz. The library uses their mean, `RATE` 8026. The manual's 8192 is nominal.
 
+**The hardware.** The SpeakJet is a Microchip PIC18F1320 with its own
+firmware. With no crystal it runs on the PIC's internal 8 MHz oscillator,
+calibrated to ±2 %: 2 million instructions a second, so a nominal 8000 Hz
+rate is 250 instruction cycles a sample. The two units' rates above are 0.5
+and 0.2 % fast, each its own oscillator's error, and every length, pitch and
+tone scales with it together. The steady 15.7 kHz line in every recording is
+the Atari 2600's scanline rate (3,579,545 Hz / 228), identical on both units,
+not the chip.
+
 **The chip counts in 8000ths.** Tones programmed as 697 and 1209 Hz come out
 at exactly Fs/8000 times that on both units, so the oscillators' phase
 increments are computed for a nominal 8000 Hz tick (`NOMINAL`), while the real
@@ -108,13 +117,15 @@ half, not to silence (C8, C9, both units).
 **Polarity.** The voice's pulse starts downward on both units (every vowel
 at Pitch 20).
 
-**Levels.** Each sound carries its level as a half-decibel byte, measured
-on both VoxRecord units against AX (above 300 Hz; full band for PE and PO),
-with the two units within 1 dB on every sound: the nasals sit 15 dB under
-the vowels, the liquids 5, the voiced fricatives 10 to 19, the stops 5 to
-22, the hiss 19 to 29, PE and PO 28. The formant and noise amplitudes keep
-their measured balance; the byte scales them. The pairs then sit within a
-decibel of both chips (IY SE -14, EH LE -5, OW MM -11).
+**Levels.** Each sound carries its level as a half-decibel byte (an
+effect, on every part alike), set so that its level against the mean of the
+twelve steady vowels is the chip's: both VoxRecord units, 150 Hz high-pass on
+both sides, the recording's background power taken off; the two units agree
+within half a decibel on nearly every sound, and every measured sound is
+within half a decibel of them (glides follow their two sounds). The scorers
+take each recording at its own level, so fitting can move a sound's loudness
+freely; it is set back after every refit. The formant and noise amplitudes
+keep their measured balance; the byte scales them.
 
 **No output quantiser.** Both chips put out their quiet consonants and the
 stops' tails whole, far below a 48th of full scale; a quantiser there
@@ -129,9 +140,26 @@ twice that at Speed 60, with no cut to silence.
 
 **Pulsed effects.** At Pitch 20 each pulse stands alone: C0 and M2 are
 silent between pulses, so every tone and the noise of such an effect pulse
-with the voice (the `A` flag); M0 is continuous, plain tones; A1, A3 and
-C8 pulse as the voice does. C3 (one pulse then a hold) and C7 (its own
-accelerating rhythm) are measured and not yet modelled.
+with the voice (the `A` flag); M0 is continuous, plain tones.
+
+**An effect's own pulse rate.** Measured pulse by pulse on VoxProbe 4 (Pitch
+60, 88 and 150, both units), an effect's pulses run at Pitch plus an offset
+of its own, the same number of hertz at every Pitch and untouched by Bend,
+gliding within a part: C2 Pitch-22 throughout; C3 -22 falling to -42 as its
+tone rises; C1 +386 at 80 ms, falling 2 Hz/ms; C6 -22 rising to +43 and
+back; C7 0 rising to +155; C0 the voice's rate falling to -22. Each part
+carries the offset at its start and end (`pa`, `pb`, Hz), read at every
+pulse; the period is computed from integers and one division so every
+compiler gets the same tick. Each tone under the pulse restarts with it; the
+lines are that rate's harmonics.
+
+**The envelope oscillator.** The manual's synthesizer has a sixth oscillator
+that only envelopes the other five, in one of four waveforms (register 8):
+saw, sine, triangle, square. The saw is the voice's measured pulse; a part
+can pick the others (flags `i`, `t`, `q`). The robots' low lines are a tone
+at f and its octave and nothing above, with the carrier one clean line: a
+tone at f under a sine or square envelope at f, the carrier running on beside
+it (a voiced part's plain third tone does not restart with the pulse).
 
 **Tones end in a fade.** Every tone effect holds its level and then falls
 straight to nothing over about 55 ms, linear in amplitude (-6 dB at half
@@ -154,9 +182,11 @@ Hz for 170 ms.
 jump. **Volume** 16/32/64/96/127 gives −3.3/−1.3/−0.6/0/+2.5 dB. **Stress**,
 **Relax** and code 18 change nothing measurable in length, pitch or level.
 
-**Stops.** A closure of silence (`CLOSURE` 30 ms; a voiced stop hums through
-it on its first formant, quietly), then the burst and release, which is the
-measured length.
+**Stops.** A closure (`CLOSURE` 30 ms) the sound before fades through, a
+voiced stop humming through it on its first formant at full level: both
+units open BE, BO, DE, DO, GE and GO on a voice bar 2-9 dB under the release.
+Then the burst and release, which is the measured length. A Repeat copy of
+ED and OD adds 40 and 35 ms (both units).
 
 **Effects.** Each is one to six parts: up to three tones sweeping from a start
 to an end frequency (linearly, geometrically, or settling), a noise band, a
@@ -176,8 +206,15 @@ connected-speech groups, the Man Goes Down phrases and the VoxProbe pairs.
 The score compares the library to the chip the way two chips compare to each
 other, so 0 is "as close as a second chip".
 
+Since then each sound's numbers are annealed inside its measured structure
+(parts, tones and flags fixed, every number within bounds about its measured
+value), on the E (spectrum) and P (length, envelope, time-frequency, spectrum,
+lines, pitch) scores together, and the sound's level then set back to the
+chip's.
+
 ## What is not modelled
 
 Restart phases of the formants (zero here; the chip's are fixed but not
 zero); the Stress and Relax commands; Wait, the port commands and the EEPROM
-phrases; the demo mode; the Serial Control Protocol.
+phrases; the demo mode; the Serial Control Protocol. The output's second
+harmonic, about 40 dB under a tone on both units (B0).
