@@ -59,6 +59,7 @@
  * the voicing period is floor(8000 / Pitch) + 1 ticks */
 #define RATE 8026.0
 #define NOMINAL 8000.0
+#define AM_STEADY 0.006 /* a plain tone's level holds to 0.01-0.09 dB rms in its middle (VoxRecord, both units: the DTMF tones, B0, B3, R7, R9) */
 #define AM_DEPTH 0.1 /* the effects' tones hold their pitch (both units: 0.03-0.13 % rms on the DTMF tones and the robots' carriers) */
 #define AM_RATE 0.05 /* and the energy round their lines is a slow wobble in level, 10 % rms, spread to about 64 Hz */
 #define SLEW 0.06 /* the effects' bed, measured: grows with the tone's frequency on both units (220 B0, 227 B7 against 215 A5) */
@@ -74,7 +75,7 @@ static struct tune {
   double env_rise, env_fall;      /* voicing envelope: rise (under one tick: a step) and linear fall, ticks */
   double lpf_fc, lpf_q;           /* the output stage's two poles */
   double attack, release;         /* every sound's level ramp, ms */
-  double fx_attack, fx_release;   /* the effects' */
+  double fx_attack, fx_release;   /* the effects' (both units: a tone starts within 1-3 ms; its splatter is the bed round it) */
   double floor;                   /* the output noise floor, relative */
   double dist2, dist3;            /* the output stage's nonlinearity: v + dist2 v^2 + dist3 v^3 */
   double jitter;                  /* every oscillator's frequency wanders by this fraction each sample
@@ -96,7 +97,7 @@ static struct tune {
   double copy_closure;            /* a stop's Repeat copy opens on this much silence, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms (the manual's) */
-} T = {0.5, 58, 2396, 0.491, 35, 30, 10, 15, 0.05, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 100, 200, 700, 30, 60, 90}};
+} T = {0.5, 58, 2396, 0.491, 35, 30, 1, 15, 0.05, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 100, 200, 700, 30, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
@@ -899,7 +900,7 @@ static double tick(sj_chip *sj) {
         v += f.a[k] / 128.0 * 0.6 * f.lv * sj_sin2pi(sj->phase[k]);
       sj->phase[k] += f.f[k] * (1.0 + (s->flags & FX_WANDER ? sj->wander : 0.0)) / NOMINAL;
     }
-    v *= 1.0 + sj->am;
+    v *= 1.0 + sj->am * (s->flags & FX_WANDER ? 1.0 : AM_STEADY / AM_DEPTH); /* the full wobble only on a wandering part (M0) */
   }
 
   /* noise: an oscillator whose frequency is thrown about by white noise every
