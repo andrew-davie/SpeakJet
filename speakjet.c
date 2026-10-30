@@ -840,9 +840,9 @@ static double tick(sj_chip *sj) {
      * to 3 kHz and back every 20 ms with a 13 dB dip, both units; the gate's
      * off half scores better than a dip alone) */
     if ((s->flags & FX_NSWEEP) && s->gate > 0) {
-      const double sw = sj_sin2pi(0.5 * (sj->tick % s->gate) / s->gate);
-      nf *= 0.4 + 1.6 * sw;
-      lvl = 1.0 - 0.75 * sw;
+      const double p = (double)(sj->tick % s->gate) / s->gate, sw = p < 0.4 ? p / 0.4 : 1.0 - (p - 0.4) / 0.6;
+      nf *= sj_exp((2.0 * sw - 1.0) * 0.6); /* both units, C8 and C9: up in 8 ms, down in 12, by 1.8x either side of the centre */
+      lvl = sj_exp(-5.0 * sw / 20.0 * M_LN10); /* and 5 dB quieter at the top, beyond what the output stage takes */
     }
     /* white noise through a two-pole resonance at nf with bandwidth nw (the
      * chip's hiss is random noise - Gaussian to the sample, both units - not
@@ -859,8 +859,8 @@ static double tick(sj_chip *sj) {
     v += lvl * f.lv * f.na / 128.0 * 0.86 * y;
   }
 
-  if (s->gate > 0 && sj->tick % s->gate >= s->gate / 2)
-    v *= T.gate_depth; /* measured on C8 and C9, both units: the gate's off half is 8 dB down, not silent */
+  if (s->gate > 0 && !(s->flags & FX_NSWEEP) && sj->tick % s->gate >= s->gate / 2)
+    v *= T.gate_depth;
   if (s->flags & FX_DECAY)
     v *= sj_exp(-T.decay_db * t / 20.0 * M_LN10);
   if (s->flags & FX_FADE)
