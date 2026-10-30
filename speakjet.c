@@ -634,7 +634,9 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
       gone.a[0] = tgt.a[0]; /* at full level: both units' voiced stops open on a voice bar 2-9 dB under the release (BE, BO, DE, DO, GE, GO) */
     }
     add_segment(sj, TICKS(T.closure * speed_factor(sj, false)), bar, gone, a->kind == K_VSTOP || bar.a[0] + bar.a[1] + bar.a[2] > 0.0f);
-    add_segment(sj, ticks, tgt, tgt, a->kind == K_VSTOP);
+    /* the release glides to the stop's second frame: the first formant falls into a labial or alveolar closure
+     * (both units: EB, OB, ED, OD); a stop without a measured target holds */
+    add_segment(sj, ticks, tgt, allo_frame(a, true, bend), a->kind == K_VSTOP);
     break;
   }
   case K_AFFR: {
