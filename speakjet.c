@@ -806,7 +806,8 @@ static double tick(sj_chip *sj) {
       /* measured: 92 ticks at Pitch 88 on both units. an effect's pulses run
        * at Pitch plus the part's offset (C1, C2, C3, C6, C7: the same offset
        * at Pitch 60, 88 and 150 on both units, gliding within the part) */
-      double f = sj->pitch + lerp(s->pa, s->pb, t);
+      /* the offset from integers and one division, so every compiler gets the same period */
+      double f = sj->pitch + s->pa + (s->ticks > 1 ? (double)((s->pb - s->pa) * sj->tick) / (s->ticks - 1) : s->pb - s->pa);
       if (f < 10.0)
         f = 10.0;
       sj->period = (int)(RATE / f) + 1;
