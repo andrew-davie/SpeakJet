@@ -631,7 +631,8 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     frame bar = from, gone = silent_frame();
     if (a->kind == K_VSTOP) {
       gone.f[0] = tgt.f[0];
-      gone.a[0] = tgt.a[0]; /* at full level: both units' voiced stops open on a voice bar 2-9 dB under the release (BE, BO, DE, DO, GE, GO) */
+      gone.a[0] = tgt.a[0]; /* the first formant's level: both units' voiced stops open on a voice bar 2-9 dB under the release (BE, BO, DE, DO, GE, GO) */
+      gone.lv = tgt.lv;     /* at the sound's own level (VoxProbe 6, slowed: DE's bar 3-4 dB under its release, BE's 8) */
     }
     add_segment(sj, TICKS(T.closure * speed_factor(sj, false)), bar, gone, a->kind == K_VSTOP || bar.a[0] + bar.a[1] + bar.a[2] > 0.0f);
     /* the release glides to the stop's second frame: the first formant falls into a labial or alveolar closure
