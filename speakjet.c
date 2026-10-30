@@ -139,6 +139,7 @@ typedef struct segment {
   int gate;      /* ticks of the on/off period for a pulsed effect, 0 = none */
   uint16_t flags; /* FX_* */
   float pa, pb;   /* an effect part's pulse rate: Pitch plus pa Hz at its start, pb at its end */
+  float lr;       /* an effect part's level ramp: half-decibels gained (or lost) across the part, even in dB */
 } segment;
 
 /* the sound effects: each is a few parts. a part plays up to three tones
@@ -164,6 +165,8 @@ typedef struct fxpart {
   uint16_t flags;
   int8_t lv;          /* the part's level, half-decibels (measured against the voice, both units) */
   int16_t pa, pb;     /* the part's pulse rate, Hz added to Pitch at its start and end (both units: the same offset at Pitch 60, 88 and 150) */
+  int8_t lr;          /* the part's level ramp, half-decibels across it (both units: B1's tone falls and rises a steady
+                       * 1.5 dB per 10 ms through its sweeps, the same up and down where the output stage alone can't) */
 } fxpart;
 
 #define MAX_SEGMENTS 32 /* C7 is seven chirps with gaps between */
@@ -479,6 +482,7 @@ static void add_segment(sj_chip *sj, int ticks, frame from, frame to, bool voice
   s->gate = 0;
   s->flags = 0;
   s->pa = s->pb = 0.0f;
+  s->lr = 0.0f;
 }
 
 /* start playing the segments built so far */
@@ -528,6 +532,7 @@ static void play_effect(sj_chip *sj, int code) {
       sj->seg[n].flags = p->flags;
       sj->seg[n].pa = p->pa;
       sj->seg[n].pb = p->pb;
+      sj->seg[n].lr = p->lr;
     }
   }
   start(sj, true);
@@ -821,6 +826,8 @@ static double tick(sj_chip *sj) {
     f.a[k] = (float)lerp(s->from.a[k], s->to.a[k], t);
   }
   f.lv = (float)lerp(s->from.lv, s->to.lv, t);
+  if (s->lr != 0.0f)
+    f.lv *= (float)sj_exp(s->lr * t * (0.5 * M_LN10 / 20.0));
   f.nf = (float)lerp(s->from.nf, s->to.nf, t);
   f.nw = (float)lerp(s->from.nw, s->to.nw, t);
   f.na = (float)lerp(s->from.na, s->to.na, t);
