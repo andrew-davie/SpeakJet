@@ -59,6 +59,8 @@
  * the voicing period is floor(8000 / Pitch) + 1 ticks */
 #define RATE 8026.0
 #define NOMINAL 8000.0
+#define WANDER_DEPTH 0.015 /* 252 M0, both units: its line wanders 1.45-1.59 % rms */
+#define WANDER_RATE 0.055 /* spread to about 70 Hz (a one-pole low-pass) */
 
 #define TICKS(ms) ((int)((ms) * RATE / 1000.0 + 0.5))
 
@@ -140,7 +142,7 @@ typedef struct segment {
  * FX_EXPDECAY settling toward fb); FX_DECAY fades the level to nothing over
  * the part, FX_BUMP shapes it as a half sine; gate pulses it on and off;
  * FX_PULSED pulses the plain tones with the voice's envelope at Pitch */
-enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128, FX_ALL = 256 };
+enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128, FX_ALL = 256, FX_WANDER = 512 };
 
 /* the tables' units: frequencies in 16 Hz steps, lengths in 5 ms, so every
  * field is a byte */
@@ -187,6 +189,7 @@ struct sj_chip {
   double phase[3];
   double nz[2]; /* the noise resonator's two delays */
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
+  double wander; /* an FX_WANDER part's slow pitch drift, a fraction */
   uint32_t rnd;
   double lastr; /* the previous noise sample, for the floor's high pass */
 
@@ -821,11 +824,13 @@ static double tick(sj_chip *sj) {
   } else {
     sj->ptick = 0;
     sj->venv = 1.0;
+    /* FX_WANDER: 252 M0's tone drifts about +-1.5 % over tens of ms on both units: white noise through a one-pole low-pass */
+    sj->wander += (WANDER_DEPTH / (0.57735 * sqrt(WANDER_RATE / 2.0)) * rnd(sj) - sj->wander) * WANDER_RATE; /* the input scaled so the drift's rms is WANDER_DEPTH */
     /* plain tones (the effects) */
     for (int k = 0; k < 3; k++) {
       if (f.f[k] > 0.0f && f.a[k] > 0.0f)
         v += f.a[k] / 128.0 * 0.6 * f.lv * sj_sin2pi(sj->phase[k]);
-      sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj)) / NOMINAL;
+      sj->phase[k] += f.f[k] * (1.0 + T.jitter * 2.0 * rnd(sj) + (s->flags & FX_WANDER ? sj->wander : 0.0)) / NOMINAL;
     }
   }
 
