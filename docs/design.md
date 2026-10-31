@@ -219,15 +219,18 @@ within 3 Hz of the standard once each unit's rate is divided out, so the rule
 carries the standard values and the rate scaling does what the chip's does.
 
 **The effects' bed.** An effect's tones sit over a noise bed. The library makes
-it from the signal's change per tick (`SLEW`), so it grows with the tone's
-frequency. That rule is not what the chip does: a steady tone set directly
-through the Serial Control Protocol has a bed about −75 dB per bin under it
-at 125, 1000 and 3000 Hz alike on both units, 15–27 dB under the library's,
-and the effects' excess over the chip doesn't follow their frequency either.
-But a bed proportional to the signal, set to the steady tones, scores far
-worse on the effects (all of it spectrum and line width): the effects carry
-much more bed than a steady tone, which SLEW's level roughly gives. Not yet
-understood.
+it from the signal's change per tick smoothed by one pole at 1.5 kHz
+(`BED_POLE`), times noise (`SLEW`): it grows with the tone's frequency up to
+there and only with its level above. The DTMF digits set the level, 220 B0,
+221 B1 and 228 B8 the corner: unsmoothed, their beds came out 6–9 dB over the
+chip's. A plain cut in level or a low-pass without the level put back lost
+the digits; the change over two ticks (no corner to choose) has no bed at
+4 kHz and lost 227 B7. A steady tone set directly through the Serial Control
+Protocol has a bed about −75 dB per bin under it at 125, 1000 and 3000 Hz
+alike on both units, far under the effects', and a bed proportional to the
+signal alone, set to the steady tones, scores far worse on the effects: the
+bed belongs to the effects' playback, not the output stage. Why the chip
+makes it is not known.
 
 ## Commands
 

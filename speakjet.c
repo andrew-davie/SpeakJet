@@ -62,7 +62,8 @@
 #define AM_STEADY 0.006 /* a plain tone's level holds to 0.01-0.09 dB rms in its middle (VoxRecord, both units: the DTMF tones, B0, B3, R7, R9) */
 #define AM_DEPTH 0.1 /* the effects' tones hold their pitch (both units: 0.03-0.13 % rms on the DTMF tones and the robots' carriers) */
 #define AM_RATE 0.05 /* and the energy round their lines is a slow wobble in level, 10 % rms, spread to about 64 Hz */
-#define SLEW 0.06 /* the effects' bed, measured: grows with the tone's frequency on both units (220 B0, 227 B7 against 215 A5) */
+#define SLEW 0.078 /* the effects' bed, measured: grows with the tone's frequency on both units (220 B0, 227 B7 against 215 A5) */
+#define BED_POLE 0.6909588478246612 /* up to about 1.5 kHz, then with the tone's level alone (one pole: the DTMF digits against 220 B0, 221 B1, 228 B8) */
 #define WANDER_DEPTH 0.015 /* 252 M0, both units: its line wanders 1.45-1.59 % rms */
 #define WANDER_RATE 0.055 /* spread to about 70 Hz (a one-pole low-pass) */
 
@@ -212,6 +213,7 @@ struct sj_chip {
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   double wander; /* an FX_WANDER part's slow pitch drift, a fraction */
   double vprev; /* the output's last tick */
+  double bed; /* the output's change per tick, smoothed, for the effects' bed */
   double am; /* the effects' slow level wobble */
   uint32_t rnd;
   double lastr; /* the previous noise sample, for the floor's high pass */
@@ -1053,8 +1055,13 @@ static double tick(sj_chip *sj) {
     const double r = rnd(sj);
     if (s->voiced && !(s->flags & (FX_VOICED | FX_PULSED)))
       v *= 1.0 + T.floor * 2.0 * (r - sj->lastr);
-    else
-      v += SLEW * 2.0 * r * (v - sj->vprev); /* the effects' bed grows with the tone's frequency (both units): timing error, proportional to the signal's change per tick */
+    else {
+      /* the effects' bed (both units): timing error, proportional to the
+       * signal's change per tick smoothed by one pole - it grows with the
+       * tone's frequency to about 1.5 kHz and only with its level above */
+      sj->bed += BED_POLE * (v - sj->vprev - sj->bed);
+      v += SLEW * 2.0 * r * sj->bed;
+    }
     sj->lastr = r;
     sj->vprev = v;
   }

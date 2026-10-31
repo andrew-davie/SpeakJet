@@ -240,16 +240,20 @@ Speeds than near 114. Earlier readings that seemed to show a curved law, differe
 and pulsed effects, were of items followed by a Speed command, which the chip
 reads ahead (section 8).
 
-**The bed.** Effects carry a noise bed between their lines, far more than a
-steady register-set tone does. *Open: its law against frequency and level is
-not yet known.*
+**The bed.** Effects carry a noise bed between their lines, 35-45 dB more
+than a steady register-set tone (rewriting that tone's volume register adds
+none; VoxProbe 8). The bed grows with the tone's frequency up to about
+1.5 kHz and levels off above: the DTMF digits' beds (697-1633 Hz) sit where a
+bed proportional to the signal's change per tick puts them, 220 B0's, 221 B1's
+and 228 B8's 6-9 dB under it. *Open: its dependence on level, and 220 B0's low
+end (its bed falls away below 300 Hz).*
 
 ## 8. Commands
 
 - **Pitch** sets the voice's period as above, and offsets the effects' pulse
   rates.
-- **Speed** scales speech lengths linearly (above); effects follow a steeper,
-  curved law that differs between tonal and pulsed effects (section 7).
+- **Speed** scales speech lengths linearly (above); effects follow a steeper
+  law (section 7).
 - **Bend** moves every oscillator by the same 44 Hz per step from 5 (D1's 697 and
   1209 Hz both move 44 Hz; so do AW's three formants); below 5 there is a
   further 22 Hz.
@@ -280,7 +284,7 @@ not yet known.*
   stop, which ignores it, carries to the next sound.
 - The pauses between words in long phrases, which run 30-45 ms long in some
   places in the model.
-- The effects' noise bed: its dependence on frequency and level.
+- The effects' noise bed: its dependence on level, and 220 B0's low end.
 - The nasals' pulse at low Pitch: NGE's first formant dies away more slowly
   than a single formant would and its spectrum ripples every 300 Hz; NGO's
   falls sooner and then beats; LO's matches the single-formant model to a
