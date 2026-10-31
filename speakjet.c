@@ -368,13 +368,6 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
 
 /* ------------------------------------------------------------- the MSA ---- */
 
-/* the manual's lengths, for the copies of a Repeat */
-static const uint8_t manual_ms[72] = {
-    70,  70,  70,  70,  70,  70,  70,  70,  70,  70,  70,  70,  70,  70,  70,  70,  70,  70,
-    70,  70,  70,  200, 200, 190, 200, 185, 165, 200, 225, 185, 170, 140, 180, 170, 170, 200,
-    131, 70,  70,  70,  70,  70,  45,  45,  10,  10,  45,  45,  10,  10,  55,  55,  55,  55,
-    70,  70,  70,  70,  70,  40,  40,  50,  40,  50,  70,  170, 55,  55,  55,  45,  99,  99};
-
 /* the length of a sound at the current Speed, as a factor on its length at
  * Speed 114. linear: measured 95/197/287 ms for AW at Speed 127/90/60; the
  * effects shorten faster (0.63 at 127, 1.55 at 90, 2.6 at 62) */
