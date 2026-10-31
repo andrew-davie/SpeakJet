@@ -6,6 +6,54 @@ Written from scratch from the SpeakJet User's Manual and recordings of two
 AtariVoxes alone. The brief was the smallest footprint: rules wherever a rule could be found, a few
 bytes of parameters per sound otherwise.
 
+### 2026-10-30 to 31
+
+- **Tables back to 2.6 KB.** Each effect part is now a byte stream: its
+  length, a byte saying which fields follow, its flags and level, then only
+  the tones and fields it uses (noise, gate, pulse offsets, level ramp, end
+  levels). The voiced stops' release targets are a five-entry side table.
+  Compiled tables 2606 bytes (allophones 1008, effects 1578); the output is
+  unchanged to the sample. They had reached 5.1 KB with a fixed column per
+  field.
+- **The voice is exactly periodic** (both units: the period holds to one 48
+  kHz sample and the gaps between harmonics sit 30-60 dB under them). The
+  formant jitter and the voiced noise floor are gone; they had filled those
+  gaps to 15-30 dB.
+- **Output stage** at two poles, 1609 Hz, Q 0.462, fitted to tones the chip
+  sets directly (the DTMF pairs and VoxProbe 7's single oscillator at 125,
+  1000 and 3000 Hz), all within 0.45 dB on both units.
+- **Repeat.** A stop's copy is the stop again: a 20 ms closure, then its
+  release, each copy lasting the stop's measured copy length (BE 75, BO 70,
+  DE 60, DO 55, GE and GO 65 ms...); BE, BO, DE and DO keep their voice bar
+  through it. A glide's copy glides back to its first frame instead of
+  jumping. JH's copies are 80 ms, ZH's 70, the glides' 185-290, all
+  measured.
+- **Voiced stops** hum through their closure on the first formant, open on a
+  voice bar 2-9 dB under the release, and release toward targets of their
+  own (BO, EB, OB, ED, OD).
+- **Effects read off the chip.** Most effects were rebuilt from the chip's
+  own tracks: the robots as a carrier beside a low tone and its octave
+  under a sine or square envelope; the C series pulsing at their own rate
+  (Pitch plus an offset of their own, measured at four Pitches); C8 and C9's
+  sweeping noise band; M0's wandering tone; A0 as a voice under two plain
+  tones. The envelope oscillator's four waveforms are measured (the
+  triangle is a ramp, then an instant drop). Plain tones hold their level
+  and start in 1 ms; DTMF tones hold 100 ms at one level and fade over 55,
+  as every unit does; M2's upper tones are at full level.
+- **Fitting.** Every sound's numbers were then annealed inside its measured
+  structure on two scores (E, the spectrum line by line; P, length, level
+  over time and the time-frequency picture), each compared with how far the
+  two real chips are from each other, and shipped only when one gained
+  without the other losing. A new field is given to the anneal only where
+  the chip shows it: free level ramps and end levels once invented level
+  changes on 18 effects the chip holds flat, and were removed.
+- **Still open.** Phrase timing: Slow seems to stretch vowels and diphthongs
+  more (about x1.3-1.5) and hisses less than the single x1.22 the library
+  uses, so long phrases drift; VoxProbe 8 measures it sound by sound. The
+  effects' noise bed doesn't follow the chip's (steady tones carry far less
+  than effects do). The nasals' pulse shape at low Pitch, and a few effects
+  (R5, R8, B1, B8) whose structure the library can't yet match.
+
 - Every effect has a measured level against the voice (a part byte), the
   effects' gate dips 8 dB rather than cutting, and the voice's pulse
   starts downward as the chip's does.
