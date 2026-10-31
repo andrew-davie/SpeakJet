@@ -234,7 +234,9 @@ registers.
 
 **Speed.** Effects scale with Speed by about (145.3 - Speed) / 31.3 on every part,
 the closing fade included (D1 and C0 played alone at Speed 20, 60 and 127, both
-units). Earlier readings that seemed to show a curved law, different for tonal
+units); over every effect recording at another Speed the best single line is
+(147 - Speed) / 33, which the library uses: the chip's law is steeper at low
+Speeds than near 114. Earlier readings that seemed to show a curved law, different for tonal
 and pulsed effects, were of items followed by a Speed command, which the chip
 reads ahead (section 8).
 

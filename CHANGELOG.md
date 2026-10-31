@@ -14,6 +14,10 @@ bytes of parameters per sound otherwise.
   or Volume right after a sound change; nothing else does.
 - **Pauses** P1 and P4 are 90 and 15 ms, the gaps the chip leaves (VoxProbe 8);
   Man Goes Down P 2.90 -> 2.74 on its phrases with pauses.
+- **Effects' Speed law** (147 - Speed) / 33 (was (149 - Speed) / 35): fitted on
+  every effect recording at another Speed; Man Goes Down P3 (Speed 62) P 2.71 -> 2.46.
+- **Lengths** refitted for ED, OHIH, EHLL, WH, EYIY, OWIY and CH (the glides ran
+  10-20 ms long).
 
 ### 2026-10-30 to 31
 

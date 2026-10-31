@@ -101,7 +101,7 @@ static struct tune {
   double copy_closure;            /* a stop's Repeat copy opens on this much silence, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms: P1 and P4 measured (VoxProbe 8), the rest the manual's */
-} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 15, 0, 0, 0, 0, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 90, 200, 700, 15, 60, 90}};
+} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 15, 0, 0, 0, 0, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 147, 33, 0.77, 1.22, 0, 20, 44, {0, 90, 200, 700, 15, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
@@ -373,8 +373,9 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
 
 /* the length of a sound at the current Speed, as a factor on its length at
  * Speed 114. linear: measured 95/197/287 ms for AW at Speed 127/90/60; the
- * effects change more (measured on effects played alone: about (145.3 - Speed) /
- * 31.3 on every part; items followed by a Speed command read it ahead) */
+ * effects change more: (147 - Speed) / 33 on every part (fitted on every effect
+ * recording at a Speed other than 114; alone they read about (145 - Speed) / 31,
+ * steeper still at low Speeds than near 114) */
 static double speed_factor(const sj_chip *sj, bool effect) {
   return effect ? (T.fx_speed_a - sj->speed) / T.fx_speed_b : (T.speed_a - sj->speed) / T.speed_b;
 }
