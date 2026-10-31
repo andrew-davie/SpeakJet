@@ -232,7 +232,14 @@ registers.
 
 **Gates.** A gated effect's off half dips about 8 dB, not to silence.
 
-**Speed.** Effects shorten faster with Speed than speech: (149 - Speed) / 35.
+**Speed.** Effects stretch and shrink with Speed more than speech, and not
+along one straight line. Taking out a fixed ~30 ms (the release), the tonal
+effects (A1, B1, D1, M1; both units) play ×2.64–2.75 their Speed-114 length at
+Speed 60, ×1.68 at 90 and ×0.54–0.57 at 127 (about ×3.5 at 40 and ×4.1 at 20).
+The pulsed and enveloped ones (C0, C3, B9, R8, C8) change less: ×1.54–1.87 at
+90, ×0.48–0.67 at 127. The library uses one line, (149 − Speed) / 35, which is
+right near Speed 90 and under-stretches at 60 and 127. *Open: the chip's curve
+needs more Speeds than the recordings hold.*
 
 **The bed.** Effects carry a noise bed between their lines, far more than a
 steady register-set tone does. *Open: its law against frequency and level is
@@ -242,8 +249,8 @@ not yet known.*
 
 - **Pitch** sets the voice's period as above, and offsets the effects' pulse
   rates.
-- **Speed** scales lengths linearly (speech and effects by different laws,
-  above).
+- **Speed** scales speech lengths linearly (above); effects follow a steeper,
+  curved law that differs between tonal and pulsed effects (section 7).
 - **Bend** moves every oscillator by the same 44 Hz per step from 5 (D1's 697 and
   1209 Hz both move 44 Hz; so do AW's three formants); below 5 there is a
   further 22 Hz.

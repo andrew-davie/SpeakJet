@@ -116,7 +116,8 @@ Pitch. It is not the manual's length: vowels play about twice it, diphthongs
 1.3×, the K stops 0.75×. So each allophone carries its measured length at
 Speed 114. Speed is linear: length = L114 · (162 − Speed) / 48 (`speed_a`,
 `speed_b`; AW: 95, 197, 287 ms at Speed 127, 90, 60); the effects shorten
-faster, (149 − Speed) / 35 (`fx_speed_a`, `fx_speed_b`). Fast is ×0.77 and
+faster, (149 − Speed) / 35 (`fx_speed_a`, `fx_speed_b`): a straight-line
+approximation of a curved, effect-dependent law (technical manual, section 7). Fast is ×0.77 and
 Slow ×1.22 of the played length, stops unchanged (`fast`, `slow`; VoxRecord,
 both units; the manual says ½ and 1½).
 
