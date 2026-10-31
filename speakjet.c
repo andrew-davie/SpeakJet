@@ -106,7 +106,7 @@ static struct tune {
 #ifdef SJ_TUNE
 #include <stdio.h>
 static void tune_from_env(void) {
-  static const char *const names[] = {"ENVR", "ENVF", "LPFFC", "LPFQ", "ATTACK", "RELEASE", "FXATT", "FXREL", "FLOOR", "DIST2", "DIST3", "JITTER", "CLIP", "QUANT", "DECAY", "TRANS", "CLOSURE", "OVERLAP", "OVERLAPV", "SPEEDA", "SPEEDB", "FXSPEEDA", "FXSPEEDB", "FAST", "SLOW", "COPY", "COPYCL", "BENDHZ", "P0", "P1", "P2", "P3", "P4", "P5", "P6"};
+  static const char *const names[] = {"ENVR", "ENVF", "LPFFC", "LPFQ", "ATTACK", "RELEASE", "FXATT", "FXREL", "FLOOR", "DIST2", "DIST3", "JITTER", "CLIP", "QUANT", "DECAY", "TRANS", "CLOSURE", "GATE", "OVERLAP", "OVERLAPV", "SPEEDA", "SPEEDB", "FXSPEEDA", "FXSPEEDB", "FAST", "SLOW", "COPY", "COPYCL", "BENDHZ", "P0", "P1", "P2", "P3", "P4", "P5", "P6"};
   const char *e = getenv("SJ_TUNE");
   double *v = (double *)&T;
   while (e && *e) {
@@ -128,9 +128,7 @@ static void tune_from_env(void) {
 
 
 /* one target the synthesizer moves toward: three voiced formants (Hz, level 0
- * to 31), the voice's offset (dc: a fourth oscillator at 0 Hz under the same
- * envelope, the level the pulse sits below the formants' sum) and one noise
- * band (centre Hz, half width Hz, level 0 to 31) */
+ * to 31) and one noise band (centre Hz, half width Hz, level 0 to 31) */
 typedef struct frame {
   float f[3], a[3], lv; /* lv: the sound's level as a factor */
   float nf, nw, na;
@@ -911,10 +909,6 @@ static double tick(sj_chip *sj) {
     v *= 1.0 + sj->am * (s->flags & FX_WANDER ? 1.0 : AM_STEADY / AM_DEPTH); /* the full wobble only on a wandering part (M0) */
   }
 
-  /* noise: an oscillator whose frequency is thrown about by white noise every
-   * sample, within +-nw of nf (the manual's register 6, "disordered with white
-   * noise"). with a wide throw the band is flat with sharp edges; thrown past
-   * the chip's Nyquist it folds back, which is the hiss sounds' peak at 4 kHz */
   if (f.na > 0.0f) {
     double nf = f.nf, lvl = 1.0;
     /* FX_NSWEEP: over each gate period the band climbs from 0.4 to 2 times
@@ -928,8 +922,8 @@ static double tick(sj_chip *sj) {
     }
     /* white noise through a two-pole resonance at nf with bandwidth nw (the
      * chip's hiss is random noise - Gaussian to the sample, both units - not
-     * a tone; FF, TH and HE are flat to 4 kHz, SH and CH peak near 2.3 kHz,
-     * WH at 800 Hz, SE and SO at the top of the band). the gain holds the
+     * a tone; FF is flat to 4 kHz, the others resonate from WH's 800 Hz to
+     * SE's 4 kHz). the gain holds the
      * output power at the input's whatever the band (the AR(2) variance) */
     const double r = sj_exp(-M_PI * (f.nw > 10.0f ? f.nw : 10.0) / RATE), c = sj_sin2pi(nf / RATE + 0.25);
     const double r2 = r * r, g = sqrt((1.0 - r2) * ((1.0 + r2) * (1.0 + r2) - 4.0 * r2 * c * c) / (1.0 + r2));
