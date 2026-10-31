@@ -179,28 +179,31 @@ What the recordings gave:
   noise between its harmonics.
 - **The voice.** A period of floor(Fs / Pitch) + 1 ticks; at each period
   three formant sines restart at one phase under an envelope that steps to
-  full at once and falls linearly over about 7 ms, with a per-sound offset
-  under the same envelope. The pulse is the same on both units to the
-  sample.
+  full at once and falls linearly over about 7 ms. The pulse is the same on
+  both units to the sample.
 - **Noise.** White noise through a two-pole resonance at the chip's rate:
   the hiss is Gaussian noise on both units, not a tone. Each band is read
-  off the chip's spectrum (FF flat, SH near 2.8 kHz, WH at 860 Hz, the
-  sibilants peaking at Nyquist, PE and PO low-passed; the voiced
-  fricatives' from the floor between their harmonics). Each noise sound
-  is a centre, a bandwidth and a level.
+  off the chip's spectrum (FF flat, SH near 2.9 kHz, WH at 800 Hz, the
+  sibilants peaking near Nyquist, PE and PO low-passed). Each noise sound is
+  a centre, a bandwidth and a level.
 - **Timing and controls.** A sound's length is the same streamed, alone or
   before a pause, and the same at every Pitch; it is linear in Speed; Fast
-  is 0.8 and Slow 1.25; every sound ramps in over 35 ms and out over 30; a
-  Repeat's copies run on seamlessly at the manual's length; a sound followed
-  at once by another is cut 10 ms short; Bend moves every oscillator by 44
-  Hz a step; Volume 16 to 127 spans 6 dB; Stress, Relax and code 18 do
-  nothing measurable.
-- **Sound effects.** Each is one to six parts of up to three sweeping tones,
-  a noise band, a gate and a few flags, written from the spectrograms and
-  then fitted. The robots are a tone at 800 + 300·n Hz over a voiced glide.
+  is x0.77 and Slow x1.22 (stops unchanged). Inside a run of sounds the
+  voice runs on without fading, each sound cut 15 ms short (30 when both are
+  voiced); only a run's edges ramp, 35 ms in and 30 out. Each Repeat copy
+  lasts the sound's measured copy length (a stop's copy is the stop again).
+  Bend moves every oscillator by 44 Hz a step; Volume 16 is 15.5 dB down and
+  32 to 127 barely move; Stress, Relax and code 18 do nothing measurable.
+- **Sound effects.** Each is one to eight parts of up to three sweeping
+  tones and a noise band, read off the chip's own tracks: pulsed effects at
+  Pitch plus an offset of their own, the robots a carrier at 800 + 300·n Hz
+  beside a low tone and its octave, plain tones that hold and end in a 55 ms
+  fade, D0 to D11 the standard DTMF pairs.
 
-The parameters were first read off the recordings, then refined with the
-same score as above, sound by sound.
+The parameters were first read off the recordings, then refined inside each
+sound's measured structure with the scores above, sound by sound. The whole
+model, measurement by measurement, is in `docs/design.md`; the chip itself is
+described in `docs/technical-manual.md`.
 
 ## Other versions
 
