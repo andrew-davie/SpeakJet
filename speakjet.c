@@ -17,11 +17,12 @@
  *
  * What the chip was found to do (from the recordings):
  *   - it makes samples at about 8026 Hz (manual: 8192) and holds each one; the
- *     AtariVox then low-passes the held signal: two real poles, near 2 kHz
- *     (fitted on the voicing pulses of both units) and 2.9 kHz (from the
- *     images of the tones, 6.5 to 23 kHz, both units). the output here is at
- *     48 kHz so the images the hold puts up to 20 kHz are carried as the
- *     real thing's are
+ *     AtariVox then low-passes the held signal: two real poles, near 1.1 and
+ *     2.4 kHz (the tones the chip sets directly, both units). the library runs
+ *     that analogue stage exactly on the held samples and samples it at 48 kHz,
+ *     so the images the hold puts up to 20 kHz come out at the real thing's
+ *     levels (a digital filter's warping and an average over each output
+ *     sample left them 1-8 dB low above 5 kHz)
  *   - voicing: a period of N = floor(rate / Pitch) + 1 ticks. at the start of
  *     each period the three formant oscillators (sines, manual: oscillators 1
  *     to 3) restart and an envelope (manual: the envelope oscillator) steps
@@ -221,7 +222,7 @@ struct sj_chip {
   /* output */
   double held, heldpos;
   double z[2];
-  double lpf[5]; /* the low pass's coefficients: b0 b1 b2 a1 a2 */
+  double lpf[5]; /* the low pass: its two poles (per tick), their decays over an output sample, p2 / (p2 - p1) */
   bool speaking;
 };
 
@@ -289,16 +290,16 @@ void sj_power_on(sj_chip *sj) {
 #ifdef SJ_TUNE
   tune_from_env();
 #endif
-  /* the output low pass: two real poles, bilinear, prewarped */
+  /* the output low pass: two real poles (Q under 0.5) per chip tick, and
+   * their decays over one output sample */
   {
-    const double w = 2.0 * SJ_SAMPLE_RATE * tan(M_PI * T.lpf_fc / SJ_SAMPLE_RATE);
-    const double k = 2.0 * SJ_SAMPLE_RATE;
-    const double d = k * k + w / T.lpf_q * k + w * w;
-    sj->lpf[0] = w * w / d;
-    sj->lpf[1] = 2.0 * sj->lpf[0];
-    sj->lpf[2] = sj->lpf[0];
-    sj->lpf[3] = (2.0 * w * w - 2.0 * k * k) / d;
-    sj->lpf[4] = (k * k - w / T.lpf_q * k + w * w) / d;
+    const double w = 2.0 * M_PI * T.lpf_fc / RATE;
+    const double h = 0.5 / (T.lpf_q < 0.499 ? T.lpf_q : 0.499), r = sqrt(h * h - 1.0);
+    sj->lpf[0] = w * (h - r);
+    sj->lpf[1] = w * (h + r);
+    sj->lpf[2] = exp(-sj->lpf[0] * RATE / SJ_SAMPLE_RATE);
+    sj->lpf[3] = exp(-sj->lpf[1] * RATE / SJ_SAMPLE_RATE);
+    sj->lpf[4] = sj->lpf[1] / (sj->lpf[1] - sj->lpf[0]);
   }
 }
 
@@ -1080,28 +1081,31 @@ static double tick(sj_chip *sj) {
   return v;
 }
 
+/* the two poles driven by x held for d ticks, exactly (e1, e2: their decays over d) */
+static void settle(sj_chip *sj, double x, double e1, double e2) {
+  const double u1 = sj->z[0] - x;
+  sj->z[0] = x + u1 * e1;
+  sj->z[1] = x + (sj->z[1] - x) * e2 + u1 * sj->lpf[4] * (e1 - e2);
+}
+
 bool sj_render(sj_chip *sj, float *buf, size_t n) {
   const double step = RATE / SJ_SAMPLE_RATE;
-  const double b0 = sj->lpf[0], b1 = sj->lpf[1], b2 = sj->lpf[2], a1 = sj->lpf[3], a2 = sj->lpf[4];
   bool sounding = sj->sounding || sj->count > 0;
   for (size_t i = 0; i < n; i++) {
-    /* the average of the held chip samples over this output sample */
-    double rest = step, sum = 0.0;
-    while (sj->heldpos + rest >= 1.0) {
-      sum += sj->held * (1.0 - sj->heldpos);
-      rest -= 1.0 - sj->heldpos;
+    /* the held chip samples through the AtariVox's low pass, sampled at the
+     * end of this output sample */
+    if (sj->heldpos + step < 1.0) {
+      settle(sj, sj->held, sj->lpf[2], sj->lpf[3]);
+      sj->heldpos += step;
+    } else {
+      const double a = 1.0 - sj->heldpos, b = step - a;
+      settle(sj, sj->held, exp(-sj->lpf[0] * a), exp(-sj->lpf[1] * a));
       sj->held = tick(sj);
-      sj->heldpos = 0.0;
       sounding = sounding || sj->sounding || sj->count > 0;
+      settle(sj, sj->held, exp(-sj->lpf[0] * b), exp(-sj->lpf[1] * b));
+      sj->heldpos = b;
     }
-    sum += sj->held * rest;
-    sj->heldpos += rest;
-    const double x = sum / step;
-    /* direct form II transposed */
-    const double y = b0 * x + sj->z[0];
-    sj->z[0] = b1 * x - a1 * y + sj->z[1];
-    sj->z[1] = b2 * x - a2 * y;
-    buf[i] = (float)y;
+    buf[i] = (float)sj->z[1];
   }
   sj->speaking = sounding;
   return sounding;

@@ -42,7 +42,13 @@ real tick is 1/8026 s.
 1609 Hz, Q 0.462 (`lpf_fc`, `lpf_q`). Fitted to tones whose level the chip
 sets directly: the 12 DTMF pairs' level ratios and VoxProbe 7's single
 oscillator at 125, 1000 and 3000 Hz (Serial Control Protocol, volume 31), all
-14 within 0.45 dB on both units. The same direct tones show that the
+14 within 0.45 dB on both units. The stage runs as the analogue circuit it
+is: two real poles (near 1.1 and 2.4 kHz) driven by the held samples, solved
+exactly over each stretch between a tick and an output sample, and sampled
+at 48 kHz. A bilinear digital filter on the held samples averaged over each
+output sample (this library's earlier stage) put every sound's images 1–8 dB low
+between 5 and 14 kHz, the cost of its warping and the average's droop;
+running the analogue stage improved every sound. The same direct tones show that the
 oscillator volumes and the master volume (register 7) are exactly linear
 (both units, to 0.1–0.4 dB), and that oscillators 4 and 5 sit 6 dB under 1
 to 3. There is no output quantiser (`quant` 0): both chips put out their

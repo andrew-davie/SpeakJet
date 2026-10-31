@@ -24,6 +24,11 @@ bytes of parameters per sound otherwise.
 - **The effects' bed** levels off above about 1.5 kHz (the signal's change per
   tick smoothed by one pole): 220 B0, 221 B1 and 228 B8 had 6-9 dB too much,
   the DTMF digits keep theirs. Effects P 1.190 -> 1.178; speech unchanged.
+- **The output stage is now the analogue circuit**, solved exactly on the held
+  samples, in place of a bilinear digital filter on their per-sample average,
+  whose warping and droop put the images 1-8 dB low from 5 to 14 kHz (every
+  effect, both units). Every sound improves: all 1382 items P 1.053 -> 0.966,
+  allophones 0.882 -> 0.808, Man Goes Down 1.633 -> 1.569.
 
 ### 2026-10-30 to 31
 
