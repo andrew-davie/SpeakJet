@@ -13,8 +13,8 @@
  * Written by Claude, Anthropic's AI model, under the direction of Andrew
  * Davie. See "How it was made" in README.md.
  *
- * docs/design.md says what is taken from the SpeakJet User's Manual
- * and what is guessed.
+ * docs/technical-manual.md describes the SpeakJet as measured on two real
+ * AtariVoxes; docs/design.md the model built from those measurements.
  *
  *   - sj_write_byte() takes the raw serial byte stream and frames the two
  *     byte commands itself
