@@ -77,10 +77,13 @@ static struct tune {
                                    * direct tones at 125, 1000 and 3000 Hz, all 14 within 0.45 dB, rms 0.16) */
   double attack, release;         /* every sound's level ramp, ms */
   double fx_attack, fx_release;   /* the effects' (both units: a tone starts within 1-3 ms; its splatter is the bed round it) */
-  double floor;                   /* the output noise floor, relative */
+  double floor;                   /* the voiced output noise floor, relative. 0: the chip's voice is exactly
+                                   * periodic (both units, every vowel and nasal at Pitch 88: the period holds
+                                   * to one 48 kHz sample, and the gaps between harmonics sit 30-60 dB under
+                                   * them, which a 0.05 floor filled to 15-30) */
   double dist2, dist3;            /* the output stage's nonlinearity: v + dist2 v^2 + dist3 v^3 */
-  double jitter;                  /* every oscillator's frequency wanders by this fraction each sample
-                                   * (the skirts around the chip's tones) */
+  double jitter;                  /* the voiced oscillators' frequency wanders by this fraction each sample.
+                                   * 0, measured with the floor: it smeared the same gaps */
   double clip;                    /* mixer 1 clips the formants' sum at this level (manual: 63; 0 = none) */
   double quant;                   /* the output's steps per full scale (0 = none, measured: the chip puts out its
                                    * quiet consonants and the stops' tails whole, far below a 48th of full scale); it was
@@ -98,7 +101,7 @@ static struct tune {
   double copy_closure;            /* a stop's Repeat copy opens on this much silence, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms (the manual's) */
-} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 15, 0.05, 0, 0, 0.03, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 100, 200, 700, 30, 60, 90}};
+} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 15, 0, 0, 0, 0, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 100, 200, 700, 30, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
@@ -962,9 +965,8 @@ static double tick(sj_chip *sj) {
   v += T.dist2 * v * v + T.dist3 * v * v * v;
   if (T.quant > 0)
     v = floor(v * T.quant + 0.5) / T.quant;
-  /* the output noise floor: white under the effects' tones, rising with
-   * frequency under the voice (the valley between the first two formants is
-   * deeper on the chip than a white floor leaves it) */
+  /* the output noise floor: white under the effects' tones; none under the
+   * voice (T.floor 0, the chip's voice is exactly periodic) */
   {
     const double r = rnd(sj);
     if (s->voiced && !(s->flags & (FX_VOICED | FX_PULSED)))
