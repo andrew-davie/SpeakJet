@@ -99,21 +99,20 @@ every function.
 ## How close it is
 
 Every allophone and sound effect, alone and in connected speech, is compared
-with recordings of two real AtariVoxes (an original AtariVox and a later
-unit): the library is given each recording's own background noise, both
-sides are cut out by the same rule, and clipped sounds are left out. The
-measure, M, has ten parts: length, level over time, the time-frequency
-picture after the two are lined up (smoothed over 15 ms and 1.5 ERB, so the
-noise speckle that two real chips differ in doesn't count), its worst 25 ms,
-how much the level flickers, the timing inside the sound, sideways spectral
-shift, the whole-sound spectrum, the positions of its peaks, and pitch. Each
-part is divided by how far the two real chips are from each other on that
-part, and the parts furthest off count most. So 0 means as close as a second
-chip, 1 about twice the chips' own difference, and lower is better.
+with recordings of two real AtariVoxes (an original AtariVox and an
+AtariVox+): the library is given each recording's own background noise, both
+sides are cut out by the same rule, and where a recording clipped, the
+library is clipped the same way. Two scores, each part divided by how far
+the two real chips are from each other on that part, so 0 means as close as
+a second chip and lower is better:
 
-This branch (see [How it works](#how-it-works)) is scored the same way against every recording
-of both units (VoxRecord and its connected groups, VoxProbe 4 and 7, Man Goes
-Down). The two real chips are about 0.5 from each other.
+- **E**, the spectrum: a voice line by line over its harmonics, anything
+  else over half-ERB bands, as plain decibels.
+- **P**, the sound over time: length, level over time, the time-frequency
+  picture, the spectrum, line widths and pitch.
+
+Every recording of both units is scored: VoxRecord and its connected
+groups, VoxProbe 4 and 7, and the phrases of Man Goes Down.
 
 What is still known to be off:
 
