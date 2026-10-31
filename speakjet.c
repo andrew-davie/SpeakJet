@@ -370,7 +370,8 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
 
 /* the length of a sound at the current Speed, as a factor on its length at
  * Speed 114. linear: measured 95/197/287 ms for AW at Speed 127/90/60; the
- * effects shorten faster (0.63 at 127, 1.55 at 90, 2.6 at 62) */
+ * effects change more, on a curve this line approximates (tonal effects x0.55 at
+ * 127, 1.68 at 90, 2.7 at 60 past a fixed ~30 ms; pulsed ones less) */
 static double speed_factor(const sj_chip *sj, bool effect) {
   return effect ? (T.fx_speed_a - sj->speed) / T.fx_speed_b : (T.speed_a - sj->speed) / T.speed_b;
 }
