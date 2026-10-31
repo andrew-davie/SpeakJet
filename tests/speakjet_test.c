@@ -36,8 +36,11 @@ static void test_sounds(void) {
   }
   for (int code = 200; code <= 254; code++) {
     int ms = 0;
-    for (int i = 0; i < fxindex[code - 200][1]; i++)
-      ms += fxparts[fxindex[code - 200][0] + i].ms * MS_STEP;
+    for (const uint8_t *q = fxdata + fxat[code - 200]; q < fxdata + fxat[code - 199];) {
+      fxpart part;
+      q = fx_decode(q, &part);
+      ms += part.ms * MS_STEP;
+    }
     if (ms <= 0)
       FAIL("code %d (%s): no length", code, sj_sound_name((uint8_t)code));
   }

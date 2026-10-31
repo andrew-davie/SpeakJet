@@ -9,8 +9,12 @@ rule could be found, and a few bytes of parameters per sound where it could
 not.
 
 The library is `speakjet.c` (about 1000 lines) and a generated table,
-`speakjet_tables.c`: 72 allophones and 146 effect parts, frequencies in 16 Hz
-steps and lengths in 5 ms. Compiled with `-O2` the object is about 21 KB. The
+`speakjet_tables.c`, about 2.6 KB compiled: 72 allophones of 14 bytes, a
+second frame for the five voiced stops that have their own, and the effects
+as a byte stream of 146 parts, each its length, a byte saying which fields
+follow, its flags and level, then only the tones and fields it uses (most
+parts have no noise, gate, pulse offset or ramp). Frequencies are in 16 Hz
+steps and lengths in 5 ms. Compiled with `-O2` the object is about 18 KB. The
 measured constants are the fields of `struct tune` in `speakjet.c`, named
 below in `code`.
 

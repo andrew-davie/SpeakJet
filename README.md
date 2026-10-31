@@ -167,9 +167,9 @@ measurement of the real chip behind it.
 This branch was written from scratch from the SpeakJet User's Manual and
 recordings of two AtariVoxes only. The brief was the smallest footprint: a rule
 wherever a rule could be found, a few bytes of parameters per sound
-otherwise. `speakjet.c` is about 1000 lines; the tables are 72 allophones and 146
-effect parts (frequencies in 16 Hz steps, lengths in 5 ms); the object is
-about 21 KB.
+otherwise. `speakjet.c` is about 1000 lines; the tables are about 2.6 KB
+compiled: 72 allophones of 14 bytes and 146 effect parts as a byte stream,
+each holding only the fields it uses; the object is about 18 KB.
 
 What the recordings gave:
 

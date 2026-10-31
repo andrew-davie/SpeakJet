@@ -231,7 +231,6 @@ typedef struct allophone {
   uint8_t ms;         /* the length played at Speed 114, measured, MS_STEP */
   uint8_t f1, f2, f3; /* formants, HZ_STEP (a glide: f1, f2 = the two allophones it runs between) */
   uint8_t a1, a2, a3; /* their levels, 0 to 31 */
-  uint8_t g1, g2, g3; /* unused since the glides became pairs; kept for the table's layout */
   uint8_t nf, nw;     /* the noise band's centre and bandwidth, HZ_STEP */
   uint8_t na;
   uint8_t cp;         /* the length of each further copy of a Repeat, MS_STEP */
@@ -505,12 +504,53 @@ static void start(sj_chip *sj, bool effect) {
   sj->sounding = sj->nseg > 0;
 }
 
+/* an effect part, read from the table's byte stream (fxdata, from fxat[code - 200]): its length, a byte saying
+ * which fields follow (bits 0-1 the number of tones; 4 noise, 8 gate, 16 pulse offsets, 32 level ramp, 64 end
+ * levels, 128 a high flags byte), its flags and level, then three bytes a tone and only the fields it uses */
+static const uint8_t *fx_decode(const uint8_t *q, fxpart *f) {
+  memset(f, 0, sizeof *f);
+  f->ms = *q++;
+  const uint8_t h = *q++;
+  f->flags = *q++;
+  if (h & 128)
+    f->flags |= (uint16_t)(*q++ << 8);
+  f->lv = (int8_t)*q++;
+  const int n = h & 3;
+  for (int k = 0; k < n; k++) {
+    f->fa[k] = *q++;
+    f->fb[k] = *q++;
+    f->v[k] = *q++;
+  }
+  if (h & 4) {
+    f->nf = *q++;
+    f->nw = *q++;
+    f->nv = *q++;
+  }
+  if (h & 8)
+    f->gate = *q++;
+  if (h & 16) {
+    f->pa = (int16_t)(uint16_t)(q[0] | q[1] << 8);
+    f->pb = (int16_t)(uint16_t)(q[2] | q[3] << 8);
+    q += 4;
+  }
+  if (h & 32)
+    f->lr = (int8_t)*q++;
+  for (int k = 0; k < 3; k++)
+    f->ve[k] = h & 64 && k < n ? q[k] : f->v[k];
+  if (h & 64)
+    q += n;
+  return q;
+}
+
 static void play_effect(sj_chip *sj, int code) {
-  const int first = fxindex[code - 200][0], count = fxindex[code - 200][1];
+  const uint8_t *q = fxdata + fxat[code - 200], *const end = fxdata + fxat[code - 199];
   const double bend = bend_hz(sj);
   sj->nseg = 0;
-  for (int i = 0; i < count; i++) {
-    const fxpart *p = &fxparts[first + i];
+  for (int i = 0; q < end; i++) {
+    fxpart part;
+    q = fx_decode(q, &part);
+    (void)i; /* FX-PART-DECODED: the part's index, for the anneal's override */
+    const fxpart *p = &part;
     frame a = silent_frame(), b = silent_frame();
     for (int k = 0; k < 3; k++) {
       a.f[k] = bent(p->fa[k] * HZ_STEP, bend);
@@ -554,9 +594,15 @@ static frame allo_frame(const allophone *a, bool second, double bend) {
    * f2 hold the two allophones' indices and it has no formants of its own */
   if (a->kind == K_GLIDE)
     return allo_frame(&allophones[second ? a->f2 : a->f1], false, bend);
-  f.f[0] = bent((second ? a->g1 : a->f1) * HZ_STEP, bend);
-  f.f[1] = bent((second ? a->g2 : a->f2) * HZ_STEP, bend);
-  f.f[2] = bent((second ? a->g3 : a->f3) * HZ_STEP, bend);
+  /* a voiced stop's release ends on formants of its own (allog: the few that have them) */
+  const uint8_t *g = NULL;
+  if (second)
+    for (int i = 0; i < ALLOG_N; i++)
+      if (allog[i][0] == a - allophones)
+        g = &allog[i][1];
+  f.f[0] = bent((g ? g[0] : a->f1) * HZ_STEP, bend);
+  f.f[1] = bent((g ? g[1] : a->f2) * HZ_STEP, bend);
+  f.f[2] = bent((g ? g[2] : a->f3) * HZ_STEP, bend);
   f.a[0] = a->a1;
   f.a[1] = a->a2;
   f.a[2] = a->a3;
