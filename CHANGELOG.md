@@ -47,6 +47,10 @@ bytes of parameters per sound otherwise.
   without the other losing. A new field is given to the anneal only where
   the chip shows it: free level ramps and end levels once invented level
   changes on 18 effects the chip holds flat, and were removed.
+- **Tests and build.** A test fails if the compiled tables pass a 2700-byte
+  budget (C and Go); the unused table of the manual's lengths is gone and the
+  build is warning-free. The README's and text2speakjet's examples show the
+  codes the tool gives now.
 - **Still open.** Phrase timing: Slow seems to stretch vowels and diphthongs
   more (about x1.3-1.5) and hisses less than the single x1.22 the library
   uses, so long phrases drift; it needs measuring sound by sound. The
