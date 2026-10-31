@@ -227,7 +227,17 @@ static void test_names(void) {
     FAIL("names for codes that are not sounds");
 }
 
+/* the tables' size budget: the library's brief is a few bytes per sound, and every field only some sounds use goes
+ * in the effects' optional fields or a side table, never a fixed column (2606 bytes when this test was written) */
+#define TABLE_BUDGET 2700
+static void test_table_size(void) {
+  const size_t n = sizeof allophones + sizeof allog + sizeof fxdata + sizeof fxat;
+  if (n > TABLE_BUDGET)
+    FAIL("the tables are %zu bytes, over the %d-byte budget", n, TABLE_BUDGET);
+}
+
 int main(void) {
+  test_table_size();
   test_sounds();
   test_phrase_length();
   test_buffer();
