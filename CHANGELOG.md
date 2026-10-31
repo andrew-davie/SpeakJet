@@ -6,6 +6,13 @@ Written from scratch from the SpeakJet User's Manual and recordings of two
 AtariVoxes alone. The brief was the smallest footprint: rules wherever a rule could be found, a few
 bytes of parameters per sound otherwise.
 
+### 2026-11-01
+
+- **Reading ahead.** The chip takes the command after a sound early, at the
+  sound's release, and a Speed or Volume read so changes the rest of the sound
+  (VoxProbe 8, both units). The library now does the same. Phrases with a Speed
+  or Volume right after a sound change; nothing else does.
+
 ### 2026-10-30 to 31
 
 - **Tables back to 2.6 KB.** Each effect part is now a byte stream: its

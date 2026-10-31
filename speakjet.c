@@ -196,6 +196,9 @@ struct sj_chip {
   segment seg[MAX_SEGMENTS];
   int nseg, cur, tick;
   int stick, stotal; /* ticks into the sound, and its whole length */
+  bool effect;       /* the sound is an effect (its Speed law) */
+  bool read;         /* the command after it has been read ahead */
+  int ahead;         /* bytes of that command, executed early: retired with the sound */
   int attack, release;
   int copies;        /* copies of a Repeat still to play */
   int copy_of;       /* which allophone */
@@ -370,8 +373,8 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
 
 /* the length of a sound at the current Speed, as a factor on its length at
  * Speed 114. linear: measured 95/197/287 ms for AW at Speed 127/90/60; the
- * effects change more, on a curve this line approximates (tonal effects x0.55 at
- * 127, 1.68 at 90, 2.7 at 60 past a fixed ~30 ms; pulsed ones less) */
+ * effects change more (measured on effects played alone: about (145.3 - Speed) /
+ * 31.3 on every part; items followed by a Speed command read it ahead) */
 static double speed_factor(const sj_chip *sj, bool effect) {
   return effect ? (T.fx_speed_a - sj->speed) / T.fx_speed_b : (T.speed_a - sj->speed) / T.speed_b;
 }
@@ -496,6 +499,9 @@ static void start(sj_chip *sj, bool effect) {
   for (int i = 0; i < sj->nseg; i++)
     sj->stotal += sj->seg[i].ticks;
   sj->sounding = sj->nseg > 0;
+  sj->effect = effect;
+  sj->read = false;
+  sj->ahead = 0;
 }
 
 /* an effect part, read from the table's byte stream (fxdata, from fxat[code - 200]): its length, a byte saying
@@ -841,9 +847,10 @@ static void finish_sound(sj_chip *sj) {
   const int code = peek(sj, 0);
   if (code >= 128)
     sj->fast = sj->slow = sj->stress = sj->relax = false;
-  sj->head = (sj->head + sj->executing) % SJ_BUFFER_SIZE;
-  sj->count -= sj->executing;
+  sj->head = (sj->head + sj->executing + sj->ahead) % SJ_BUFFER_SIZE;
+  sj->count -= sj->executing + sj->ahead;
   sj->executing = 0;
+  sj->ahead = 0;
   sj->sounding = false;
 }
 
@@ -857,11 +864,51 @@ static inline double rnd(sj_chip *sj) {
 }
 
 /* one chip sample */
+/* the chip reads the command after a sound while the sound is still playing,
+ * at its release: an effect's closing fade, or the last READ_AHEAD_MS (VoxProbe
+ * 8, both units: "Speed v, D1, Speed 114" fades at Speed 114's length whatever
+ * v; "Volume 16, IY, Volume 96" jumps to Volume 96 in IY's last 25-30 ms;
+ * VoxProbe 7 and 4: a Pitch after a sound doesn't move it, and only the one
+ * command right after is read). A Speed or Volume read so is carried out at
+ * once: the rest of the sound plays at the new rate and level */
+#define READ_AHEAD_MS 30
+static void read_ahead(sj_chip *sj) {
+  sj->read = true;
+  const int i = sj->executing;
+  if (i + 2 > sj->count)
+    return;
+  const int code = peek(sj, i), data = peek(sj, i + 1);
+  if (code == 20)
+    sj->volume = data > 127 ? 127 : data;
+  else if (code == 21) {
+    const double before = speed_factor(sj, sj->effect);
+    sj->speed = data > 127 ? 127 : data;
+    const double scale = speed_factor(sj, sj->effect) / before;
+    int total = 0;
+    for (int k = 0; k < sj->nseg; k++) {
+      segment *g = &sj->seg[k];
+      if (k == sj->cur)
+        g->ticks = sj->tick + 1 + (int)((g->ticks - sj->tick - 1) * scale + 0.5);
+      else if (k > sj->cur)
+        g->ticks = g->ticks * scale < 1.0 ? 1 : (int)(g->ticks * scale + 0.5);
+      total += g->ticks;
+    }
+    sj->stotal = total;
+  } else
+    return;
+  sj->ahead = 2;
+}
+
 static double tick(sj_chip *sj) {
   if (!sj->sounding)
     next_command(sj);
   if (!sj->sounding)
     return 0.0;
+  if (!sj->read && sj->copies == 0 && peek(sj, 0) >= 128) {   /* sounds only: no recording shows a pause reading ahead */
+    const bool fade = (sj->seg[sj->nseg - 1].flags & FX_FADE) != 0;
+    if (fade ? sj->cur == sj->nseg - 1 : sj->stotal - sj->stick <= TICKS(READ_AHEAD_MS))
+      read_ahead(sj);
+  }
 
   const segment *s = &sj->seg[sj->cur];
   const double t = s->ticks > 1 ? (double)sj->tick / (s->ticks - 1) : 1.0;

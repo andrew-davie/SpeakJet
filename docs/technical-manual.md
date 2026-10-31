@@ -232,14 +232,11 @@ registers.
 
 **Gates.** A gated effect's off half dips about 8 dB, not to silence.
 
-**Speed.** Effects stretch and shrink with Speed more than speech, and not
-along one straight line. Taking out a fixed ~30 ms (the release), the tonal
-effects (A1, B1, D1, M1; both units) play ×2.64–2.75 their Speed-114 length at
-Speed 60, ×1.68 at 90 and ×0.54–0.57 at 127 (about ×3.5 at 40 and ×4.1 at 20).
-The pulsed and enveloped ones (C0, C3, B9, R8, C8) change less: ×1.54–1.87 at
-90, ×0.48–0.67 at 127. The library uses one line, (149 − Speed) / 35, which is
-right near Speed 90 and under-stretches at 60 and 127. *Open: the chip's curve
-needs more Speeds than the recordings hold.*
+**Speed.** Effects scale with Speed by about (145.3 - Speed) / 31.3 on every part,
+the closing fade included (D1 and C0 played alone at Speed 20, 60 and 127, both
+units). Earlier readings that seemed to show a curved law, different for tonal
+and pulsed effects, were of items followed by a Speed command, which the chip
+reads ahead (section 8).
 
 **The bed.** Effects carry a noise bed between their lines, far more than a
 steady register-set tone does. *Open: its law against frequency and level is
@@ -254,15 +251,23 @@ not yet known.*
 - **Bend** moves every oscillator by the same 44 Hz per step from 5 (D1's 697 and
   1209 Hz both move 44 Hz; so do AW's three formants); below 5 there is a
   further 22 Hz.
-- **Volume** (the command, at Pitch 20 on speech): 16 is 15.5 dB under 96, 32 is
-  -1.3, 64 is -1.1, 127 is +2.2. That is not linear, though the master volume
-  register is. *Open: whether Volume writes register 7, with a level-dependent
-  stage after it.*
+- **Volume** is linear in amplitude on speech, effects and tones set directly
+  alike (VoxProbe 8, both units: IY +12 dB from 16 to 64 and +5.5 from 64 to
+  127, R0 and a register-set tone the same). Earlier readings that looked
+  compressed on speech had the restoring Volume read ahead (below).
 - **Fast, Slow** as in section 4.
 - **Repeat** as in section 6.
 - **Stress, Relax** and code 18 change nothing measurable in length, pitch or
   level.
 - **Pauses** P0-P6 are the manual's lengths.
+- **Reading ahead.** While a sound plays, the chip takes the one command after it
+  early, at the sound's release: an effect's closing fade, or the last 25-30 ms
+  of an allophone or of an effect without a fade. A Speed or Volume read so
+  applies to the rest of the sound: "Speed v, D1, Speed 114" fades at Speed 114's
+  length whatever v, and "Volume 16, IY, Volume 96" jumps to Volume 96 in IY's
+  last 25-30 ms (VoxProbe 8, both units). A Pitch read so doesn't move the sound
+  (VoxProbe 4 and 7), and a command two places on isn't read (VoxProbe 8: the
+  Pitch after "Repeat 1"). *Open: pauses, and Bend.*
 
 ## 9. Still unknown
 

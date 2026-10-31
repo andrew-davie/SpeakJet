@@ -236,6 +236,12 @@ and 1209 both step by 44, as do AW's three formants; `bend_hz`); below 5
 there is a further 22 Hz. **Stress**, **Relax** and code 18 change nothing
 measurable in length, pitch or level. The pauses are the manual's.
 
+**Reading ahead.** At a sound's release (an effect's closing fade, else its last
+`READ_AHEAD_MS`, 30 ms) the library takes the command after it early, if it is a
+Speed or a Volume (`read_ahead`): Volume applies at once, and Speed rescales the
+rest of the sound's segments. The command is then retired with the sound. Pitch
+and the modifiers are left to run in their turn, and a pause doesn't read ahead.
+
 ## Fitting
 
 The allophone and effect numbers were first read off the recordings (formant
