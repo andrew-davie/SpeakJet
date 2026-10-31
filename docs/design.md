@@ -48,7 +48,11 @@ exactly over each stretch between a tick and an output sample, and sampled
 at 48 kHz. A bilinear digital filter on the held samples averaged over each
 output sample (this library's earlier stage) put every sound's images 1–8 dB low
 between 5 and 14 kHz, the cost of its warping and the average's droop;
-running the analogue stage improved every sound. The same direct tones show that the
+running the analogue stage improved every sound. It then left the
+images 1 dB low at 6 kHz and 3.7 dB low at 13.6 kHz, which one real zero near
+12 kHz fits band by band; scored at 9, 12, 14 and 16 kHz, 14 is best
+(`LPF_ZERO`). It costs no state: the output is the second pole's value plus its
+input's lead over it, scaled by the second pole over the zero. The same direct tones show that the
 oscillator volumes and the master volume (register 7) are exactly linear
 (both units, to 0.1–0.4 dB), and that oscillators 4 and 5 sit 6 dB under 1
 to 3. There is no output quantiser (`quant` 0): both chips put out their

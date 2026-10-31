@@ -29,6 +29,8 @@ bytes of parameters per sound otherwise.
   whose warping and droop put the images 1-8 dB low from 5 to 14 kHz (every
   effect, both units). Every sound improves: all 1382 items P 1.053 -> 0.966,
   allophones 0.882 -> 0.808, Man Goes Down 1.633 -> 1.569.
+- **A real zero at 14 kHz in the output stage**: the images still sat 1-4 dB low
+  from 6 to 14 kHz. All 1382 items P 0.966 -> 0.949, spectrum 2.91 -> 2.80.
 
 ### 2026-10-30 to 31
 

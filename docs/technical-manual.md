@@ -44,7 +44,11 @@ oscillator at 125, 1000 and 3000 Hz) to within 0.45 dB on both units. The
 images keep that analogue shape up to 15 kHz: across every effect and both
 units, a digital two-pole filter made by the bilinear transform, fed the
 held samples averaged over each output sample, puts them 1 dB low at 5 kHz
-and 8 dB low at 14 kHz, which is what that warping and averaging cost. There is no audible output quantisation: the
+and 8 dB low at 14 kHz, which is what that warping and averaging cost. Run as
+the analogue stage, the images still sat 1 dB low at 6 kHz and 3.7 dB low at
+13.6 kHz, the lift of one real zero near 12-14 kHz (a resistor in series with
+the stage's capacitor would make one); with a zero at 14 kHz every group of
+sounds scores better. There is no audible output quantisation: the
 quietest consonants and the tails of stops come out whole.
 
 **Not the chip.** A steady line at 15.7 kHz in every recording is the Atari
@@ -289,7 +293,6 @@ end (its bed falls away below 300 Hz).*
 - The pauses between words in long phrases, which run 30-45 ms long in some
   places in the model.
 - The effects' noise bed: its dependence on level, and 220 B0's low end.
-- The images above 8 kHz still sit 1-2 dB over the two-pole stage's.
 - The nasals' pulse at low Pitch: NGE's first formant dies away more slowly
   than a single formant would and its spectrum ripples every 300 Hz; NGO's
   falls sooner and then beats; LO's matches the single-formant model to a

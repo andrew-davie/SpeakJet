@@ -18,7 +18,8 @@
  * What the chip was found to do (from the recordings):
  *   - it makes samples at about 8026 Hz (manual: 8192) and holds each one; the
  *     AtariVox then low-passes the held signal: two real poles, near 1.1 and
- *     2.4 kHz (the tones the chip sets directly, both units). the library runs
+ *     2.4 kHz (the tones the chip sets directly, both units), and a real zero
+ *     near 14 kHz (the images above 8 kHz). the library runs
  *     that analogue stage exactly on the held samples and samples it at 48 kHz,
  *     so the images the hold puts up to 20 kHz come out at the real thing's
  *     levels (a digital filter's warping and an average over each output
@@ -64,6 +65,7 @@
 #define AM_DEPTH 0.1 /* the effects' tones hold their pitch (both units: 0.03-0.13 % rms on the DTMF tones and the robots' carriers) */
 #define AM_RATE 0.05 /* and the energy round their lines is a slow wobble in level, 10 % rms, spread to about 64 Hz */
 #define SLEW 0.078 /* the effects' bed, measured: grows with the tone's frequency on both units (220 B0, 227 B7 against 215 A5) */
+#define LPF_ZERO 14000.0 /* and one real zero, Hz: the images above 8 kHz (every effect, both units) */
 #define BED_POLE 0.6909588478246612 /* up to about 1.5 kHz, then with the tone's level alone (one pole: the DTMF digits against 220 B0, 221 B1, 228 B8) */
 #define WANDER_DEPTH 0.015 /* 252 M0, both units: its line wanders 1.45-1.59 % rms */
 #define WANDER_RATE 0.055 /* spread to about 70 Hz (a one-pole low-pass) */
@@ -222,7 +224,7 @@ struct sj_chip {
   /* output */
   double held, heldpos;
   double z[2];
-  double lpf[5]; /* the low pass: its two poles (per tick), their decays over an output sample, p2 / (p2 - p1) */
+  double lpf[6]; /* the low pass: its two poles (per tick), their decays over an output sample, p2 / (p2 - p1), p2 / zero */
   bool speaking;
 };
 
@@ -290,8 +292,8 @@ void sj_power_on(sj_chip *sj) {
 #ifdef SJ_TUNE
   tune_from_env();
 #endif
-  /* the output low pass: two real poles (Q under 0.5) per chip tick, and
-   * their decays over one output sample */
+  /* the output low pass: two real poles (Q under 0.5) per chip tick, their
+   * decays over one output sample, and the zero */
   {
     const double w = 2.0 * M_PI * T.lpf_fc / RATE;
     const double h = 0.5 / (T.lpf_q < 0.499 ? T.lpf_q : 0.499), r = sqrt(h * h - 1.0);
@@ -300,6 +302,7 @@ void sj_power_on(sj_chip *sj) {
     sj->lpf[2] = exp(-sj->lpf[0] * RATE / SJ_SAMPLE_RATE);
     sj->lpf[3] = exp(-sj->lpf[1] * RATE / SJ_SAMPLE_RATE);
     sj->lpf[4] = sj->lpf[1] / (sj->lpf[1] - sj->lpf[0]);
+    sj->lpf[5] = sj->lpf[1] / (2.0 * M_PI * LPF_ZERO / RATE);
   }
 }
 
@@ -1093,7 +1096,8 @@ bool sj_render(sj_chip *sj, float *buf, size_t n) {
   bool sounding = sj->sounding || sj->count > 0;
   for (size_t i = 0; i < n; i++) {
     /* the held chip samples through the AtariVox's low pass, sampled at the
-     * end of this output sample */
+     * end of this output sample (the zero adds the second pole's input in
+     * proportion: y2 + y2' / zero) */
     if (sj->heldpos + step < 1.0) {
       settle(sj, sj->held, sj->lpf[2], sj->lpf[3]);
       sj->heldpos += step;
@@ -1105,7 +1109,7 @@ bool sj_render(sj_chip *sj, float *buf, size_t n) {
       settle(sj, sj->held, exp(-sj->lpf[0] * b), exp(-sj->lpf[1] * b));
       sj->heldpos = b;
     }
-    buf[i] = (float)sj->z[1];
+    buf[i] = (float)(sj->z[1] + sj->lpf[5] * (sj->z[0] - sj->z[1]));
   }
   sj->speaking = sounding;
   return sounding;
