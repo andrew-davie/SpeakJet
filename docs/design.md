@@ -70,16 +70,32 @@ cleanly measured vowels is within 1 dB of the chip's in every sixth-octave
 band from 150 Hz to 1.3 kHz, valleys included, and the residual is 0.09–0.15
 of the pulse's rms (0.015 is the chip's own pulse-to-pulse scatter).
 
-**Output stage.** Two real poles, near 2 kHz and 2.9 kHz (`LPF_FC` 2396,
-`LPF_Q` 0.491). The first comes from the forward model of the voicing pulses
-with free poles (1983 and 1972 Hz on the two units); the pulses say almost
-nothing above 4 kHz, so the second comes from the image levels of the tones
-from 6.5 to 23.5 kHz, after removing the hold's sinc, with the first pole held:
-2.9 kHz fits them to 2.3–2.6 dB rms on both units, 12 kHz to 9–10 dB. (An
-earlier version used 720 Hz/10 kHz from the images alone, which they fit
-equally well, with the formant levels fitted under it compensating for it.)
-Under every tone the chip's output carries a flat noise floor (`FLOOR`,
-measured 1.8 %).
+**Output stage.** Two poles at 1609 Hz, Q 0.462 (`LPF_FC`, `LPF_Q`), after the
+hold. Fitted to tones whose level the chip sets directly: the 12 DTMF pairs'
+level ratios and VoxProbe 7's single oscillator at 125, 1000 and 3000 Hz
+(Serial Control Protocol, volume 31), all 14 within 0.45 dB on both units.
+(Earlier versions used 2396 Hz/Q 0.491 from the forward model of the voicing
+pulses and the tones' images, and before that 720 Hz/10 kHz; the formant
+levels fitted under each compensated for it.) The same tones show the
+oscillator volumes and the master level (register 7) are exactly linear
+(both units to 0.1–0.4 dB), and oscillators 4 and 5 sit 6 dB under 1 to 3.
+
+**The voice is exactly periodic.** At Pitch 88 every vowel and nasal's period
+holds to one 48 kHz sample on both units, and the gaps between harmonics sit
+30–60 dB under them. There is no noise floor under the voice and no jitter in
+the formants (`FLOOR` and `JITTER` are 0; at 0.05 and 0.03 they filled those
+gaps to 15–30 dB).
+
+**The effects' bed.** An effect's tones sit over a noise bed. The library makes
+it from the signal's change per tick (`SLEW`), so it grows with the tone's
+frequency. That rule is not what the chip does: a steady tone set directly by
+the Serial Control Protocol has a bed about −75 dB per bin under it at 125,
+1000 and 3000 Hz alike on both units, 15–27 dB under the library's, and the
+effects' excess over the chip doesn't follow their frequency either. But a bed
+proportional to the signal, set to the steady tones, scores far worse on the
+effects (P +0.15, all of it spectrum and line width): the effects carry much
+more bed than a steady tone, which SLEW's level roughly gives. Not yet
+understood; VoxProbe 8 sweeps the bed against frequency and level.
 
 **Noise.** The chip's hiss is random noise, Gaussian to the sample on both
 units (kurtosis 2.8–3.2, 4–5 % of samples beyond two sigma), not a tone
@@ -102,12 +118,20 @@ Pitch. It is not the manual's length: vowels play about twice it, diphthongs
 1.3×, the K stops 0.75×. So each allophone carries its measured length at
 Speed 114. Speed is linear: length = L114 · (162 − Speed) / 48 (AW: 95, 197,
 287 ms at Speed 127, 90, 60). Fast is ×0.8 and Slow ×1.25 (the manual says ½
-and 1½). Each further copy of a Repeat adds about the manual's length. A sound
+and 1½). Each further copy of a Repeat lasts the sound's own copy length (a
+byte per allophone, measured onset to onset where VoxProbe 4 and 7 repeat it:
+the stops below, the glides 185–290 ms, JH 80, ZH 70; about the manual's length
+elsewhere). A glide's copy glides back from the last copy's end to its first
+frame and on (IYRR ×5 rises 1383 → 2083 Hz over its first 60 ms each time on
+both units), instead of jumping and holding. A sound
 followed at once by another sound is cut short (`OVERLAP`): SE before IY is
 80 ms where SE alone is 100.
 
 **Level over time.** Every sound ramps in over about 35 ms and out over 30
-(`ATTACK`, `RELEASE`; the effects 10 and 15).
+(`ATTACK`, `RELEASE`). An effect's tone starts within 1–3 ms on both units
+(`FXATT` 1 ms, `FXREL` 15). A plain tone holds its level: 0.01–0.09 dB rms
+in its middle on the DTMF tones, B0, B3, R7 and R9 (`AM_STEADY`); only a
+wandering part (M0, its pitch drifting about 1.5 % rms) also wobbles in level.
 
 **Effects' levels.** Each effect part carries its level the same way,
 measured against the voice on both units; after it every recorded effect
@@ -156,7 +180,11 @@ lines are that rate's harmonics.
 **The envelope oscillator.** The manual's synthesizer has a sixth oscillator
 that only envelopes the other five, in one of four waveforms (register 8):
 saw, sine, triangle, square. The saw is the voice's measured pulse; a part
-can pick the others (flags `i`, `t`, `q`). The robots' low lines are a tone
+can pick the others (flags `i`, `t`, `q`). VoxProbe 7 drove it directly on both
+units: the register-set envelopes run at exactly their frequency and don't
+restart the tones, the triangle is a rising ramp and then an instant drop, and
+the saw's period is floor(8000 / f) + 1 ticks. An effect's own (firmware)
+envelope does restart its tones; R5's lines are its envelope's harmonics. The robots' low lines are a tone
 at f and its octave and nothing above, with the carrier one clean line: a
 tone at f under a sine or square envelope at f, the carrier running on beside
 it (a voiced part's plain third tone does not restart with the pulse).
@@ -179,7 +207,7 @@ Hz for 170 ms.
 
 **Bend** moves every oscillator by the same +44 Hz per step (D1's 697 and
 1209 both step by 44, as do AW's three formants); below 5 there is a 22 Hz
-jump. **Volume** 16/32/64/96/127 gives −3.3/−1.3/−0.6/0/+2.5 dB. **Stress**,
+jump. **Stress**,
 **Relax** and code 18 change nothing measurable in length, pitch or level.
 
 **Stops.** A closure (`CLOSURE` 30 ms) the sound before fades through, a
@@ -197,7 +225,14 @@ GE, GO and the final stops close silently between copies (27-35 dB dips,
 **Effects.** Each is one to six parts: up to three tones sweeping from a start
 to an end frequency (linearly, geometrically, or settling), a noise band, a
 gate period for the pulsed ones, and flags for decay (exponential, 35 dB),
-a half-sine bump, and a per-gate noise sweep (C8, C9). The robots are a plain
+a half-sine bump, and a per-gate noise sweep (C8, C9). A part may also carry
+a level ramp across it (`lr`, half-decibels, even in dB) and an end level per
+tone (`ve`), each only where the chip's part measurably changes level (R2,
+A0, A7, B1, C8); an anneal given them freely invented ramps on 18 effects the
+chip holds flat, and they were removed. With the `V` flag the first two tones
+pulse with the voice and the third runs plain beside them; `o` pulses only
+the first. A0 is a voice at the Pitch under two plain tones (VoxProbe 7,
+both units). The robots are a plain
 carrier at 800 + 300·n Hz beside a low tone and its octave (see the envelope
 oscillator); the DTMF tones are the standard pairs. The recipes were written from the recordings' spectrograms and then
 fitted.
