@@ -1,12 +1,10 @@
 # Design
 
-This is the second, from-scratch implementation of the SpeakJet emulation
-(branch `rebuild`). It was written from two sources only: the SpeakJet User's
-Manual (revision 1.1, 2004) and recordings of two AtariVoxes (an AtariVox+,
-"unit A", and an original AtariVox, "unit B") playing the VoxRecord and
-VoxProbe 1 to 7 test ROMs and Man Goes Down. No other SpeakJet emulation
-(Stella's, openFPGA-7800's) and none of the first implementation's findings,
-tables or code were used. The aim was the smallest model that matches the
+This SpeakJet emulation (branch `rebuild`) was written from scratch from two
+sources only: the SpeakJet User's Manual (revision 1.1, 2004) and recordings
+of two AtariVoxes (an AtariVox+, "unit A", and an original AtariVox, "unit
+B") playing the VoxRecord and VoxProbe 1 to 7 test ROMs and Man Goes Down.
+The aim was the smallest model that matches the
 recordings: rules wherever a rule could be found, and a few bytes of
 parameters per sound where it could not.
 

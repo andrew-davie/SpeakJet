@@ -111,8 +111,7 @@ part is divided by how far the two real chips are from each other on that
 part, and the parts furthest off count most. So 0 means as close as a second
 chip, 1 about twice the chips' own difference, and lower is better.
 
-This branch is the second, from-scratch implementation (see
-[How it works](#how-it-works)), scored the same way against every recording
+This branch (see [How it works](#how-it-works)) is scored the same way against every recording
 of both units (VoxRecord and its connected groups, VoxProbe 4 and 7, Man Goes
 Down). The two real chips are about 0.5 from each other.
 
@@ -165,14 +164,12 @@ regenerates them.
 [`docs/design.md`](docs/design.md) describes the model and every
 measurement of the real chip behind it.
 
-This branch is a second implementation, written from scratch from the
-SpeakJet User's Manual and recordings of two AtariVoxes only, with none of
-the first implementation's findings or tables, to see whether the same
-method lands in the same place. The brief was the smallest footprint: a rule
+This branch was written from scratch from the SpeakJet User's Manual and
+recordings of two AtariVoxes only. The brief was the smallest footprint: a rule
 wherever a rule could be found, a few bytes of parameters per sound
-otherwise. `speakjet.c` is about 700 lines; the tables are 72 allophones of
-14 bytes and about 100 effect parts of 15 bytes (frequencies in 16 Hz steps,
-lengths in 5 ms), about 2.5 KB; the object is about 12.5 KB.
+otherwise. `speakjet.c` is about 1000 lines; the tables are 72 allophones and 146
+effect parts (frequencies in 16 Hz steps, lengths in 5 ms); the object is
+about 21 KB.
 
 What the recordings gave:
 
@@ -223,7 +220,7 @@ which the Gopher2600 emulator uses for its AtariVox.
 | `tools/text2speakjet/` | Text to SpeakJet codes, with its dictionaries and tests |
 | `samples/` | Sample phrases, their codes and WAVs |
 | `docs/design.md` | How the emulation works, and every measurement behind it |
-| `docs/reference/` | The SpeakJet User's Manual, NRL Report 7948, and (deprecated) Magnevation's PhraseALator |
+| `docs/reference/` | The SpeakJet User's Manual, and the PhraseALator dictionary text2speakjet uses |
 | `CHANGELOG.md` | What changed, with the measurements behind each change |
 
 ## License
@@ -237,16 +234,14 @@ copyright Carnegie Mellon University, under the BSD-style licence in
 These are **not** covered by the MIT licence, and are included for reference;
 see [`docs/reference/README.md`](docs/reference/README.md):
 
-- the SpeakJet User's Manuals (`docs/reference/`), copyright Magnevation LLC
-- Magnevation's PhraseALator software and dictionary
-  (`docs/reference/phrasealator/`, deprecated and kept for reference only),
-  and the dictionary's converted form `tools/text2speakjet/phrasealator.txt`,
+- the SpeakJet User's Manual (`docs/reference/`), copyright Magnevation LLC
+- Magnevation's PhraseALator dictionary (`docs/reference/phrasealator/`,
+  with the download that carries its licence) and the dictionary's converted form `tools/text2speakjet/phrasealator.txt`,
   copyright Magnevation LLC and used under PhraseALator's licence, which asks
   that "Portions of this program are provided by and copyrighted by
   Magnevation LLC." be shown when its parts are used; text2speakjet prints it
   whenever it uses the dictionary. Everything works without these files;
   text2speakjet falls back to the CMU dictionary
-- NRL Report 7948, a US Government work in the public domain
 
 The letter-to-sound trees (`tools/text2speakjet/lts_cmu.json.gz`) are
 converted from Festival's CMU lexicon rules, copyright the Centre for Speech
@@ -264,9 +259,7 @@ recorded the test ROMs on his own AtariVoxes, reviewed and tested the
 results, including in an Atari 2600 emulator's AtariVox, and edited them.
 
 The emulation is written from the SpeakJet User's Manual and recordings of
-the real chip, as described in [`docs/design.md`](docs/design.md). No code
-or tables were taken from other SpeakJet emulations, nor, on this branch,
-from the first implementation. Its behaviour is checked by the tests in
+the real chip only, as described in [`docs/design.md`](docs/design.md). Its behaviour is checked by the tests in
 `tests/` and the reference samples, and its accuracy against the recordings
 as described above.
 
@@ -279,6 +272,4 @@ Synthesis System (Alan W Black, Paul Taylor, Richard Caley and others, CSTR,
 University of Edinburgh), trained on the CMU Pronouncing Dictionary. Its
 intonation follows Festival's "simple" model, its phrase-final lengthening
 Klatt's duration rules, and its "the"/"thee" rule Festival's post-lexical
-rules; these are reimplemented, not copied. Earlier versions used the
-letter-to-sound rules of Elovitz, Johnson, McHugh and Shore, NRL Report 7948
-(1976).
+rules; these are reimplemented, not copied.

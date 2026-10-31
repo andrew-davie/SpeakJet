@@ -109,8 +109,7 @@ Each word is looked up in this order:
 5. two dictionary words joined together (`moonbase` = `moon` + `base`)
 6. a guess from the spelling: Festival's letter-to-sound decision trees,
    trained on the CMU dictionary. On words the trees weren't trained on they get 43% of
-   words exactly right and 87% of sounds, against 24% and 78% for the 1976
-   NRL rules earlier versions used. A capitalised word of up to four letters
+   words exactly right and 87% of sounds. A capitalised word of up to four letters
    (an acronym), or one with no vowel, is spelled out instead: `FBX` is
    "eff bee ex". A possessive not in a dictionary is the word plus S, Z or
    IH Z, by the sound it ends with (`bus's` ends IH Z).

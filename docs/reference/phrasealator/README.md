@@ -1,12 +1,12 @@
 # PhraseALator
 
-> **Deprecated: for reference only.** PhraseALator is Magnevation's 2004
-> Windows program for driving a real SpeakJet over a serial port. It is kept
-> here only as the record of how Magnevation's own software encoded SpeakJet
-> phrases. It is not part of this project, isn't maintained, and isn't needed
-> to use anything here; nothing builds or runs it. Its code table also
-> disagrees with the SpeakJet manual (see below), so don't treat it as an
-> authority on the chip.
+> PhraseALator is Magnevation's 2004 Windows program for driving a real
+> SpeakJet over a serial port. Only its word dictionary is used here: it is the
+> source of `tools/text2speakjet/phrasealator.txt`, which text2speakjet looks
+> words up in first. The program itself isn't used, built or run; the
+> download is kept because it carries the dictionary's licence. Its code table
+> disagrees with the SpeakJet manual (see below), so it isn't an authority on
+> the chip.
 
 | File | What it is |
 |---|---|
