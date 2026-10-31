@@ -892,10 +892,10 @@ static double tick(sj_chip *sj) {
        * at Pitch plus the part's offset (C1, C2, C3, C6, C7: the same offset
        * at Pitch 60, 88 and 150 on both units, gliding within the part) */
       /* the offset from integers and one division, so every compiler gets the same period */
-      double f = sj->pitch + s->pa + (s->ticks > 1 ? (double)((s->pb - s->pa) * sj->tick) / (s->ticks - 1) : s->pb - s->pa);
-      if (f < 10.0)
-        f = 10.0;
-      sj->period = (int)(RATE / f) + 1;
+      double rate = sj->pitch + s->pa + (s->ticks > 1 ? (double)((s->pb - s->pa) * sj->tick) / (s->ticks - 1) : s->pb - s->pa);
+      if (rate < 10.0)
+        rate = 10.0;
+      sj->period = (int)(RATE / rate) + 1;
       sj->ptick = sj->period;
     }
     /* an effect's third tone is a plain tone beside the voice */
