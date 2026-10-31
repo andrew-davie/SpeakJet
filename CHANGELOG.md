@@ -49,7 +49,7 @@ bytes of parameters per sound otherwise.
   changes on 18 effects the chip holds flat, and were removed.
 - **Still open.** Phrase timing: Slow seems to stretch vowels and diphthongs
   more (about x1.3-1.5) and hisses less than the single x1.22 the library
-  uses, so long phrases drift; VoxProbe 8 measures it sound by sound. The
+  uses, so long phrases drift; it needs measuring sound by sound. The
   effects' noise bed doesn't follow the chip's (steady tones carry far less
   than effects do). The nasals' pulse shape at low Pitch, and a few effects
   (R5, R8, B1, B8) whose structure the library can't yet match.

@@ -131,7 +131,7 @@ Speed 127, 90 and 60).
 **Fast and Slow.** Fast plays the next sound at about 0.77 of its length and
 Slow at about 1.22, and neither changes a stop. That figure comes from single
 sounds; phrases suggest Slow stretches vowels, nasals and diphthongs more
-(about 1.3-1.5) and hisses less. *Open: VoxProbe 8 measures it sound by sound.*
+(about 1.3-1.5) and hisses less. *Open: it needs measuring sound by sound.*
 
 **Moving between sounds.** The voice moves to each new sound's formants over
 about 25 ms. After silence it starts on the new sound's own formants (no sweep
@@ -236,7 +236,7 @@ registers.
 
 **The bed.** Effects carry a noise bed between their lines, far more than a
 steady register-set tone does. *Open: its law against frequency and level is
-not yet known; VoxProbe 8 sweeps it.*
+not yet known.*
 
 ## 8. Commands
 
@@ -250,7 +250,7 @@ not yet known; VoxProbe 8 sweeps it.*
 - **Volume** (the command, at Pitch 20 on speech): 16 is 15.5 dB under 96, 32 is
   -1.3, 64 is -1.1, 127 is +2.2. That is not linear, though the master volume
   register is. *Open: whether Volume writes register 7, with a level-dependent
-  stage after it; VoxProbe 8 tests it.*
+  stage after it.*
 - **Fast, Slow** as in section 4.
 - **Repeat** as in section 6.
 - **Stress, Relax** and code 18 change nothing measurable in length, pitch or
