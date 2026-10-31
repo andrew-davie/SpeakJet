@@ -4,15 +4,15 @@ This is the second, from-scratch implementation of the SpeakJet emulation
 (branch `rebuild`). It was written from two sources only: the SpeakJet User's
 Manual (revision 1.1, 2004) and recordings of two AtariVoxes (an AtariVox+,
 "unit A", and an original AtariVox, "unit B") playing the VoxRecord and
-VoxProbe 1 to 5 test ROMs. None of the first implementation's findings,
+VoxProbe 1 to 7 test ROMs and Man Goes Down. No other SpeakJet emulation
+(Stella's, openFPGA-7800's) and none of the first implementation's findings,
 tables or code were used. The aim was the smallest model that matches the
 recordings: rules wherever a rule could be found, and a few bytes of
 parameters per sound where it could not.
 
-The whole library is `speakjet.c` (about 700 lines) and a generated table,
-`speakjet_tables.c`: 72 allophones of 14 bytes and about 100 effect parts of
-15 bytes, frequencies in 16 Hz steps and lengths in 5 ms. Compiled with
-`-O2` the object is about 12.5 KB, of which the tables are about 2.5 KB.
+The whole library is `speakjet.c` (about 1000 lines) and a generated table,
+`speakjet_tables.c`: 72 allophones and 146 effect parts, frequencies in 16 Hz
+steps and lengths in 5 ms. Compiled with `-O2` the object is about 21 KB.
 
 ## What the recordings gave
 
@@ -55,7 +55,10 @@ it left the valleys between the formants 10–16 dB too shallow. Every formant
 restarts each period (the phase step from pulse to pulse is zero at every
 pitch), and all three restart at one phase: a fit with one shared phase per
 sound beats a fit with three free ones on both units, and the value is the
-same for every sound (so the library restarts at zero and stores none).
+same for every sound, so the library stores none. Swept across every steady
+vowel and nasal on both units (the harmonics' mean error against the chip),
+zero is best: 2.01 dB, rising to 2.16–2.19 at ±0.025 cycle and 4.5 at 0.1;
+half a cycle only flips the sign (2.13).
 
 **The offset.** Beside the sines, every voiced sound's pulse carries an
 envelope-shaped term: the same step and fall, no oscillation, a level of its
@@ -255,7 +258,6 @@ chip's.
 
 ## What is not modelled
 
-Restart phases of the formants (zero here; the chip's are fixed but not
-zero); the Stress and Relax commands; Wait, the port commands and the EEPROM
+The Stress and Relax commands; Wait, the port commands and the EEPROM
 phrases; the demo mode; the Serial Control Protocol. The output's second
 harmonic, about 40 dB under a tone on both units (B0).

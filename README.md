@@ -112,23 +112,20 @@ part, and the parts furthest off count most. So 0 means as close as a second
 chip, 1 about twice the chips' own difference, and lower is better.
 
 This branch is the second, from-scratch implementation (see
-[How it works](#how-it-works)). Scored the same way over the 752 recordings
-(both units: VoxRecord, its connected groups, the fourth VoxProbe, Man Goes
-Down): 1.58 after two days, with the allophones alone at 1.08, the sound
-effects alone at 1.53, the connected groups at 1.62 and Man Goes Down's
-phrases at 2.34. The two real chips are about 0.5 from each other. The
-first implementation's figures are in its own branch's README, for whoever
-wants to compare.
+[How it works](#how-it-works)), scored the same way against every recording
+of both units (VoxRecord and its connected groups, VoxProbe 4 and 7, Man Goes
+Down). The two real chips are about 0.5 from each other.
 
 What is still known to be off:
 
 - The pulsed biological effects (C2, C3, C7) and M2 are the worst effects;
   their gating and the noise under it are only roughly right.
+- The effects' noise bed: the library's grows with the tone's frequency and
+  the chip's doesn't, but a bed that doesn't scores worse; not yet understood.
 - Connected timing: the phrases run long against the chip even with the
-  overlap rule, and the copies of a repeated glide are not timed as the
+  overlap rule, and the hisses' edges are a little late.
+- Some nasals' valleys: NGE has a notch near 1.3 kHz 15 dB deeper than the
   chip's.
-- The valley between the first two formants of the vowels is a few dB too
-  full.
 - Stress and Relax do nothing, because nothing measurable was found.
 
 Numbers aren't everything: listening against the chip is the final check.
@@ -285,11 +282,3 @@ Klatt's duration rules, and its "the"/"thee" rule Festival's post-lexical
 rules; these are reimplemented, not copied. Earlier versions used the
 letter-to-sound rules of Elovitz, Johnson, McHugh and Shore, NRL Report 7948
 (1976).
-
-Before the chip was recorded here, the formants of nine allophones rested on
-two independent sets of measurements of the real SpeakJet: those of the
-AtariVox engine in [openFPGA-7800](https://github.com/Miasmark/openFPGA-7800)
-(MIT licence), taken from recordings of games speaking, and those behind
-Stella's SpeakJet engine (its `feature/speakjet` branch); only values both
-agreed on were used. They have since been replaced by direct measurements of
-the chip.
