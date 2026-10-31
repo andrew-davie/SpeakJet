@@ -18,6 +18,9 @@ bytes of parameters per sound otherwise.
   every effect recording at another Speed; Man Goes Down P3 (Speed 62) P 2.71 -> 2.46.
 - **Lengths** refitted for ED, OHIH, EHLL, WH, EYIY, OWIY and CH (the glides ran
   10-20 ms long).
+- **Effects rebuilt from their own tracks** on the clean recordings: 210 A0 (one
+  gliding voice under two crossing tones), 211 A1 and 212 A2 (their lines' curves),
+  208 R8 (its low tail). Tables 2666 bytes; the size budget is now 3000.
 
 ### 2026-10-30 to 31
 
