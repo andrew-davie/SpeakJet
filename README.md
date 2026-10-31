@@ -27,7 +27,7 @@ make            # libspeakjet.a and sjwav
 make test       # library tests, reference samples, text2speakjet tests
 
 python3 tools/text2speakjet/text2speakjet.py --format dec "Hello, world."
-./sjwav -o hello.wav 184, 7, 133, 146, 14, 164, 2, 147, 14, 151, 146, 176, 255
+./sjwav -o hello.wav 183, 7, 159, 146, 164, 2, 147, 151, 145, 176, 255
 ```
 
 Or straight from text to sound:
