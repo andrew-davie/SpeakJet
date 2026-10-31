@@ -100,8 +100,8 @@ static struct tune {
   double copy_extra;              /* a Repeat copy adds this to the manual's length, ms */
   double copy_closure;            /* a stop's Repeat copy opens on this much silence, ms */
   double bend_hz;                 /* Bend step, Hz */
-  double pause[7];                /* the pauses, ms (the manual's) */
-} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 15, 0, 0, 0, 0, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 100, 200, 700, 30, 60, 90}};
+  double pause[7];                /* the pauses, ms: P1 and P4 measured (VoxProbe 8), the rest the manual's */
+} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 15, 0, 0, 0, 0, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 149, 35, 0.77, 1.22, 0, 20, 44, {0, 90, 200, 700, 15, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>

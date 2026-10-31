@@ -12,6 +12,8 @@ bytes of parameters per sound otherwise.
   sound's release, and a Speed or Volume read so changes the rest of the sound
   (VoxProbe 8, both units). The library now does the same. Phrases with a Speed
   or Volume right after a sound change; nothing else does.
+- **Pauses** P1 and P4 are 90 and 15 ms, the gaps the chip leaves (VoxProbe 8);
+  Man Goes Down P 2.90 -> 2.74 on its phrases with pauses.
 
 ### 2026-10-30 to 31
 

@@ -234,7 +234,8 @@ understood.
 **Bend** moves every oscillator by the same 44 Hz per step from 5 (D1's 697
 and 1209 both step by 44, as do AW's three formants; `bend_hz`); below 5
 there is a further 22 Hz. **Stress**, **Relax** and code 18 change nothing
-measurable in length, pitch or level. The pauses are the manual's.
+measurable in length, pitch or level. The pauses are the manual's but P1 and P4,
+played as 90 and 15 ms (measured, VoxProbe 8).
 
 **Reading ahead.** At a sound's release (an effect's closing fade, else its last
 `READ_AHEAD_MS`, 30 ms) the library takes the command after it early, if it is a

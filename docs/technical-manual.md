@@ -259,7 +259,10 @@ not yet known.*
 - **Repeat** as in section 6.
 - **Stress, Relax** and code 18 change nothing measurable in length, pitch or
   level.
-- **Pauses** P0-P6 are the manual's lengths.
+- **Pauses**: P1 and P4 leave shorter gaps than the manual's 100 and 30 ms (VoxProbe
+  8, both units: AW P1 AW ~95-100 ms of silence, NE P1 AW ~100-105, AW or NE P4 AW
+  ~15-20); the library plays them as 90 and 15 ms, which with the sound's own fade
+  gives those gaps. The others are the manual's lengths.
 - **Reading ahead.** While a sound plays, the chip takes the one command after it
   early, at the sound's release: an effect's closing fade, or the last 25-30 ms
   of an allophone or of an effect without a fade. A Speed or Volume read so
