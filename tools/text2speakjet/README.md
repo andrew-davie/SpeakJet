@@ -27,11 +27,11 @@ python3 text2speakjet.py "Welcome to the AtariVox"
 ```
 
 ```
-; "Welcome to the AtariVox" -- 28 bytes + terminator, ~1.2s
+; "Welcome to the AtariVox" -- 26 bytes + terminator, ~2.1s
 welcome_to_the_atarivox
-                    .byte 147, 14, 159, 195, 7, 133, 140, 4                      ; WW STRESS EHLL KO FAST AX MM, pause 30ms     Welcome
+                    .byte 147, 159, 194, 134, 140, 4                             ; WW EHLL KE UX MM, pause 30ms                 Welcome
                     .byte 192, 7, 139, 4                                         ; TU FAST UW, pause 30ms                       to
-                    .byte 169, 7, 133, 4                                         ; DH FAST AX, pause 30ms                       the
+                    .byte 169, 7, 128, 4                                         ; DH FAST IY, pause 30ms                       the
                     .byte 14, 132, 192, 7, 135, 148, 7, 128, 166, 135, 197, 187  ; STRESS AY TU FAST OH RR FAST IY VV OH OK SE  AtariVox
                     .byte $FF
 ```
@@ -62,10 +62,10 @@ python3 text2speakjet.py --format bin -o hello.bin "Hello"
 The same phrase as a C array:
 
 ```c
-// "Well done" -- 8 bytes + terminator, ~0.4s
+// "Well done" -- 7 bytes + terminator, ~0.6s
 const unsigned char well_done[] = {
-    147, 14, 159, 4,    // WW STRESS EHLL, pause 30ms  Well
-    175, 14, 134, 141,  // DO STRESS UX NE             done
+    147, 159, 4,        // WW EHLL, pause 30ms  Well
+    175, 14, 134, 141,  // DO STRESS UX NE      done
     0xFF
 };
 ```
