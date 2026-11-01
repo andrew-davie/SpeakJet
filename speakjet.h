@@ -126,7 +126,10 @@ typedef struct sj_controls {
 /* the defaults the chip starts with and returns to on reset */
 #define SJ_DEFAULT_VOLUME 96
 #define SJ_DEFAULT_SPEED 114
-#define SJ_DEFAULT_PITCH 88
+#define SJ_DEFAULT_PITCH 87 /* the manual says 88, but at the reset default every voiced sound and effect runs 92 ticks on
+                             * both units (VoxRecord, VoxProbe 4), which only Pitch 87 gives (floor(8000 / 87) + 1 and
+                             * ceil(8000 / 87) are both 92; 88 gives 91). Provisional until a probe plays the same sound at
+                             * the default and after an explicit Pitch 88 (VoxProbe 9 analysis, 2026-11-02) */
 #define SJ_DEFAULT_BEND 5
 
 void sj_get_controls(const sj_chip *sj, sj_controls *c);

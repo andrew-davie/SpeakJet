@@ -2,6 +2,18 @@
 
 ## Rebuild (branch `rebuild`)
 
+### Unreleased
+
+- **The pulse period, from VoxProbe 9.** An effect's pulse runs ceil(8000 / rate)
+  ticks, one shorter than the voice's floor(8000 / Pitch) + 1 wherever 8000 / rate
+  is whole (Pitch 100, 160, 200, 250...): 235 C5 at Pitch 200 now buzzes at
+  200.6 Hz as the chip does, not 195.8. Both periods are figured in the chip's
+  own 8000ths rather than the render rate. The reset default is Pitch 87, not
+  the manual's 88: at the default every voiced sound runs 92 ticks on both
+  units, which only 87 gives; provisional until a probe plays a sound at the
+  default and after an explicit Pitch 88. Scores over all 1191 recordings are
+  unchanged on average (the scorers can't see a 2 % pitch shift in a buzz).
+
 ### 2.0.0 (2026-11-02)
 
 The rebuild becomes version 2.0.0: a different library from 1.x (every table

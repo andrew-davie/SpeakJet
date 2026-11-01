@@ -176,7 +176,9 @@ What the recordings gave:
   with the chip's own arithmetic in 8000ths, each held until the next, then
   two poles at 1609 Hz (Q 0.462). The voice is exactly periodic, with no
   noise between its harmonics.
-- **The voice.** A period of floor(Fs / Pitch) + 1 ticks; at each period
+- **The voice.** A period of floor(8000 / Pitch) + 1 ticks, in the chip's own
+  8000ths (an effect's pulse runs ceil(8000 / rate): one tick shorter wherever
+  8000 / rate is whole, VoxProbe 9); at each period
   three formant sines restart at one phase under an envelope that steps to
   full at once and falls linearly over about 7 ms. The pulse is the same on
   both units to the sample.

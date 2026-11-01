@@ -85,7 +85,14 @@ register   function (manual)                        measured
   them at the same volume.
 - **The envelope waveforms.** The saw is the voice's own pulse (below). The
   triangle is a rising ramp followed by an instant drop. The saw's period is
-  floor(8000 / f) + 1 ticks. An envelope set through the registers runs on
+  floor(8000 / f) + 1 ticks; an effect's own pulse runs ceil(8000 / f), one
+  tick shorter wherever 8000 / f is whole (VoxProbe 9, both units: 235 C5's
+  buzz at 80, 67, 54, 50, 40 and 32 ticks for Pitch 100, 120, 150, 160, 200
+  and 250, the vowel AW at 41 for Pitch 200). At the reset default every
+  voiced sound runs 92 ticks, which only Pitch 87 gives, so the library's
+  default is 87 (provisional: the manual says 88 and no recording yet plays
+  the same sound at the default and after an explicit Pitch 88).
+  An envelope set through the registers runs on
   without restarting the tones under it.
 - **The bed under a steady tone.** A single oscillator set directly carries a
   faint noise bed about 75 dB per 6 Hz bin under the tone, much the same at

@@ -943,14 +943,18 @@ static double tick(sj_chip *sj) {
   /* voicing */
   if (s->voiced && sj->pitch > 0) {
     if (sj->ptick <= 0) {
-      /* measured: 92 ticks at Pitch 88 on both units. an effect's pulses run
-       * at Pitch plus the part's offset (C1, C2, C3, C6, C7: the same offset
-       * at Pitch 60, 88 and 150 on both units, gliding within the part) */
+      /* the period in ticks, from the chip's own nominal 8000: the voice runs
+       * floor(8000 / Pitch) + 1 (VoxProbe 2; VoxProbe 9: 41 at Pitch 200, 67 at
+       * 120), an effect's pulse ceil(8000 / rate), one tick shorter wherever
+       * 8000 / rate is whole (VoxProbe 9, both units: C5 at 80, 67, 54, 50, 40,
+       * 32 ticks for Pitch 100, 120, 150, 160, 200, 250). an effect's pulses run
+       * at Pitch plus the part's offset (C1, C2, C3, C6, C7: the same offset at
+       * Pitch 60, 88 and 150 on both units, gliding within the part) */
       /* the offset from integers and one division, so every compiler gets the same period */
       double rate = sj->pitch + s->pa + (s->ticks > 1 ? (double)((s->pb - s->pa) * sj->tick) / (s->ticks - 1) : s->pb - s->pa);
       if (rate < 10.0)
         rate = 10.0;
-      sj->period = (int)(RATE / rate) + 1;
+      sj->period = s->flags & (FX_VOICED | FX_PULSED) ? (int)ceil(8000.0 / rate) : (int)(8000.0 / rate) + 1;
       sj->ptick = sj->period;
     }
     /* an effect's third tone is a plain tone beside the voice */

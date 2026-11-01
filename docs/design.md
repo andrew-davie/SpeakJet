@@ -206,7 +206,10 @@ that only envelopes the other five, in one of four waveforms (register 8):
 saw, sine, triangle, square. VoxProbe 7 drove it directly on both units: the
 register-set envelopes run at exactly their frequency and don't restart the
 tones, the triangle is a rising ramp and then an instant drop, and the saw's
-period is floor(8000 / f) + 1 ticks. An effect's own envelope does restart
+period is floor(8000 / f) + 1 ticks, and an effect's own pulse ceil(8000 / f)
+(VoxProbe 9: one tick shorter wherever 8000 / f is whole; the reset default
+runs 92 ticks, Pitch 87's, so the library's default is 87, provisionally).
+An effect's own envelope does restart
 its tones; R5's lines are its envelope's harmonics. The robots (R0 to R9) are
 a carrier at about 800 + 300·n Hz beside a low tone and its octave: a tone
 at f under a sine or square envelope at f, the carrier running on beside it.
