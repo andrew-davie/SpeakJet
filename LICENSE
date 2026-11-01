@@ -19,3 +19,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+The licence above covers the SpeakJet library's source code. It does not
+cover, and grants no rights in, these files, which keep their own terms:
+
+- docs/technical-manual.md: copyright Andrew Davie, all rights reserved
+- docs/reference/: the SpeakJet User's Manual and Magnevation's PhraseALator
+  dictionary, copyright Magnevation LLC
+- tools/text2speakjet/phrasealator.txt: converted from the PhraseALator
+  dictionary, copyright Magnevation LLC, used under PhraseALator's licence
+- tools/text2speakjet/cmudict.dict.gz: copyright Carnegie Mellon University,
+  under the licence in tools/text2speakjet/LICENSE.cmudict
