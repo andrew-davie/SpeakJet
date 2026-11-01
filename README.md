@@ -111,7 +111,7 @@ Three scores, lower is better:
   spectrum, peaks and pitch), averaged over every recording of the sound:
   VoxRecord and VoxProbes 4, 7 and 8, 1191 recordings in all.
 
-At 2.0.0, by sound (each sound's mean, then the mean over sounds):
+At 0.3.0, by sound (each sound's mean, then the mean over sounds):
 
 ```
               sounds   spectrum dB   E dB    P

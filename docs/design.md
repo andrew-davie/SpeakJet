@@ -1,6 +1,6 @@
 # Design
 
-This SpeakJet emulation (version 2) was written from scratch from two
+This SpeakJet emulation (the second implementation) was written from scratch from two
 sources only: the SpeakJet User's Manual (revision 1.1, 2004) and recordings
 of two AtariVoxes (an AtariVox+, "unit A", and an original AtariVox, "unit
 B") playing the VoxRecord and VoxProbe 1 to 7 test ROMs and Man Goes Down.

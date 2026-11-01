@@ -1,11 +1,12 @@
 # Changelog
 
-## 2.x: the rebuild
+## The rebuild
 
-### 2.0.0 (2026-11-02)
+### 0.3.0 (2026-11-02)
 
-The rebuild becomes version 2.0.0: a different library from 1.x (every table
-and most rules re-measured from the chip), with the same API. Since 1.0.0:
+The rebuild is released as 0.3.0: a different library from the first
+implementation (tag v0.1.0; every table and most rules re-measured from the
+chip), with the same API. Since v0.1.0:
 the analogue output stage (two real poles and a real zero, solved exactly per
 held sample), the effects' noise bed, reading ahead, Speed and Volume laws
 from VoxProbe 8, the pulse periods from VoxProbe 9, sound tables tuned by
