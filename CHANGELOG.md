@@ -20,7 +20,9 @@ bytes of parameters per sound otherwise.
   10-20 ms long).
 - **Effects rebuilt from their own tracks** on the clean recordings: 210 A0 (one
   gliding voice under two crossing tones), 211 A1 and 212 A2 (their lines' curves),
-  208 R8 (its low tail). Tables 2666 bytes; the size budget is now 3000.
+  208 R8 (its low tail), 221 B1 (its level through the sweep), 226 B6 (two tones
+  taking turns, with glides between and a fade at the end). Tables 2700 bytes;
+  the size budget is now 3000.
 - **The effects' bed** levels off above about 1.5 kHz (the signal's change per
   tick smoothed by one pole): 220 B0, 221 B1 and 228 B8 had 6-9 dB too much,
   the DTMF digits keep theirs. Effects P 1.190 -> 1.178; speech unchanged.
