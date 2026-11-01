@@ -2,7 +2,15 @@
 
 ## Rebuild (branch `rebuild`)
 
-### Unreleased
+### 2.0.0 (2026-11-02)
+
+The rebuild becomes version 2.0.0: a different library from 1.x (every table
+and most rules re-measured from the chip), with the same API. Since 1.0.0:
+the analogue output stage (two real poles and a real zero, solved exactly per
+held sample), the effects' noise bed, reading ahead, Speed and Volume laws
+from VoxProbe 8, the pulse periods from VoxProbe 9, sound tables tuned by
+CMA-ES inside their measured structure (rounds 4 to 6), and structure fixes
+for 235 C5 and 236 C6. Tables 2721 bytes.
 
 - **The pulse period, from VoxProbe 9.** An effect's pulse runs ceil(8000 / rate)
   ticks, one shorter than the voice's floor(8000 / Pitch) + 1 wherever 8000 / rate
@@ -11,20 +19,21 @@
   own 8000ths rather than the render rate. The reset default is Pitch 87, not
   the manual's 88: at the default every voiced sound runs 92 ticks on both
   units, which only 87 gives; provisional until a probe plays a sound at the
-  default and after an explicit Pitch 88. Scores over all 1191 recordings are
-  unchanged on average (the scorers can't see a 2 % pitch shift in a buzz).
+  default and after an explicit Pitch 88. Man Goes Down P 1.592 -> 1.550.
+- **Round 6 of tuning**, each sound gated on spectrum, E and P together:
+  14 effects and 20 allophones improved and shipped, the rest held.
+- **One score definition everywhere**: the gates and the searches read the same
+  spectrum, E and P, and the allophone gate uses full E.
+- **docs/technical-manual.md rewritten** as an implementer's reference to the
+  chip: interface, tick loop, voice, noise, allophones, effects, commands,
+  reading ahead, the output stage, open questions and every sound's parameters.
+- Scores at release (README "How close it is"): P 0.61 over the allophones,
+  0.92 over the effects, 0.89 over all 1191 recordings.
 
-### 2.0.0 (2026-11-02)
-
-The rebuild becomes version 2.0.0: a different library from 1.x (every table
-and most rules re-measured from the chip), with the same API. Since 1.0.0:
-the analogue output stage (two real poles and a real zero, solved exactly per
-held sample), the effects' noise bed, reading ahead, Speed and Volume laws
-from VoxProbe 8, sound tables tuned by CMA-ES inside their measured structure
-(rounds 4 to 6), and structure fixes for 235 C5 and 236 C6. Tables 2718 bytes.
-Known and not yet modelled: Bend 0 on tones bent near zero, the voicing
-period at Pitch 200 (chip 40 ticks, library 41), and the Pitch-driven pulsed
-openings of C5 and R0-R3.
+Known and not yet modelled: Bend below zero (the chip folds a tone bent under
+about 50-90 Hz to near 2.4 kHz), 215 A5's 40 Hz tone, the linear Volume law,
+the Pitch-driven pulse timbre of 235 C5 and 200 R0 to 203 R3, and the death
+sound in Man Goes Down.
 
 Written from scratch from the SpeakJet User's Manual and recordings of two
 AtariVoxes alone. The brief was the smallest footprint: rules wherever a rule could be found, a few
