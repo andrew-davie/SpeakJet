@@ -8,7 +8,7 @@
 
 /*
  * speakjet: an emulation of the SpeakJet speech and sound synthesizer used in
- * the AtariVox. second, from-scratch implementation (branch "rebuild"): written
+ * the AtariVox. second, from-scratch implementation (version 2): written
  * from the SpeakJet User's Manual and recordings of two AtariVoxes only, with
  * the smallest footprint that still matches them. procedural rules wherever a
  * rule was found; per-sound parameters are a few bytes each.
