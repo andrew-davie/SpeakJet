@@ -72,7 +72,7 @@ static const allophone allophones[72] = {
     /* EK   */ {K_STOP, 2, 0, 0, 0, 0, 0, 0, 139, 15, 5, 11, 45, 0},
     /* OK   */ {K_STOP, 3, 0, 0, 0, 0, 0, 0, 116, 49, 22, 9, 9, 0},
     /* PE   */ {K_STOP, 13, 0, 0, 0, 0, 0, 0, 4, 149, 31, 14, -52, 0},
-    /* PO   */ {K_STOP, 15, 0, 0, 0, 0, 0, 0, 4, 129, 26, 22, -53, 0},
+    /* PO   */ {K_STOP, 15, 0, 0, 0, 0, 0, 0, 4, 156, 28, 22, -53, 0},
 };
 /* index, g1 g2 g3: a second frame of its own */
 #define ALLOG_N 5
