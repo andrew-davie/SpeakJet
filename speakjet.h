@@ -41,10 +41,10 @@ extern "C" {
 #endif
 
 /* library version */
-#define SJ_VERSION_MAJOR 1
+#define SJ_VERSION_MAJOR 2
 #define SJ_VERSION_MINOR 0
 #define SJ_VERSION_PATCH 0
-#define SJ_VERSION "1.0.0"
+#define SJ_VERSION "2.0.0"
 
 /* the rate at which samples are produced. the chip makes its own at about
  * 8kHz (the manual: "The frequency is produced at a rate of 8192 samples per

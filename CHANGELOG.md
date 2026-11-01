@@ -2,6 +2,18 @@
 
 ## Rebuild (branch `rebuild`)
 
+### 2.0.0 (2026-11-02)
+
+The rebuild becomes version 2.0.0: a different library from 1.x (every table
+and most rules re-measured from the chip), with the same API. Since 1.0.0:
+the analogue output stage (two real poles and a real zero, solved exactly per
+held sample), the effects' noise bed, reading ahead, Speed and Volume laws
+from VoxProbe 8, sound tables tuned by CMA-ES inside their measured structure
+(rounds 4 to 6), and structure fixes for 235 C5 and 236 C6. Tables 2718 bytes.
+Known and not yet modelled: Bend 0 on tones bent near zero, the voicing
+period at Pitch 200 (chip 40 ticks, library 41), and the Pitch-driven pulsed
+openings of C5 and R0-R3.
+
 Written from scratch from the SpeakJet User's Manual and recordings of two
 AtariVoxes alone. The brief was the smallest footprint: rules wherever a rule could be found, a few
 bytes of parameters per sound otherwise.
