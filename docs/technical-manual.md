@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.5, 2026-11-04.** The version rises with every change to what is known about the chip (new
+**Version 1.6, 2026-11-04.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -153,6 +153,44 @@ cleared when the sound it applies to starts.
 bytes leave the buffer. A sound or pause is built and played, and its byte
 leaves the buffer only when it ends. The one exception is reading ahead
 (section 9).
+
+**The serial control protocol (SCP).** Besides the buffer, a second module
+watches every byte. `\` followed by `0` (every chip's node, and the AtariVox's)
+enters control mode; `\` followed by any other non-digit leaves it, as does `X`.
+Outside control mode, a `\` and the character after it that isn't a digit go on
+to the buffer as usual; a `\` sent as a command's data byte (Pitch 92) is data.
+In control mode nothing reaches the buffer and every command acts at once:
+
+```
+char     what it does
+0-9 A-F  into the 16-character input buffer (decimal digits make the value)
+H        Memory Type = value (0 registers, 32 EEPROM: not emulated)
+J        Memory Address = value
+N        write value to the addressed register; the input buffer clears
+R        clear the input buffer and the 64-byte buffer (a sound playing plays on)
+S / T    hold / release the buffer (the MSA ignores it while held)
+V        say "Ready" (not emulated: the chip's phrase is unmeasured)
+W        hard reset
+X        leave control mode
+```
+
+The registers: 0 the envelope's rate (Hz), 1-5 the oscillators' frequencies
+(0-3999 Hz), 6 distortion on oscillators 4 and 5 (0-255), 7 the master volume
+(0-127, the same as the Volume command), 8 envelope control (bits 0-1 the shape
+as section 4.3; bit 6 envelopes oscillators 1-3; bit 7 half envelopes 4 and 5),
+11-15 the oscillators' volumes (0-31).
+
+Between the MSA's sounds the synthesizer plays the registers: five sines, the
+envelope at register 0's rate (ceil(8000 / rate) ticks with the twelve one-tick-
+long rates, the effects' rule; enveloped tones restart with each pulse), the
+plain tones at the effects' tone scale plus 5.9 dB, enveloped ones at the voice's.
+The level is measured: on both units VoxProbe 9's 1000 Hz tone at volume 31 stands
+3.1-3.6 dB over 235 C5 and 241 D1, which put it 4.9 and 6.9 dB above the effects'
+scale; the mean is used. A register tone has no bed (section 7.5). Any MSA sound
+takes the synthesizer over and leaves the oscillator volumes at 0, as the
+manual's auto-silence does. Unmeasured: the distortion's law (modelled as a random
+frequency error of up to distortion / 255 each tick), the envelope at 0 Hz
+(modelled silent), when a write lands inside a tick.
 
 ---
 
@@ -1427,6 +1465,8 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.6   2026-11-04   the serial control protocol (section 2): commands, registers, the register synthesizer;
+                   a register tone's level measured against 235 C5 and 241 D1 (VoxProbe 9, both units)
 1.5   2026-11-04   the hold's images at the half rate; output kept faithful to the AtariVox; effect peaking
                    filters (7.11, unused); measured structures of 254 M2, 231 C1, 229 B9 (7.12); path lines
                    subtracted and the clock bands left out of scoring; the spectrum anchored on total energy;

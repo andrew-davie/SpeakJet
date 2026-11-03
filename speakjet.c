@@ -67,6 +67,8 @@
 #define SLEW 0.078 /* the effects' bed, measured: grows with the tone's frequency on both units (220 B0, 227 B7 against 215 A5) */
 #define LPF_ZERO 14000.0 /* and one real zero, Hz: the images above 8 kHz (every effect, both units) */
 #define BED_POLE 0.6909588478246612 /* up to about 1.5 kHz, then with the tone's level alone (one pole: the DTMF digits against 220 B0, 221 B1, 228 B8) */
+#define SCP_DB 5.9 /* a register tone's level: VoxProbe 9, both units, the 1000 Hz tone at volume 31 stands 3.1-3.6 dB over 235 C5
+                     * and 241 D1, which put it 4.9 and 6.9 dB above the effects' tone scale; the mean */
 #define WANDER_DEPTH 0.015 /* 252 M0, both units: its line wanders 1.45-1.59 % rms */
 #define WANDER_RATE 0.055 /* spread to about 70 Hz (a one-pole low-pass) */
 
@@ -225,6 +227,18 @@ struct sj_chip {
   uint32_t rnd;
   double lastr; /* the previous noise sample, for the floor's high pass */
 
+  /* the serial control protocol (manual, SCP): "\0" enters it, then the synthesizer's registers are written
+   * directly ("<address>J<value>N"); its commands act at once, never through the buffer */
+  bool scp, esc;      /* in control mode; a "\\" seen, its node character next */
+  uint32_t sval;      /* the SCP input buffer's decimal value so far */
+  int slen;           /* and its characters (16 at most) */
+  uint8_t mtype, maddr; /* the Memory Type and Memory Address control registers */
+  uint16_t reg[16];   /* the synthesizer's registers as SCP last wrote them (0-5 Hz, 6 distortion, 8 envelope control,
+                       * 11-15 volumes; 7, the master volume, is volume) */
+  bool hold;          /* SCP "S": the MSA ignores the buffer until "T" */
+  double sph[5];      /* the direct oscillators' phases */
+  int eage;           /* ticks into the envelope oscillator's period */
+
   /* output */
   double held, heldpos;
   double z[2];
@@ -325,7 +339,11 @@ int sj_command_size(uint8_t code) {
   return 1;
 }
 
+static bool scp_byte(sj_chip *sj, uint8_t c);
+
 bool sj_write(sj_chip *sj, uint8_t code, uint8_t data) {
+  if (sj_command_size(code) == 1 && scp_byte(sj, code))
+    return true;
   const int n = sj_command_size(code);
   if (sj->count + n > SJ_BUFFER_SIZE)
     return false;
@@ -342,11 +360,78 @@ bool sj_write_byte(sj_chip *sj, uint8_t byte) {
     sj->pending_code = -1;
     return sj_write(sj, code, byte);
   }
+  if (sj->scp || sj->esc)
+    return sj_write(sj, byte, 0); /* control mode's characters are single bytes */
   if (sj_command_size(byte) == 2) {
     sj->pending_code = byte;
     return true;
   }
   return sj_write(sj, byte, 0);
+}
+
+/* one serial byte for the SCP module, which watches every byte: true if it took the byte. Registers 0-5 take 0 to
+ * 3999 Hz, 6 and 8 0 to 255, 7 (the master volume, the MSA's Volume) 0 to 127, 11-15 0 to 31. "V" (say "Ready") is
+ * not played: the chip's phrase for it is unmeasured. Memory type 32 (the EEPROM) is ignored */
+static bool scp_byte(sj_chip *sj, uint8_t c) {
+  if (sj->esc) {
+    sj->esc = false;
+    if (c >= '0' && c <= '9') {
+      /* node 0 is every chip's; the AtariVox's own node is 0 */
+      sj->scp = c == '0';
+      sj->sval = 0;
+      sj->slen = 0;
+      sj->mtype = sj->maddr = 0;
+      return true;
+    }
+    if (sj->scp) {
+      sj->scp = false; /* an escape and a non-numeric character leave control mode */
+      return true;
+    }
+    return false; /* outside control mode the character goes on to the MSA */
+  }
+  if (c == '\\') {
+    sj->esc = true;
+    return true;
+  }
+  if (!sj->scp)
+    return false;
+  if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F')) {
+    if (sj->slen < 16) {
+      sj->slen++;
+      if (c <= '9')
+        sj->sval = sj->sval * 10 + (c - '0');
+    }
+    return true;
+  }
+  const uint32_t v = sj->sval;
+  sj->sval = 0;
+  sj->slen = 0;
+  switch (c) {
+  case 'H': sj->mtype = (uint8_t)v; break;
+  case 'J': sj->maddr = (uint8_t)v; break;
+  case 'N':
+    if (sj->mtype == 0 && sj->maddr < 16) {
+      const int a = sj->maddr;
+      if (a == 7)
+        sj->volume = v > 127 ? 127 : (uint8_t)v;
+      else if (a <= 5)
+        sj->reg[a] = (uint16_t)(v > 3999 ? 3999 : v);
+      else if (a >= 11)
+        sj->reg[a] = (uint16_t)(v > 31 ? 31 : v);
+      else if (a == 6 || a == 8)
+        sj->reg[a] = (uint16_t)(v > 255 ? 255 : v);
+    }
+    break;
+  case 'R': /* clears the buffer: what is playing plays on */
+    sj->count = sj->executing + sj->ahead;
+    break;
+  case 'S': sj->hold = true; break;
+  case 'T': sj->hold = false; break;
+  case 'W': sj_power_on(sj); break;
+  case 'X': sj->scp = false; break;
+  default: break;
+  }
+  return true;
 }
 
 bool sj_buffer_half_full(const sj_chip *sj) { return sj->count > SJ_BUFFER_HALF_FULL; }
@@ -512,6 +597,9 @@ static void start(sj_chip *sj, bool effect) {
   for (int i = 0; i < sj->nseg; i++)
     sj->stotal += sj->seg[i].ticks;
   sj->sounding = sj->nseg > 0;
+  /* the MSA drives the synthesizer itself and leaves the oscillator volumes at 0 (manual: its pauses ramp them out) */
+  for (int k = 11; k <= 15; k++)
+    sj->reg[k] = 0;
   sj->effect = effect;
   sj->read = false;
   sj->ahead = 0;
@@ -809,7 +897,7 @@ static int next_sound(const sj_chip *sj, int i) {
 /* take the next command from the buffer and start it. the command stays
  * counted in the buffer until it has finished */
 static void next_command(sj_chip *sj) {
-  while (sj->count > 0 && !sj->sounding) {
+  while (sj->count > 0 && !sj->sounding && !sj->hold) {
     const uint8_t code = (uint8_t)peek(sj, 0);
     const int n = sj_command_size(code);
     const uint8_t data = n == 2 ? (uint8_t)peek(sj, 1) : 0;
@@ -929,11 +1017,106 @@ static void read_ahead(sj_chip *sj) {
   sj->ahead = 2;
 }
 
+/* the master volume and the output stage: the voice (an allophone's voicing) gets the floor, everything else the bed */
+static double output_stage(sj_chip *sj, double v, bool voice) {
+  v *= volume_gain(sj);
+  /* the output stage's nonlinearity and its step size */
+  v += T.dist2 * v * v + T.dist3 * v * v * v;
+  if (T.quant > 0)
+    v = floor(v * T.quant + 0.5) / T.quant;
+  /* the output noise floor: white under the effects' tones; none under the
+   * voice (T.floor 0, the chip's voice is exactly periodic) */
+  {
+    const double r = rnd(sj);
+    if (voice)
+      v *= 1.0 + T.floor * 2.0 * (r - sj->lastr);
+    else {
+      /* the effects' bed (both units): timing error, proportional to the
+       * signal's change per tick smoothed by one pole - it grows with the
+       * tone's frequency to about 1.5 kHz and only with its level above */
+      /* the buzz's clicks are kept out of the slope (each one is a huge step: the bed turned 227 B7's bands into loud noise) */
+      sj->bed += BED_POLE * (v - sj->vbuzz - sj->vprev - sj->bed);
+      v += SLEW * 2.0 * r * sj->bed;
+    }
+    sj->lastr = r;
+    sj->vprev = v - sj->vbuzz; /* without the buzz: unchanged for every sound without one */
+    sj->vbuzz = 0.0;
+  }
+  return v;
+}
+
+/* the synthesizer as SCP set it, between the MSA's sounds: five sines at registers 1-5 and 11-15; register 8's bits
+ * 0-1 the envelope's shape (as the effects': saw is the voice's pulse), bit 6 envelopes oscillators 1-3, bit 7 half
+ * envelopes 4 and 5, and no bed (the effects' own); the envelope runs at register 0 Hz, ceil(8000 / rate) ticks (the effects' rule); register 6
+ * spreads 4 and 5 into noise round their frequencies. Unmeasured: the distortion's law (here a random frequency
+ * error of up to distortion / 255 a tick), and the envelope at 0 Hz (here silent) */
+static bool scp_audible(const sj_chip *sj) {
+  return sj->volume > 0 && (sj->reg[11] | sj->reg[12] | sj->reg[13] | sj->reg[14] | sj->reg[15]) != 0;
+}
+
+static double scp_tick(sj_chip *sj) {
+  const int ctl = sj->reg[8], rate = sj->reg[0];
+  double env = 1.0;
+  if (ctl & 0xc0) {
+    if (rate <= 0)
+      env = 0.0;
+    else {
+      int period = (int)ceil(8000.0 / rate);
+      switch (rate) {
+      case 44: case 51: case 53: case 56: case 63: case 77: case 87: case 88: case 92: case 104: case 127: case 151:
+        period++;
+      }
+      if (sj->eage >= period)
+        sj->eage = 0;
+      if (sj->eage == 0 && (ctl & 0x40))
+        for (int k = 0; k < 3; k++)
+          sj->sph[k] = 0.0; /* the enveloped tones restart with each pulse, as the voice's */
+      const int age = sj->eage++;
+      const double x = (double)age / period;
+      switch (ctl & 3) {
+      case 1: env = 0.5 + 0.5 * sj_sin2pi(x + 0.25); break;
+      case 2: env = x; break;
+      case 3: env = x < 0.5 ? 1.0 : 0.0; break;
+      default:
+        env = age < T.env_rise ? (double)age / T.env_rise : 1.0 - (double)(age - T.env_rise) / T.env_fall;
+        if (env < 0.0)
+          env = 0.0;
+      }
+    }
+  }
+  double s13 = 0.0, s45 = 0.0;
+  for (int k = 0; k < 5; k++) {
+    const double a = sj->reg[11 + k], f = sj->reg[1 + k];
+    if (a > 0.0 && f > 0.0) {
+      if (k < 3)
+        s13 += a * sj_sin2pi(sj->sph[k]);
+      else
+        s45 += a * sj_sin2pi(sj->sph[k]);
+    }
+    double step = f / NOMINAL;
+    if (k >= 3 && sj->reg[6] > 0)
+      step *= 1.0 + sj->reg[6] / 255.0 * 2.0 * rnd(sj);
+    sj->sph[k] += step;
+    sj->sph[k] -= floor(sj->sph[k]);
+  }
+  /* mixer 1's limit of 63 */
+  if (T.clip > 0)
+    s13 = s13 > T.clip ? T.clip : s13 < -T.clip ? -T.clip : s13;
+  double v = 0.0;
+  if (ctl & 0x40)
+    v -= env * s13 / 128.0; /* enveloped, as the voice: the pulse starts downward */
+  else
+    v += s13 / 128.0 * 0.6; /* plain, as the effects' tones */
+  v += (ctl & 0x80 ? 0.5 * env + 0.5 : 1.0) * s45 / 128.0 * 0.6;
+  v *= 1.9724227361148539; /* SCP_DB as a factor, written out so every compiler gets the same */
+  return output_stage(sj, v, true); /* no bed: under a register tone it is 57 dB down (VoxProbe 10, all three takes) */
+}
+
 static double tick(sj_chip *sj) {
   if (!sj->sounding)
     next_command(sj);
   if (!sj->sounding)
-    return 0.0;
+    return scp_audible(sj) ? scp_tick(sj) : 0.0;
   if (!sj->read && sj->copies == 0 && peek(sj, 0) >= 128) {   /* sounds only: no recording shows a pause reading ahead */
     const bool fade = (sj->seg[sj->nseg - 1].flags & FX_FADE) != 0;
     if (fade ? sj->cur == sj->nseg - 1 : sj->stotal - sj->stick <= TICKS(READ_AHEAD_MS))
@@ -1136,29 +1319,7 @@ static double tick(sj_chip *sj) {
     sj->eqz[k][1] = c[2] * v - c[4] * y;
     v = y;
   }
-  v *= volume_gain(sj);
-  /* the output stage's nonlinearity and its step size */
-  v += T.dist2 * v * v + T.dist3 * v * v * v;
-  if (T.quant > 0)
-    v = floor(v * T.quant + 0.5) / T.quant;
-  /* the output noise floor: white under the effects' tones; none under the
-   * voice (T.floor 0, the chip's voice is exactly periodic) */
-  {
-    const double r = rnd(sj);
-    if (s->voiced && !(s->flags & (FX_VOICED | FX_PULSED)))
-      v *= 1.0 + T.floor * 2.0 * (r - sj->lastr);
-    else {
-      /* the effects' bed (both units): timing error, proportional to the
-       * signal's change per tick smoothed by one pole - it grows with the
-       * tone's frequency to about 1.5 kHz and only with its level above */
-      /* the buzz's clicks are kept out of the slope (each one is a huge step: the bed turned 227 B7's bands into loud noise) */
-      sj->bed += BED_POLE * (v - sj->vbuzz - sj->vprev - sj->bed);
-      v += SLEW * 2.0 * r * sj->bed;
-    }
-    sj->lastr = r;
-    sj->vprev = v - sj->vbuzz; /* without the buzz: unchanged for every sound without one */
-    sj->vbuzz = 0.0;
-  }
+  v = output_stage(sj, v, s->voiced && !(s->flags & (FX_VOICED | FX_PULSED)));
 
   if (++sj->tick >= s->ticks) {
     sj->tick = 0;
@@ -1183,7 +1344,7 @@ static void settle(sj_chip *sj, double x, double e1, double e2) {
 
 bool sj_render(sj_chip *sj, float *buf, size_t n) {
   const double step = RATE / SJ_SAMPLE_RATE;
-  bool sounding = sj->sounding || sj->count > 0;
+  bool sounding = sj->sounding || sj->count > 0 || scp_audible(sj);
   for (size_t i = 0; i < n; i++) {
     /* the held chip samples through the AtariVox's low pass, sampled at the
      * end of this output sample (the zero adds the second pole's input in
@@ -1195,7 +1356,7 @@ bool sj_render(sj_chip *sj, float *buf, size_t n) {
       const double a = 1.0 - sj->heldpos, b = step - a;
       settle(sj, sj->held, exp(-sj->lpf[0] * a), exp(-sj->lpf[1] * a));
       sj->held = tick(sj);
-      sounding = sounding || sj->sounding || sj->count > 0;
+      sounding = sounding || sj->sounding || sj->count > 0 || scp_audible(sj);
       settle(sj, sj->held, exp(-sj->lpf[0] * b), exp(-sj->lpf[1] * b));
       sj->heldpos = b;
     }
