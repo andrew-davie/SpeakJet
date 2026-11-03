@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.0, 2026-11-02.** The version rises with every change to what is known about the chip (new
+**Version 1.3, 2026-11-03.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -142,7 +142,7 @@ All other codes below 128 take one byte and do nothing.
 **Defaults** at power-on and after Reset:
 
 ```
-Volume 96   Speed 114   Pitch 87 (manual: 88; see section 4)   Bend 5   Repeat 0
+Volume 96   Speed 114   Pitch 88 (92 ticks: see section 4)   Bend 5   Repeat 0
 ```
 
 Fast, Slow, Stress and Relax are cleared at the end of every sound. Repeat is
@@ -229,12 +229,14 @@ takes effect at the next pulse.
 
 The result: f0 steps rather than glides. Pitch 157 to 160 all give 157.6 Hz.
 
-**The default pitch (open).** At the reset default every voiced sound and
-effect runs 92 ticks. Pitch 88, the manual's default, gives 91 by either rule.
-Only Pitch 87 gives 92 (ceil(8000 / 87) = 92). The library's default is 87. No
-recording yet plays the same sound at the default and after an explicit Pitch
-88, so it is not known whether the default is really 87 or the default period
-is computed some other way.
+**Twelve rates one tick long (measured).** At Pitch 44, 51, 53, 56, 63, 77,
+87, 88, 92, 104, 127 and 151 the period is one tick longer than the rule gives:
+VoxProbe 2's sweep of every Pitch found them, and VoxProbe 10's sweep of the
+envelope oscillator's own register (87-89, 99-101, 119-121, 149-151, 159-161,
+199-201, 249-250) shows the same extra tick at 87, 88 and 151 on both units, so
+the speech engine and the register share one period routine. The reset default
+is the manual's Pitch 88: it is one of the twelve, which is why the default runs
+92 ticks.
 
 **Exactness (measured).** The period holds to one 48 kHz sample from pulse to
 pulse. The gaps between harmonics sit 30-60 dB under them. The chip's voice has
@@ -635,10 +637,14 @@ runs at its full 10 % on this part.
 
 ### 7.8 The families
 
-- **Robots (200-209, R0-R9).** A carrier at about 800 + 300·n Hz beside a low
-  tone and its octave. Several pulse on a sine or square envelope at a rate
-  well above Pitch. 205 R5's line near 2.65 kHz is always the pulse harmonic
-  nearest that frequency.
+- **Robots (200-209, R0-R9).** A carrier at about 800 + 300·n Hz beside a
+  pulse that follows Pitch at a fixed offset, heard mostly as its rate and
+  the octave (measured, both units, Pitch 40-200): 200 R0 at Pitch + 175 Hz,
+  201 R1 and 203 R3 at Pitch + 278, 204-207 R4-R7 at about Pitch + 175-300
+  (their parts' own offsets). The low "tone and its octave" are this pulse,
+  so they move with Pitch while the carrier does not. 202 R2's moving line is
+  not yet modelled (open). 205 R5's line near 2.65 kHz is always the pulse
+  harmonic nearest that frequency.
 - **A series (210-219).** 210 A0 is a voice at the current Pitch, its rate
   gliding from Pitch − 18 to + 100 Hz, under two plain tones crossing in an X.
   211 A1 and 212 A2 are slow three-tone voiced glides. The rest are plain
@@ -685,10 +691,10 @@ playing (section 9).
 **Bend (measured)** adds the same number of hertz to every tone and formant:
 
 ```
-shift = 44 · (Bend − 5) Hz,  and a further −22 Hz when Bend < 5
+shift = 44 · (Bend − 5) Hz,  plus 22 Hz when Bend < 5
 ```
 
-So Bend 0 gives −242 Hz and Bend 15 +440 Hz. 222 B2's 1412 Hz tone measures
+So Bend 0 gives −198 Hz, Bend 4 −22 Hz and Bend 15 +440 Hz. 222 B2's 1412 Hz tone measures
 1213, 1257, 1304, 1392, 1547 and 1854 Hz at Bend 0, 1, 2, 4, 8 and 15. 241
 D1's 697 and 1209 Hz move together, and so do 136 AW's three formants. A zero
 frequency stays zero. Bend does not move noise centres or pulse rates.
@@ -899,7 +905,6 @@ measured structure.
 
 Where the library and the chip still differ, or the chip is not understood:
 
-- **The default pitch.** 87 in the library, 88 in the manual (4.1).
 - **Bend below zero.** The chip's wrapped line near 2.4 kHz (section 8) is not
   modelled.
 - **215 A5** has a tone the library lacks, about 40 Hz unbent. At Bend 15 it is
@@ -1309,6 +1314,12 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.3   2026-11-03   the period's twelve one-tick-long rates (VoxProbe 2 and 10); the default is the manual's Pitch
+                   88 (it is one of them), no longer 87
+1.2   2026-11-03   the robots' pitch pulse: R0-R3 carry a pulse at Pitch + a fixed offset (R0 175, R1 and R3
+                   278 Hz), their "low tone and octave"; modelled for R0, R1, R3
+1.1   2026-11-03   Bend below 5: the half step is +22 Hz (Bend 0 is -198 Hz, not -242), as the library and B2's
+                   measured 1213 Hz at Bend 0 have it
 1.0   2026-11-02   rewritten as an implementer's reference: host interface, tick loop, both period
                    rules (VoxProbe 9), the pulse and its shapes, noise, allophone and effect
                    construction, joins, Repeat, reading ahead, the exact output stage, clocks from

@@ -955,6 +955,13 @@ static double tick(sj_chip *sj) {
       if (rate < 10.0)
         rate = 10.0;
       sj->period = s->flags & (FX_VOICED | FX_PULSED) ? (int)ceil(8000.0 / rate) : (int)(8000.0 / rate) + 1;
+      /* one tick more at twelve rates (VoxProbe 2's Pitch sweep and VoxProbe 10's register sweep, both units: the same
+       * routine; it is why the reset default, Pitch 88, runs 92 ticks) */
+      if (rate == (int)rate)
+        switch ((int)rate) {
+        case 44: case 51: case 53: case 56: case 63: case 77: case 87: case 88: case 92: case 104: case 127: case 151:
+          sj->period++;
+        }
       sj->ptick = sj->period;
     }
     /* an effect's third tone is a plain tone beside the voice */
