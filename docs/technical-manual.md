@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.3, 2026-11-03.** The version rises with every change to what is known about the chip (new
+**Version 1.4, 2026-11-03.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -545,7 +545,16 @@ F  fade: level × (1 − t), straight to nothing
 B  bump: level × sin(π·t), a half sine
 S  noise sweep, with the gate period (section 7.6)
 W  wander: the tone's pitch and level drift (section 7.7)
+m  smooth: tones and the voice switch on and off over 3 ms instead of stepping
+u  banded column: the noise is replaced by clicks under a comb (section 7.10)
 ```
+
+**Smooth (m, fitted per sound).** A tone switching on from silence, or off to
+silence, at a part boundary ramps over 24 ticks (3 ms) instead of stepping; a
+voice starting after unvoiced sound comes in over the same 24 ticks. A step is a
+broadband click: 202 R2 and 218 A8 show none on the chip, so they carry m. It is
+per sound, not universal: 233 C3's tones do switch sharply on the chip, and one
+ramp for every effect made the library worse (P 4.721 to 4.757).
 
 A part with neither V nor P is plain: its tones are steady sines at 0.6 and
 its phases run on from part to part.
@@ -600,6 +609,15 @@ v   = v + 0.078 · 2u · bed            u: uniform white noise in −0.5..0.5
 Volume gain, on every segment except a voiced speech segment: effects,
 fricatives, unvoiced stops and pauses (where it dies away). Voiced speech
 gets nothing (section 4.1).
+
+**Whose bed it is (measured, 2026-11-03).** The bed is the chip's own, not the
+recording path's: it is the same on unit A, unit B and the Stella take of
+VoxProbe 10 (201 R1 −33.2 / −33.4 / −33.1 dB under the tone, 235 C5 −36.7 /
+−36.5 / −36.8), though Stella's chain is about 8 dB quieter in silence. It is
+specific to effects: under VoxProbe 10's plain 1000 Hz register tone it is about
+57 dB down on all three takes, against 34-40 dB under an effect's tone. What in
+the effect path makes it is open (section 13). The model treats the bed as a
+fixed post-process, not a fitted value.
 
 **Level wobble.** Plain effect tones also carry a slow wobble in level:
 white noise through a one-pole low-pass (coefficient 0.05, spread to about
@@ -678,6 +696,24 @@ than 114. Played alone at Speed 20, 60 and 127, 241 D1 and 230 C0 read about
 114. 230 C0's ratios run about 4 % over 241 D1's (VoxProbe 9).
 
 ---
+
+### 7.10 Banded columns (u)
+
+**Measured.** Some effects hold short columns of even broadband energy crossed
+by narrow, regular dark stripes: 232 C2 at about 205-225 ms (stripes every
+~485 Hz, clearest on unit B), 227 B7 at about 63-81 ms (~489 Hz) and 85-101 ms
+(~549 Hz, less clear). The column is not noise: its colour is even, with no
+grain. The stripe spacing is not the voice pulse rate (about 88 Hz at Pitch 88)
+and is not yet explained.
+
+**The model (fitted).** On a part with u, the noise source's white noise is
+replaced by a click every voice period (floor(8000 / Pitch) + 1 ticks, height
+√(period / 12) so the power matches the noise), passed through a comb that
+subtracts 0.6 of itself one pulse-rate period ago (ceil(8000 / rate) ticks, the
+rate as in section 7.4). That cuts dim notches every rate hertz. The result is
+scaled by 1 / √(1 + 0.6²) and by 0.25 so that the low levels the chip needs
+have fine steps, then goes through the part's noise band as usual. The column
+is kept out of the bed's input, so it raises no bed of its own.
 
 ## 8. Commands
 
@@ -892,6 +928,16 @@ Man Goes Down  the phrases of a released game, for whole-phrase checks
 - Divide each unit's clock out before comparing frequencies or lengths.
 - Measure the recording's background first: at about −42 dBFS it hides the
   quiet tail of every pulse and hiss.
+- The recording path carries steady lines that are not the chip, at the same
+  level in silence as under a sound, on both units: each chip's clock leaking
+  at 8.00-8.05 kHz (unit B about 140 Hz wide, unit A about 35 Hz; unit B's
+  floor there is about 15 dB over unit A's, so the line dominates the band),
+  its double at 15.8-15.9 kHz, a 1 kHz comb to 13 kHz (about 10 Hz wide), and
+  the 60 Hz hum family. The scorers leave 7.9-8.15 kHz and 15.7-16.0 kHz out of
+  every comparison, on both sides; the comb is too narrow to matter. This moved
+  no score by more than 0.03.
+- Before calling an odd spectral feature chip output, compare its level in the
+  sound against the same recording's silence.
 
 **Scoring.** The library is judged against the recordings by three numbers:
 the whole-sound spectrum error, a combined spectrum, time-frequency and level
@@ -937,6 +983,12 @@ Where the library and the chip still differ, or the chip is not understood:
   probed but not characterised.
 - **The click** at the end of some sounds.
 - **Reading ahead** of pauses and Bend.
+- **What makes the effects' bed.** It is the chip's own and absent under a plain
+  register tone (section 7.5), but whether it comes from the effect path's
+  sequencing, envelopes or oscillator updates is open. The model's rule (bed
+  from the change per tick) is a stand-in.
+- **The banded columns' stripe spacing** (section 7.10): about 485-549 Hz,
+  neither the Pitch nor any known offset.
 
 ---
 
@@ -1283,7 +1335,7 @@ header                   bits 0-1  tones (0-3)
                          bit 7     a high flags byte follows
 flags                    low byte (V 1, X 2, D 4, B 8, E 16, S 32, P 64, F 128)
 [flags high]             A 1, W 2, envelope shape bits 2-3 (sine 1, triangle 2,
-                         square 3), o 16
+                         square 3), o 16, u 32, m 64
 level                    half-decibels, signed
 per tone                 start, end (16 Hz steps), level
 [noise]                  centre, width (16 Hz steps), level
@@ -1314,6 +1366,9 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.4   2026-11-03   flags m (3 ms on/off ramps) and u (banded columns, section 7.10); the bed is the chip's own
+                   (Stella = A = B) and effect-specific (57 dB down under a register tone); the recording path's
+                   clock lines at 8 and 16 kHz, now left out of scoring
 1.3   2026-11-03   the period's twelve one-tick-long rates (VoxProbe 2 and 10); the default is the manual's Pitch
                    88 (it is one of them), no longer 87
 1.2   2026-11-03   the robots' pitch pulse: R0-R3 carry a pulse at Pitch + a fixed offset (R0 175, R1 and R3

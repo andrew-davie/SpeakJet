@@ -155,7 +155,7 @@ typedef struct segment {
  * FX_EXPDECAY settling toward fb); FX_DECAY fades the level to nothing over
  * the part, FX_BUMP shapes it as a half sine; gate pulses it on and off;
  * FX_PULSED pulses the plain tones with the voice's envelope at Pitch */
-enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128, FX_ALL = 256, FX_WANDER = 512, FX_SINE = 1024, FX_TRI = 2048, FX_SQUARE = 3072, FX_ONE = 4096 };
+enum { FX_VOICED = 1, FX_EXP = 2, FX_DECAY = 4, FX_BUMP = 8, FX_EXPDECAY = 16, FX_NSWEEP = 32, FX_PULSED = 64, FX_FADE = 128, FX_ALL = 256, FX_WANDER = 512, FX_SINE = 1024, FX_TRI = 2048, FX_SQUARE = 3072, FX_ONE = 4096, FX_BUZZ = 8192, FX_SMOOTH = 16384 };
 #define FX_SHAPE 3072 /* the envelope oscillator's waveform (manual, register 8): saw (the voice's measured pulse), sine, triangle, square */
 /* FX_ONE: only the first tone pulses, the other two are plain tones beside it (A0, both units: a voice at Pitch under
  * two smooth glides; register 8 envelopes oscillators 1-3 as a group, 4 and 5 run apart) */
@@ -212,6 +212,9 @@ struct sj_chip {
   /* synthesizer state */
   int period, ptick;
   double phase[3];
+  float xa[3]; /* FX_SMOOTH: the tone amplitudes as they ramp */
+  float xv; /* FX_SMOOTH: the voice's gain as it ramps in */
+  double vbuzz; double bzbuf[1024]; int bzpos, bzclk; /* FX_BUZZ: the source's recent past, for the comb; ticks to the next click */
   double nz[2]; /* the noise resonator's two delays */
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   double wander; /* an FX_WANDER part's slow pitch drift, a fraction */
@@ -936,11 +939,33 @@ static double tick(sj_chip *sj) {
   f.nf = (float)lerp(s->from.nf, s->to.nf, t);
   f.nw = (float)lerp(s->from.nw, s->to.nw, t);
   f.na = (float)lerp(s->from.na, s->to.na, t);
+  /* FX_SMOOTH: a tone switching on from silence or off to silence ramps over 3 ms (24 ticks) instead of stepping at a
+   * part boundary (a step is a broadband click: 202 R2, 218 A8 show none on the chip). Per sound: 233 C3's tones do
+   * switch sharply on the chip, and one ramp for every sound cost the library P 4.721 -> 4.757 */
+  if (s->flags & FX_SMOOTH) {
+    if (sj->stick == 0)
+      for (int k = 0; k < 3; k++) sj->xa[k] = f.a[k];
+    for (int k = 0; k < 3; k++) {
+      const bool onoff = f.a[k] < 0.5f || sj->xa[k] < 0.5f || (sj->xa[k] < f.a[k] * 0.5f && sj->xa[k] < 2.0f);
+      sj->xa[k] = onoff ? sj->xa[k] + (f.a[k] - sj->xa[k]) / 24.0f : f.a[k];
+      f.a[k] = sj->xa[k];
+    }
+  } else
+    for (int k = 0; k < 3; k++) sj->xa[k] = f.a[k];
   sj->last = f;
 
   double v = 0.0;
 
   /* voicing */
+  /* FX_SMOOTH: where voicing starts after unvoiced sound, the voice comes in over 3 ms (24 ticks) instead of at once (a
+   * pulse switching on is a broadband click: 235 C5, 202 R2) */
+  {
+    const float want = s->voiced && sj->pitch > 0 ? 1.0f : 0.0f;
+    if (!(s->flags & FX_SMOOTH) || sj->stick == 0)
+      sj->xv = want;
+    else
+      sj->xv += want > sj->xv ? (want - sj->xv) / 24.0f : want - sj->xv;
+  }
   if (s->voiced && sj->pitch > 0) {
     if (sj->ptick <= 0) {
       /* the period in ticks, from the chip's own nominal 8000: the voice runs
@@ -992,7 +1017,7 @@ static double tick(sj_chip *sj) {
      * less; past it the sum clips */
     if (T.clip > 0)
       sum = sum > T.clip ? T.clip : sum < -T.clip ? -T.clip : sum;
-    v -= env * sum / 128.0 * f.lv * (s->flags & FX_PULSED ? 0.6 : 1.0); /* the pulse starts downward (both units, every vowel at Pitch 20) */
+    v -= sj->xv * env * sum / 128.0 * f.lv * (s->flags & FX_PULSED ? 0.6 : 1.0); /* the pulse starts downward (both units, every vowel at Pitch 20) */
     sj->venv = env;
     for (int k = nf; k < 3; k++) {
       v += f.a[k] / 128.0 * 0.6 * f.lv * sj_sin2pi(sj->phase[k]);
@@ -1032,12 +1057,37 @@ static double tick(sj_chip *sj) {
      * output power at the input's whatever the band (the AR(2) variance) */
     const double r = sj_exp(-M_PI * (f.nw > 10.0f ? f.nw : 10.0) / RATE), c = sj_sin2pi(nf / RATE + 0.25);
     const double r2 = r * r, g = sqrt((1.0 - r2) * ((1.0 + r2) * (1.0 + r2) - 4.0 * r2 * c * c) / (1.0 + r2));
-    const double y = g * rnd(sj) + 2.0 * r * c * sj->nz[0] - r2 * sj->nz[1];
+    /* FX_BUZZ: the noise minus itself one period of the part's pulse rate ago (Pitch plus its offset, ceil(8000 /
+     * rate) ticks) at 0.5: notches every rate Hz in an otherwise flat noise, the power kept (232 C2's late burst, unit B:
+     * broadband heat dimming just under every ~485 Hz; an impulse train made bright lines with dark gaps instead) */
+    double ex = rnd(sj);
+    if (s->flags & FX_BUZZ) {
+      /* clicks, not noise: an impulse every voice period (Pitch), so the column is an even broadband colour; the comb
+       * below then cuts narrow notches every rate Hz (user, C2: plain orange with narrow, regular purple stripes) */
+      const int vper = sj->pitch > 0 ? (int)(8000.0 / sj->pitch) + 1 : 92;
+      if (sj->bzclk <= 0)
+        sj->bzclk = vper;
+      ex = sj->bzclk == vper ? sqrt(vper / 12.0) : 0.0;
+      sj->bzclk--;
+      double rate = sj->pitch + s->pa + (s->ticks > 1 ? (double)((s->pb - s->pa) * sj->tick) / (s->ticks - 1) : s->pb - s->pa);
+      if (rate < 10.0)
+        rate = 10.0;
+      int per = (int)ceil(8000.0 / rate);
+      if (per > 1023)
+        per = 1023;
+      const double old = sj->bzbuf[(sj->bzpos - per) & 1023];
+      sj->bzbuf[sj->bzpos & 1023] = ex;
+      sj->bzpos++;
+      ex = (ex - 0.6 * old) * 0.8574929257125441 * 0.25; /* 1 / sqrt(1 + 0.6^2): notches dim, not black (user, C2); x0.25: the bands sit 12 dB under a noise band of the same byte, so the low levels the chip needs have fine steps (B7's were pinned at byte 2, still too bright) */
+    }
+    const double y = g * ex + 2.0 * r * c * sj->nz[0] - r2 * sj->nz[1];
     sj->nz[1] = sj->nz[0];
     sj->nz[0] = y;
     if (s->flags & FX_ALL)
       lvl *= sj->venv; /* both units: C0 and M2 are silent between their pulses */
     v += lvl * f.lv * f.na / 128.0 * 0.86 * y;
+    if (s->flags & FX_BUZZ)
+      sj->vbuzz = lvl * f.lv * f.na / 128.0 * 0.86 * y;
   }
 
   if (s->gate > 0 && !(s->flags & FX_NSWEEP) && sj->tick % s->gate >= s->gate / 2)
@@ -1074,11 +1124,13 @@ static double tick(sj_chip *sj) {
       /* the effects' bed (both units): timing error, proportional to the
        * signal's change per tick smoothed by one pole - it grows with the
        * tone's frequency to about 1.5 kHz and only with its level above */
-      sj->bed += BED_POLE * (v - sj->vprev - sj->bed);
+      /* the buzz's clicks are kept out of the slope (each one is a huge step: the bed turned 227 B7's bands into loud noise) */
+      sj->bed += BED_POLE * (v - sj->vbuzz - sj->vprev - sj->bed);
       v += SLEW * 2.0 * r * sj->bed;
     }
     sj->lastr = r;
-    sj->vprev = v;
+    sj->vprev = v - sj->vbuzz; /* without the buzz: unchanged for every sound without one */
+    sj->vbuzz = 0.0;
   }
 
   if (++sj->tick >= s->ticks) {
