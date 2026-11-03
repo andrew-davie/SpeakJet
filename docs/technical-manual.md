@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.4, 2026-11-03.** The version rises with every change to what is known about the chip (new
+**Version 1.5, 2026-11-04.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -715,6 +715,38 @@ scaled by 1 / √(1 + 0.6²) and by 0.25 so that the low levels the chip needs
 have fine steps, then goes through the part's noise band as usual. The column
 is kept out of the bed's input, so it raises no bed of its own.
 
+### 7.11 Peaking filters (library)
+
+The library can give an effect up to three peaking filters (RBJ biquads at
+the chip's rate, applied before the Volume gain), a fixed shaping of its
+spectrum. They are the library's tool for closing a measured spectrum gap,
+not a chip mechanism. No sound uses them in this version: tried on drawn
+effects, they lifted tones where the chip's gap was broad heat, and the lines
+then dominated the wrong frames.
+
+### 7.12 Measured effect structures (2026-11-04)
+
+From the VoxRecord takes, both units agreeing:
+
+- **254 M2:** three bright bands moving together, rising from about 520 to
+  960 Hz to the middle and falling back. Their spacing holds at about 1220 Hz,
+  each band about 7 dB under the one below, and the third sits exactly at
+  2 × second − main (an intermodulation product). Every band carries side
+  lines about 262 Hz either side. A model with a separate 262 Hz pulse
+  (Pitch + 174) made a comb of flat lines the chip doesn't have; the library's
+  voiced M2 is the closer model.
+- **231 C1:** a buzz whose harmonic spacing (its pulse rate) glides from
+  about 475 Hz near 40 ms through 449, 400, 348, 292 and 259 to about 200 Hz at
+  210 ms and about 165 Hz at 230 ms, with two or three bright bands like
+  formants. A table with that measured glide scored worse than the library's
+  own glide.
+- **234 C4, 213 A3:** their heat is from pulsing (all tones pulsed), not from
+  separate noise.
+- **229 B9:** three blocks of crisp, thin lines (10-80, 115-165,
+  205-305 ms) over a broad band of heat under its low V line (about
+  300-1000 Hz, 80-200 ms). Plain tones get the lines and miss the band; voiced
+  tones get the band and smear the lines.
+
 ## 8. Commands
 
 **Pitch** sets the voice's period (section 4.1) and the base of the effects'
@@ -810,7 +842,10 @@ leave the buffer with the sound.
 
 **Hold.** Each chip sample is held until the next. So a tone at f also has
 images at k·Fs ± f, audible above 4 kHz on full-range speakers at about
-−30 dB.
+−30 dB. A tone near the half rate (about 4 kHz) and its own image fall
+together and read as one lump in a coarse spectrum (214 A4). The AtariVox has
+no reconstruction filter to remove them; the library keeps them, so that it
+sounds like the hardware.
 
 **The filter (measured and fitted).** The AtariVox then low-passes the held
 signal: two real poles and one real zero.
@@ -932,10 +967,16 @@ Man Goes Down  the phrases of a released game, for whole-phrase checks
   level in silence as under a sound, on both units: each chip's clock leaking
   at 8.00-8.05 kHz (unit B about 140 Hz wide, unit A about 35 Hz; unit B's
   floor there is about 15 dB over unit A's, so the line dominates the band),
-  its double at 15.8-15.9 kHz, a 1 kHz comb to 13 kHz (about 10 Hz wide), and
-  the 60 Hz hum family. The scorers leave 7.9-8.15 kHz and 15.7-16.0 kHz out of
-  every comparison, on both sides; the comb is too narrow to matter. This moved
-  no score by more than 0.03.
+  its double at 15.8-15.9 kHz, a 1 kHz comb to 13 kHz (about 10 Hz wide) with
+  sidebands 120 Hz either side, and the 60 Hz hum family. The narrow lines are
+  subtracted from each recording as sine waves, their amplitude and phase
+  measured in its silences and carried through the sounds (a notch would also
+  cut the chip's own tones there). The broad bands, 7.5-8.6 kHz, 15.4-16.4 kHz
+  and the clock images meeting the tones at 3.8-4.27 kHz, are left out of
+  every comparison; a band that loses bins is scaled back to its full width.
+- Fit to one recording, check on all of them. A structure fitted to the solo
+  takes can get worse at other Pitch, Bend or Speed settings (235 C5 was worse
+  on all 14 of its recordings).
 - Before calling an odd spectral feature chip output, compare its level in the
   sound against the same recording's silence.
 
@@ -943,7 +984,15 @@ Man Goes Down  the phrases of a released game, for whole-phrase checks
 the whole-sound spectrum error, a combined spectrum, time-frequency and level
 error, and a perceptual score over every recording of each sound. Each table
 value was set to minimise those, within limits that keep every sound's
-measured structure.
+measured structure. The whole-sound spectrum anchors each side on its total
+energy, not its loudest band, and counts every band above the recording's
+background, valleys between lines included.
+
+Effects rebuilt from hand-drawn structures are judged on three separate
+questions instead: whether the lines are where the chip's are (a line-match
+score in semitones, both ways), whether the loudness shape over time matches
+(the level-over-time part of the combined error), and the whole-sound
+spectrum as a guard.
 
 ---
 
@@ -989,6 +1038,13 @@ Where the library and the chip still differ, or the chip is not understood:
   from the change per tick) is a stand-in.
 - **The banded columns' stripe spacing** (section 7.10): about 485-549 Hz,
   neither the Pitch nor any known offset.
+- **Low Pitch on rebuilt voiced effects.** 233 C3 and 236 C6 match better at
+  Pitch 88 and 150 since their rebuild but worse at Pitch 60 (E +1.6 to +3.2),
+  so how their pulse tracks a low Pitch is not modelled right.
+- **254 M2's sidebands** (section 7.12): the ±262 Hz lines on every band are
+  measured but not explained.
+- **237 C7** is a cluster of short banded columns in an arch shape, not yet
+  modelled; **227 B7** waits on the bed rule (section 7.5).
 
 ---
 
@@ -1305,6 +1361,11 @@ where used. The DTMF pairs come from the code (7.8). Generated with Appendix A.
 
 ## Appendix C: the library's table encodings
 
+**Peaking filters (fxeq).** A side table of four bytes a filter: the effect
+(code − 200), the centre (16 Hz steps), the gain (half-decibels, signed) and
+Q (tenths). At most three filters an effect; empty in this version.
+
+
 These are the library's choices, not the chip's, given for anyone reading the
 tables in `speakjet_tables.c`.
 
@@ -1366,6 +1427,11 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.5   2026-11-04   the hold's images at the half rate; output kept faithful to the AtariVox; effect peaking
+                   filters (7.11, unused); measured structures of 254 M2, 231 C1, 229 B9 (7.12); path lines
+                   subtracted and the clock bands left out of scoring; the spectrum anchored on total energy;
+                   the drawn-structure scoring; new open items (low Pitch on rebuilt voiced effects, M2's
+                   sidebands, C7)
 1.4   2026-11-03   flags m (3 ms on/off ramps) and u (banded columns, section 7.10); the bed is the chip's own
                    (Stella = A = B) and effect-specific (57 dB down under a register tone); the recording path's
                    clock lines at 8 and 16 kHz, now left out of scoring
