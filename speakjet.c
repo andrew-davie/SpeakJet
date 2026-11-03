@@ -215,6 +215,7 @@ struct sj_chip {
   float xa[3]; /* FX_SMOOTH: the tone amplitudes as they ramp */
   float xv; /* FX_SMOOTH: the voice's gain as it ramps in */
   double vbuzz; double bzbuf[1024]; int bzpos, bzclk; /* FX_BUZZ: the source's recent past, for the comb; ticks to the next click */
+  int neq; double eqc[3][5], eqz[3][2]; /* the playing effect's peaking filters (fxeq): b0 b1 b2 a1 a2, and their state */
   double nz[2]; /* the noise resonator's two delays */
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   double wander; /* an FX_WANDER part's slow pitch drift, a fraction */
@@ -501,6 +502,8 @@ static void add_segment(sj_chip *sj, int ticks, frame from, frame to, bool voice
 
 /* start playing the segments built so far */
 static void start(sj_chip *sj, bool effect) {
+  if (!effect)
+    sj->neq = 0; /* an allophone has no peaking filters */
   sj->attack = TICKS(effect ? T.fx_attack : T.attack);
   sj->release = TICKS(effect ? T.fx_release : T.release);
   sj->cur = sj->tick = sj->stick = 0;
@@ -553,6 +556,23 @@ static const uint8_t *fx_decode(const uint8_t *q, fxpart *f) {
 }
 
 static void play_effect(sj_chip *sj, int code) {
+  /* its peaking filters (fxeq, at most 3): a fixed shaping of its spectrum toward the chip's, set after its structure
+   * was tuned (2026-11-04); RBJ peaking biquads at the chip's rate */
+  sj->neq = 0;
+  for (int i = 0; i < FXEQ_N && sj->neq < 3; i++) {
+    if (fxeq[i][0] != code - 200)
+      continue;
+    const double f = fxeq[i][1] * HZ_STEP, g = (int8_t)fxeq[i][2] / 2.0, qq = fxeq[i][3] / 10.0;
+    const double A = pow(10.0, g / 40.0), w = 2.0 * M_PI * f / RATE, al = sin(w) / (2.0 * qq), cw = cos(w), a0 = 1.0 + al / A;
+    double *c = sj->eqc[sj->neq];
+    c[0] = (1.0 + al * A) / a0;
+    c[1] = -2.0 * cw / a0;
+    c[2] = (1.0 - al * A) / a0;
+    c[3] = -2.0 * cw / a0;
+    c[4] = (1.0 - al / A) / a0;
+    sj->eqz[sj->neq][0] = sj->eqz[sj->neq][1] = 0.0;
+    sj->neq++;
+  }
   const uint8_t *q = fxdata + fxat[code - 200], *const end = fxdata + fxat[code - 199];
   const double bend = bend_hz(sj);
   sj->nseg = 0;
@@ -1109,6 +1129,13 @@ static double tick(sj_chip *sj) {
   }
   sj->stick++;
 
+  /* the effect's peaking filters (transposed direct form II) */
+  for (int k = 0; k < sj->neq; k++) {
+    const double *c = sj->eqc[k], y = c[0] * v + sj->eqz[k][0];
+    sj->eqz[k][0] = c[1] * v - c[3] * y + sj->eqz[k][1];
+    sj->eqz[k][1] = c[2] * v - c[4] * y;
+    v = y;
+  }
   v *= volume_gain(sj);
   /* the output stage's nonlinearity and its step size */
   v += T.dist2 * v * v + T.dist3 * v * v * v;
