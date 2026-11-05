@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.6, 2026-11-04.** The version rises with every change to what is known about the chip (new
+**Version 1.7, 2026-11-05.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -428,13 +428,12 @@ length = L114 · (162 − Speed) / 48
 where L114 is the length at the default Speed 114. 136 AW plays 95, 197 and
 287 ms at Speed 127, 90 and 60.
 
-**Fast and Slow.** Fast multiplies the next sound's length by 0.77 and Slow by
-1.22, with a floor of 10 ms before the Speed law. Neither changes a stop, a
-voiced stop or JH (TT is 45-50 ms plain, fast or slow). These factors come
-from single sounds. Recordings of sounds alone show Slow adding a roughly fixed
-amount instead (about +30 ms, 163 AYWW about +90), and phrases suggest vowels,
-nasals and glides stretch more than hisses. *Open: needs measuring sound by
-sound between other sounds.*
+**Fast and Slow.** Fast multiplies the next sound's length by 2/3 and Slow by
+4/3, with a floor of 10 ms before the Speed law (VoxProbe 12, both units).
+Neither changes an unvoiced stop or JH (TT is 45-50 ms plain, fast or slow);
+Slow also lengthens the voiced stops by 4/3, Fast does not shorten them.
+*Open: under Slow, 155 AY runs about 20 ms longer than 4/3 gives; VoxProbe 13
+section 5 measures what part of a vowel Slow scales.*
 
 ### 6.2 Moving between sounds
 
@@ -540,6 +539,10 @@ lengths scale with Speed like the sound.
 
 The attack and release ramps apply once, over the first play and all its
 copies together.
+
+**The same sound twice.** A sound sent straight after itself, with no pause
+or control between, plays as a Repeat copy of the first: no new onset and no
+overlap cut between the two (VoxProbe 12, both units; matches within 1-13 ms).
 
 ---
 
@@ -1465,6 +1468,8 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.7   2026-11-05   Fast x2/3 and Slow x4/3, Slow on the voiced stops; the same sound twice plays
+                   as a Repeat copy (VoxProbe 12, both units)
 1.6   2026-11-04   the serial control protocol (section 2): commands, registers, the register synthesizer;
                    a register tone's level measured against 235 C5 and 241 D1 (VoxProbe 9, both units)
 1.5   2026-11-04   the hold's images at the half rate; output kept faithful to the AtariVox; effect peaking
