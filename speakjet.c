@@ -107,7 +107,7 @@ static struct tune {
   double copy_closure;            /* a stop's Repeat copy opens on this much silence, ms */
   double bend_hz;                 /* Bend step, Hz */
   double pause[7];                /* the pauses, ms: P1 and P4 measured (VoxProbe 8), the rest the manual's */
-} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 15, 0, 0, 0, 0, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 147, 33, 0.77, 1.22, 0, 20, 44, {0, 90, 200, 700, 15, 60, 90}};
+} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 15, 0, 0, 0, 0, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 147, 33, 2.0 / 3.0, 4.0 / 3.0, 0, 20, 44, {0, 90, 200, 700, 15, 60, 90}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
@@ -480,11 +480,15 @@ static double speed_factor(const sj_chip *sj, bool effect) {
  * SE +20, EYIY +75 ms under Slow): the manual's "1/2" and "1 1/2 times" are
  * of its own length column */
 static double modified_ms(const sj_chip *sj, const allophone *a, double ms) {
-  /* measured (VoxRecord section 7, both units): Fast x0.77 and Slow x1.22 of
-   * the played length on vowels, nasals and fricatives; the stops don't
-   * change (TT is 45-50 ms plain, fast or slow) */
-  if (a->kind == K_STOP || a->kind == K_VSTOP || a->kind == K_AFFR)
+  /* Fast x2/3 and Slow x4/3 of the played length (VoxProbe 12 section 2,
+   * 2026-11-05, at -20 dB, both units, 2600 and Stella: Fast AY IYUW x0.63-0.70,
+   * Slow AY IYUW OWWW NE AW UX x1.27-1.36; was x0.77 and x1.22). The
+   * unvoiced stops and affricates don't change (TT is 45-50 ms plain, fast or
+   * slow); the voiced stops do under Slow (VoxProbe 12: Slow GO OWWW +12 ms) */
+  if (a->kind == K_STOP || a->kind == K_AFFR || (a->kind == K_VSTOP && !sj->slow))
     return ms;
+  if (a->kind == K_VSTOP)
+    return ms * T.slow;
   if (sj->fast)
     ms *= T.fast;
   if (sj->slow)
