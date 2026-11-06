@@ -8,8 +8,8 @@ The aim is the smallest model that matches the recordings: a rule wherever a
 rule could be found, and a few bytes of parameters per sound where it could
 not.
 
-The library is `speakjet.c` (about 1000 lines) and a generated table,
-`speakjet_tables.c`, about 2.6 KB compiled: 72 allophones of 14 bytes, a
+The library is `speakjet.c` (about 1550 lines) and a generated table,
+`speakjet_tables.c`, about 5 KB compiled: 72 allophones of 26 bytes, a
 second frame for the five voiced stops that have their own, and the effects
 as a byte stream of 146 parts, each its length, a byte saying which fields
 follow, its flags and level, then only the tones and fields it uses (most
@@ -61,8 +61,12 @@ quiet consonants and the stops' tails whole, far below a 48th of full scale.
 ## The voice
 
 **Voicing period.** From VoxProbe 2 (AW at every Pitch 0–254, both units):
-the period is an integer number of ticks, N = floor(Fs / Pitch) + 1, so f0
-plateaus (Pitch 157–160 all give 157.6 Hz).
+the period is an integer number of ticks, so f0 plateaus (Pitch 157–160 all
+give 157.6 Hz). The voice counts a 16-bit phase up by floor(Pitch · 65536 /
+8000) a tick and starts a pulse when it wraps: N = floor(65536 / step) + 1,
+which matches every Pitch where floor(Fs / Pitch) + 1 missed 27 of them, and
+gives the twelve one-tick-long rates (the default Pitch 88's 92 ticks among them)
+without a list.
 
 **The voicing pulse.** VoxProbe 3 holds 18 vowels, nasals and liquids at
 Pitch 40, where each pulse stands alone. Averaged pulses are identical on
@@ -109,13 +113,22 @@ spectra: FF is flat to the stage's rolloff; SE, TS and ZZ resonate at the top
 of the band (about 3.8–4 kHz), SO at 3.6 kHz; SH at 2.9 kHz, CH 3.1, JH 2.8,
 TH 2.3, ZH 2.2, DH 2.0, HE 1.7, VV 1.6 kHz; WH at 800 Hz; PE and PO are
 low-passed. CH is unvoiced (no periodicity at the pitch period on either
-unit).
+unit). The allophones' noise is high-passed twice at 400 Hz (6–21 dB too much
+under 400 Hz without it, every unvoiced fricative on both units), with a corner
+of its own where measured (`hp`: PE, PO); WH carries a white floor 30 dB under
+its band (`wf`); SE, SO and SH start on a 16 ms burst of low noise (`th`, `tc`).
+These came from the band × time audit: library minus chip, 24 log bands × 2.5 ms,
+against the chip's own take-to-take spread (technical manual 1.8).
 
-**Stops.** A closure (`closure` 30 ms, scaled with Speed) in which the sound
-before fades away (both units fall 30 dB over 50–60 ms at Speed 114 and twice
-that at Speed 60, with no cut to silence); a voiced stop hums through it on
-its first formant: both units open BE, BO, DE, DO, GE and GO on a voice bar
-2–9 dB under the release. Then the burst and release, which is the measured
+**Stops.** A closure (`closure` 30 ms, scaled with Speed, or the stop's own `cl`:
+lined up on the release, BE BO DE DO's bar is 50–55 ms, the final stops' 5–16)
+in which the sound before fades away (both units fall 30 dB over 50–60 ms at
+Speed 114 and twice that at Speed 60, with no cut to silence); a voiced stop
+hums through it on its first formant with the upper ones weak (×0.12): both
+units open BE, BO, DE, DO, GE and GO on a voice bar 2–9 dB under the release.
+From silence the bar is there at once. A stop may have its own bar fade-in and
+level (`ba`, `bl`) and release level (`rl`); stops and fricatives may open on a
+louder onset (`ob`, `og`). Then the burst and release, which is the measured
 length.
 
 ## Time
@@ -150,8 +163,10 @@ glide's copy glides back from the last copy's end to its first frame and on
 the glides' copies run 185–290 ms. JH's copy is 80 ms, ZH's 70.
 
 **Level over time.** A sound after silence ramps in over 35 ms and out over
-30 (`attack`, `release`). An effect's tone starts within 1–3 ms on both units
-(`fx_attack` 1 ms, `fx_release` 15).
+30 (`attack`, `release`); an unvoiced fricative switches in 3 ms, a nasal rises in
+25, and a sound may have its own (`aa`, `rr`). An effect's tone starts within
+1–3 ms on both units (`fx_attack` 1 ms, `fx_release` 25), many on a 5 ms click,
+and an effect may have its own attack, release and click (the `fxs` table).
 
 ## Levels
 
@@ -206,9 +221,9 @@ that only envelopes the other five, in one of four waveforms (register 8):
 saw, sine, triangle, square. VoxProbe 7 drove it directly on both units: the
 register-set envelopes run at exactly their frequency and don't restart the
 tones, the triangle is a rising ramp and then an instant drop, and the saw's
-period is floor(8000 / f) + 1 ticks, and an effect's own pulse ceil(8000 / f)
-(VoxProbe 9: one tick shorter wherever 8000 / f is whole; the reset default
-runs 92 ticks, Pitch 87's, so the library's default is 87, provisionally).
+period is the voice's (above), and an effect's own pulse ceil(8000 / f)
+(VoxProbe 9: one tick shorter wherever 8000 / f is whole). The reset default is
+the manual's Pitch 88, which runs 92 ticks (VoxProbe 12: identical on every take).
 An effect's own envelope does restart
 its tones; R5's lines are its envelope's harmonics. The robots (R0 to R9) are
 a carrier at about 800 + 300·n Hz beside a low tone and its octave: a tone
