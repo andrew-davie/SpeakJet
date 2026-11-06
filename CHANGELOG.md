@@ -2,7 +2,7 @@
 
 ## The rebuild
 
-### Since 0.3.0 (unreleased; technical manual 1.8)
+### 0.4.0 (2026-11-06; technical manual 1.8)
 
 Structure measured by a band × time audit (library minus chip, 24 log bands × 2.5 ms, against the chip's own
 take-to-take spread, both units), then each sound worked to its measured structure. Against 0.3.0 over all 2355
