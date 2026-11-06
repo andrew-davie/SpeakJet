@@ -74,10 +74,11 @@ static void test_phrase_length(void) {
     n++;
 
   const double got = (double)n * 1000 / SJ_SAMPLE_RATE;
-  /* the sounds' lengths, the stop's closure, and the two sounds followed at
-   * once by another cut short by the overlap */
+  /* the sounds' lengths, the stop's closure (its own when it has one, as the engine plays it), and the two sounds
+   * followed at once by another cut short by the overlap */
+  const double closure = allophones[199 - 128].cl ? allophones[199 - 128].cl : T.closure;
   const double want = (allophones[183 - 128].ms + allophones[135 - 128].ms + allophones[199 - 128].ms) * MS_STEP +
-                      T.closure - 2 * T.overlap;
+                      closure - 2 * T.overlap;
   if (fabs(got - want) > 10)
     FAIL("phrase played for %.0fms, expected about %.0fms", got, want);
   sj_free(sj);

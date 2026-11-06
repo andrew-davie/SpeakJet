@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.7, 2026-11-05.** The version rises with every change to what is known about the chip (new
+**Version 1.8, 2026-11-06.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -1468,6 +1468,19 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.8   2026-11-06   measured on the VoxRecord solo takes, both units (newest sessions), by band x time
+                   difference against the chip's own take-to-take spread: the voice period from a 16-bit phase
+                   step (floor(65536 / floor(rate x 65536 / 8000)) + 1); unvoiced fricatives switch on and off in
+                   3 ms; nasals rise in 25 ms; a voiced stop's bar is there at once from silence, its upper
+                   formants weak (x0.12), each stop with its own closure, bar level and release level; louder
+                   onsets on stops and fricatives; the sibilants' starting burst of low noise (SE SO SH); a
+                   white floor under WH's band; the fricatives' noise high-passed twice (400 Hz, own corners for
+                   PE PO); per-sound attack and release lengths. Effects: a 5 ms broadband click at the start
+                   (220 B0, 219 A9, 223 B3, 221 B1 and the others with one); the effect release 25 ms; C8/C9's
+                   swept band 650 Hz - 2.4 kHz with its noise high-passed at 150 Hz; 219 A9 holds its tones 47 ms
+                   before sweeping and ends on a held 100 Hz tone; 223 B3 glides between its tones over ~5 ms;
+                   228 B8's upper tone starts 40 ms late. Glides: per glide, F1 may hold and close late (161
+                   AXUW: F1 opens to ~640 Hz and closes in the last 60 ms while F2 falls throughout)
 1.7   2026-11-05   Fast x2/3 and Slow x4/3, Slow on the voiced stops; the same sound twice plays
                    as a Repeat copy (VoxProbe 12, both units)
 1.6   2026-11-04   the serial control protocol (section 2): commands, registers, the register synthesizer;
