@@ -180,9 +180,10 @@ measurement of the real chip behind it.
 This branch was written from scratch from the SpeakJet User's Manual and
 recordings of two AtariVoxes only. The brief was the smallest footprint: a rule
 wherever a rule could be found, a few bytes of parameters per sound
-otherwise. `speakjet.c` is about 1100 lines; the tables are 2721 bytes
-compiled: 72 allophones of 14 bytes and 156 effect parts as a byte stream,
-each holding only the fields it uses; the object is about 19 KB.
+otherwise. `speakjet.c` is about 1550 lines; the tables are about 5 KB
+compiled: 72 allophones of 26 bytes, the effect parts as a byte stream, each
+holding only the fields it uses, and a 4-byte structure row per effect; the
+object is about 27 KB.
 
 What the recordings gave:
 
@@ -191,9 +192,10 @@ What the recordings gave:
   then the AtariVox's analogue stage: two real poles from 1609 Hz (Q 0.462)
   and a real zero at 14 kHz, solved exactly on the held samples. The voice is
   exactly periodic, with no noise between its harmonics.
-- **The voice.** A period of floor(8000 / Pitch) + 1 ticks, in the chip's own
-  8000ths (an effect's pulse runs ceil(8000 / rate): one tick shorter wherever
-  8000 / rate is whole, VoxProbe 9); at each period
+- **The voice.** A period of floor(65536 / step) + 1 ticks, step =
+  floor(Pitch · 65536 / 8000): a 16-bit phase counted up each tick (an effect's
+  pulse runs ceil(8000 / rate): one tick shorter wherever 8000 / rate is whole,
+  VoxProbe 9); at each period
   three formant sines restart at one phase under an envelope that steps to
   full at once and falls linearly over about 7 ms. The pulse is the same on
   both units to the sample.
@@ -201,12 +203,17 @@ What the recordings gave:
   the hiss is Gaussian noise on both units, not a tone. Each band is read
   off the chip's spectrum (FF flat, SH near 2.9 kHz, WH at 800 Hz, the
   sibilants peaking near Nyquist, PE and PO low-passed). Each noise sound is
-  a centre, a bandwidth and a level.
+  a centre, a bandwidth and a level; the allophones' noise is high-passed
+  twice at 400 Hz, WH has a white floor, and SE, SO, SH start on a burst of
+  low noise.
 - **Timing and controls.** A sound's length is the same streamed, alone or
   before a pause, and the same at every Pitch; it is linear in Speed; Fast
-  is x0.77 and Slow x1.22 (stops unchanged). Inside a run of sounds the
+  is x2/3 and Slow x4/3 (Slow also on the voiced stops), and a sound straight
+  after the same sound plays as a Repeat copy. Inside a run of sounds the
   voice runs on without fading, each sound cut 15 ms short (30 when both are
-  voiced); only a run's edges ramp, 35 ms in and 30 out. Each Repeat copy
+  voiced); only a run's edges ramp, 35 ms in and 30 out (unvoiced
+  fricatives 3 ms, nasals in 25). Stops have their own closures, a voice bar
+  with weak upper formants, and louder onsets. Each Repeat copy
   lasts the sound's measured copy length (a stop's copy is the stop again).
   Bend moves every oscillator by 44 Hz a step; Volume follows an older
   measured curve (16 is 15.5 dB down, 32 to 127 move little), where the chip
@@ -217,7 +224,7 @@ What the recordings gave:
   tones and a noise band, read off the chip's own tracks: pulsed effects at
   Pitch plus an offset of their own, the robots a carrier at 800 + 300·n Hz
   beside a low tone and its octave, plain tones that hold and end in a 55 ms
-  fade, D0 to D11 the standard DTMF pairs.
+  fade, D0 to D11 the standard DTMF pairs. Many start on a 5 ms click.
 
 The parameters were first read off the recordings, then refined inside each
 sound's measured structure with the scores above, sound by sound. The whole

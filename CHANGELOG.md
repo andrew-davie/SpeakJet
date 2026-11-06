@@ -2,6 +2,25 @@
 
 ## The rebuild
 
+### Since 0.3.0 (unreleased; technical manual 1.8)
+
+Structure measured by a band × time audit (library minus chip, 24 log bands × 2.5 ms, against the chip's own
+take-to-take spread, both units), then each sound worked to its measured structure. Against 0.3.0 over all 2355
+recordings, both units: P 0.895 -> 0.844 (-5.6 %). Tables about 5 KB.
+
+- **Timing (VoxProbe 12).** Slow x4/3 and Fast x2/3 of the played length (were x1.22 and x0.77), Slow also on the
+  voiced stops; a sound straight after the same sound plays as a Repeat copy (such joins had been ~31 ms long).
+- **The voice period** from a 16-bit phase step, floor(65536 / floor(rate · 65536 / 8000)) + 1 ticks; the reset
+  default is the manual's Pitch 88 (VoxProbe 12: identical on every take).
+- **Allophones.** Unvoiced fricatives switch in 3 ms; nasals rise in 25 ms; voiced stops' bars start at once with
+  weak upper formants; each stop its own closure, bar and release levels; louder onsets; the sibilants' burst of
+  low noise; WH's white floor; every allophone's noise high-passed at 400 Hz; per-sound attack and release; 161
+  AXUW's F1 opening and closing late. The allophone row grows from 14 to 26 bytes.
+- **Effects.** A per-effect structure row (attack, release, a 5 ms starting click); the effect release 25 ms;
+  C8/C9's sweep 650 Hz - 2.4 kHz with its noise high-passed; 219 A9, 223 B3 and 228 B8 rebuilt from the chip's
+  tracks; tone endpoints re-anchored on the measured tracks for seven more.
+- **docs:** the technical manual 1.8 and design.md brought up to the code; Appendices A and B regenerated.
+
 ### 0.3.0 (2026-11-02)
 
 The rebuild is released as 0.3.0: a different library from the first
