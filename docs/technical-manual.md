@@ -1310,7 +1310,7 @@ Their own structure (1.8; fields left out are 0, "as the kind"; section 6 and Ap
  188 SO    tc 544 Hz  th 168/64  aa 25 ms  hp 336 Hz
  189 SH    ob 3 ms  og +3.5 dB  rr 10 ms  tc 672 Hz  th 80/64  aa 10 ms  hp 528 Hz
  190 TH    rr 10 ms  hp 80 Hz
- 191 TT    ob 4 ms  og +1.0 dB  cl 35 ms  wf 16/256  rr 10 ms  hp 464 Hz
+ 191 TT    ob 10 ms  og +3.0 dB  cl 35 ms  wf 16/256  rr 10 ms  hp 464 Hz
  192 TU    ob 5 ms  og +3.0 dB  cl 22 ms  wf 16/256  aa 5 ms
  193 TS    ob 10 ms  og +0.5 dB  cl 26 ms  wf 16/256  rr 10 ms  hp 464 Hz  nd 128/256
  194 KE    ob 5 ms  og +3.0 dB  cl 22 ms  hp 80 Hz
