@@ -69,6 +69,14 @@
 #endif
 #ifndef JOIN_CLOSURE
 #define JOIN_CLOSURE 45.0 /* a stop's closure after a sound, at least this, ms (Man Goes Down's GO) */
+#define NASAL_BAR 0.15848931924611134 /* a voiced stop's bar after a nasal: 16 dB under its own level */
+#define SLOW_GLIDE_ON 50.0 /* ms: see the ASSUMPTION at its use */
+#define JOIN_A 66.9 /* a vowel or glide into a vowel or glide: cut JOIN_A - JOIN_K * (F1+F2 ERB distance) ms */
+#define JOIN_K 6.9
+#define NASAL_FADE 0.6513 /* and the nasal fades into it over this share of the closure */
+#define NASAL_CLOSURE 38.0 /* a voiced stop's closure after a nasal, ms (before Speed and Slow) */
+#define NASAL_RAMP 10.0 /* and its release rises over this, ms */
+#define NASAL_RAMP_FROM 0.316228 /* from 10 dB down */
 #endif
 #ifndef NHP_TWO
 #define NHP_TWO 1 /* two stages (1) or one (0) */
@@ -129,8 +137,12 @@ static struct tune {
   double copy_extra;              /* a Repeat copy adds this to the manual's length, ms */
   double copy_closure;            /* a stop's Repeat copy opens on this much silence, ms */
   double bend_hz;                 /* Bend step, Hz */
-  double pause[7];                /* the pauses, ms: P1 and P4 measured (VoxProbe 8), the rest the manual's */
-} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 25, 0, 0, 0, 0, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 147, 33, 2.0 / 3.0, 4.0 / 3.0, 0, 20, 44, {0, 90, 200, 700, 15, 60, 90}};
+  double pause[7];                /* the pauses, ms (VoxProbe 1 section 5, AW Pn AW x3, both units, 2600 and Stella;
+                                   * Man Goes Down P1 and P2's gaps): P0 leaves ~20 ms, P3 P5 P6 run 52/30/31 ms under
+                                   * the manual's 700 60 90, P1 P2 P4 are the manual's (AW's own fade-in and -out leave
+                                   * every AW Pn AW gap ~19 ms under the chip's; the phrases' gaps between stops and
+                                   * hisses match these) */
+} T = {0.5, 58, 1609, 0.462, 35, 30, 1, 25, 0, 0, 0, 0, 0, 0, 35, 25, 30, 0.4, 15, 30, 162, 48, 147, 33, 2.0 / 3.0, 4.0 / 3.0, 0, 20, 44, {20, 90, 200, 648, 15, 30, 59}};
 
 #ifdef SJ_TUNE
 #include <stdio.h>
@@ -220,6 +232,8 @@ struct sj_chip {
   uint8_t volume, speed, pitch, bend, repeat;
   bool fast, slow, stress, relax;
   bool joined;        /* the last sound ran straight into the next: no ramps at that join */
+  bool last_nasal;    /* the last sound played was a nasal, MM NE NO NGE NGO (not the liquids that share K_NASAL) */
+  int ramp_seg;       /* a voiced stop after a nasal: its release ramp's segment (-1: none) */
 
   /* what is playing */
   segment seg[MAX_SEGMENTS];
@@ -520,9 +534,15 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
  * Speed 114. linear: measured 95/197/287 ms for AW at Speed 127/90/60; the
  * effects change more: (147 - Speed) / 33 on every part (fitted on every effect
  * recording at a Speed other than 114; alone they read about (145 - Speed) / 31,
- * steeper still at low Speeds than near 114) */
+ * steeper still at low Speeds than near 114). Speech below Speed 114 follows
+ * the effects' law (VoxProbe 12, both units: AY and IYUW x1.21 at Speed 108,
+ * the effects' law x1.18, the old speech law x1.125; Man Goes Down P1 at
+ * Speed 108 E 8.28 -> 6.01, P 1.78 -> 0.94); above 114 the speech law stays
+ * (P2 at Speed 118 is worse on the effects' law) */
 static double speed_factor(const sj_chip *sj, bool effect) {
-  return effect ? (T.fx_speed_a - sj->speed) / T.fx_speed_b : (T.speed_a - sj->speed) / T.speed_b;
+  if (effect || sj->speed < 114)
+    return (T.fx_speed_a - sj->speed) / T.fx_speed_b;
+  return (T.speed_a - sj->speed) / T.speed_b;
 }
 
 /* Fast and Slow take away or add a share of the manual's length (measured
@@ -707,6 +727,7 @@ static const uint8_t *fx_decode(const uint8_t *q, fxpart *f) {
 }
 
 static void play_effect(sj_chip *sj, int code) {
+  sj->last_nasal = false;
   /* its peaking filters (fxeq, at most 3): a fixed shaping of its spectrum toward the chip's, set after its structure
    * was tuned (2026-11-04); RBJ peaking biquads at the chip's rate */
   sj->neq = 0;
@@ -815,6 +836,8 @@ static frame allo_frame(const allophone *a, bool second, double bend) {
  * away through it (both units: a vowel before a stop falls 30 dB over 50 to
  * 60 ms at Speed 114, twice that at Speed 60), not a cut to silence; a voiced
  * stop hums through it on its first formant */
+static int next_sound(const sj_chip *sj, int i);
+static bool slow_before_next(const sj_chip *sj, int i);
 static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, double bend) {
   const frame tgt = allo_frame(a, false, bend);
   frame bar = from, gone = silent_frame();
@@ -839,8 +862,24 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
    * GO's 8 ms, ran straight on and "goes" lost its /g/; P on every recording with a stop after a sound: MGD P1 1.946 ->
    * 1.625, EH DE 0.694 -> 0.194, AW TT 1.058 -> 1.023, MGD P2 0.615 -> 0.656, every other unchanged) */
   double clms = a->cl ? a->cl : T.closure;
+  /* ASSUMPTION (2026-11-07, VoxProbe 12 DO AYWW, both units: 284 ms where DO's 44 ms closure gave 315; DO alone needs
+   * the 44): a voiced stop from silence, not slowed, running into a sound with no Slow on it closes for at most 30 ms.
+   * "man goes down"'s DO (Slow on its AYWW) keeps its closure, as the recordings want */
+  if (a->kind == K_VSTOP && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f && next_sound(sj, sj->executing) >= 128 && !slow_before_next(sj, sj->executing) && !sj->slow && clms > 30.0)
+    clms = 30.0;
   if (from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f && clms < JOIN_CLOSURE)
     clms = JOIN_CLOSURE;
+  /* a voiced stop after a nasal closes quietly, and Slow lengthens that closure (Man Goes Down's NE GO, VoxProbe 12
+   * section 4, all four takes: the join falls to -38..-41 dB above 300 Hz, under -30 dB for 30-40 ms as sent and 20-30
+   * without its Slow; ours stayed above -22 dB and "goes" lost its /g/. EH DE, a vowel into a voiced stop, has no such
+   * gap on either unit. P1: E 6.01 -> 5.02, P 0.94 -> 0.53; P2 and EH DE unchanged) */
+  const bool nasal_join = a->kind == K_VSTOP && sj->last_nasal && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f;
+  /* the gap's width, band by band on both units' Man Goes Down NE GO (2026-11-07): 20-32 ms under the row's peak
+   * -45 dB at 700-3000 Hz, closing at 473-485 ms; 45 ms read 28-38 and closed 480-488 */
+  if (nasal_join)
+    clms = NASAL_CLOSURE;
+  if (nasal_join && sj->slow)
+    clms *= T.slow;
   const int closure = TICKS(clms * speed_factor(sj, false));
   /* from silence, the bar opens on a click: the release's full frame falling into the bar over BAR_CLICK ms (both units,
    * every voiced stop's first 10 ms 11-33 dB over the library's at 1-10 kHz) */
@@ -851,10 +890,35 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
       click = closure - 1;
     add_segment(sj, click, tgt, gone, true);
   }
-  add_segment(sj, closure - click, bar, gone, a->kind == K_VSTOP || bar.a[0] + bar.a[1] + bar.a[2] > 0.0f);
+  if (nasal_join) {
+    frame quiet = gone;
+    quiet.lv = (float)(gone.lv * NASAL_BAR);
+    /* and the whole band dips evenly (both units: 300-700 Hz 22-25 ms under its peak -30 dB, where the bar's F1
+     * hummed through; 1300-1700 at -38..-47 dB, where eight-fold F2 drew a line through the gap) */
+    quiet.a[0] *= 0.300f;
+    quiet.a[1] *= 2.500f;
+    quiet.a[2] *= 2.500f;
+    /* the nasal's F2 and F3 fall into the closure rather than rising to the stop's (both units, NE GO: F2 1640 -> 1510,
+     * F3 2615 -> 2140 Hz; ours rose to GO's 1900 and 3200) */
+    quiet.f[1] = bar.f[1] * 0.92f;
+    quiet.f[2] = bar.f[2] * 0.82f;
+    const int fade = (int)(closure * NASAL_FADE);
+    add_segment(sj, fade, bar, quiet, true);
+    add_segment(sj, closure - fade, quiet, quiet, true);
+  } else
+    add_segment(sj, closure - click, bar, gone, a->kind == K_VSTOP || bar.a[0] + bar.a[1] + bar.a[2] > 0.0f);
   /* the release glides to the stop's second frame: the first formant falls into a labial or alveolar closure
    * (both units: EB, OB, ED, OD); a stop without a measured target holds */
-  add_segment(sj, ticks, tgt, allo_frame(a, true, bend), a->kind == K_VSTOP);
+  /* after a nasal the release comes in over NASAL_RAMP from 10 dB down (both units: 5-15 dB under ours in its first
+   * 10 ms, full by ~15 ms; ours started at full level with a 5 ms onset boost on top) */
+  if (nasal_join && ticks > TICKS(NASAL_RAMP) + 1) {
+    frame low = tgt;
+    low.lv = (float)(tgt.lv * NASAL_RAMP_FROM);
+    sj->ramp_seg = sj->nseg;
+    add_segment(sj, TICKS(NASAL_RAMP), low, tgt, true);
+    add_segment(sj, ticks - TICKS(NASAL_RAMP), tgt, allo_frame(a, true, bend), true);
+  } else
+    add_segment(sj, ticks, tgt, allo_frame(a, true, bend), a->kind == K_VSTOP);
   return closure + ticks;
 }
 
@@ -910,6 +974,54 @@ static frame from_frame(const sj_chip *sj, frame tgt) {
   return tgt;
 }
 
+static frame lerp_frame(frame a, frame b, float t) {
+  for (int q = 0; q < 3; q++) {
+    a.f[q] += (b.f[q] - a.f[q]) * t;
+    a.a[q] += (b.a[q] - a.a[q]) * t;
+  }
+  a.lv += (b.lv - a.lv) * t;
+  a.nf += (b.nf - a.nf) * t;
+  a.nw += (b.nw - a.nw) * t;
+  a.na += (b.na - a.na) * t;
+  return a;
+}
+
+/* the sound's last at ticks bend F2 and F3 to (f2, f3), its levels and F1 as they are (split where the span starts) */
+static void anticipate(sj_chip *sj, int at, float f2, float f3) {
+  int total = 0;
+  for (int k = 0; k < sj->nseg; k++)
+    total += sj->seg[k].ticks;
+  if (at <= 0 || at >= total - 1 || sj->nseg >= MAX_SEGMENTS)
+    return;
+  const int start = total - at;
+  int acc = 0, k = 0;
+  while (acc + sj->seg[k].ticks <= start)
+    acc += sj->seg[k++].ticks;
+  if (acc < start) {
+    const segment sg = sj->seg[k];
+    const int t1 = start - acc;
+    const frame mid = lerp_frame(sg.from, sg.to, (float)t1 / (float)sg.ticks);
+    memmove(&sj->seg[k + 2], &sj->seg[k + 1], (size_t)(sj->nseg - k - 1) * sizeof(segment));
+    sj->seg[k].ticks = t1;
+    sj->seg[k].to = mid;
+    sj->seg[k + 1] = sg;
+    sj->seg[k + 1].ticks = sg.ticks - t1;
+    sj->seg[k + 1].from = mid;
+    sj->nseg++;
+    k++;
+  }
+  const float f2a = sj->seg[k].from.f[1], f3a = sj->seg[k].from.f[2];
+  int el = 0;
+  for (; k < sj->nseg; k++) {
+    segment *g = &sj->seg[k];
+    g->from.f[1] = f2a + (f2 - f2a) * (float)el / (float)at;
+    g->from.f[2] = f3a + (f3 - f3a) * (float)el / (float)at;
+    el += g->ticks;
+    g->to.f[1] = f2a + (f2 - f2a) * (float)el / (float)at;
+    g->to.f[2] = f3a + (f3 - f3a) * (float)el / (float)at;
+  }
+}
+
 /* expand an allophone into segments: its first play */
 static void play_allophone(sj_chip *sj, const allophone *a) {
   const double bend = bend_hz(sj);
@@ -917,6 +1029,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   const frame tgt = allo_frame(a, false, bend), tgt0 = tgt;
   const frame from = from_frame(sj, tgt);
   sj->nseg = 0;
+  sj->ramp_seg = -1;
   switch (a->kind) {
   case K_VOWEL:
   case K_NASAL:
@@ -986,6 +1099,8 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   }
   }
   start(sj, false);
+  sj->last_nasal = a - allophones >= 12 && a - allophones <= 16;
+  const bool nasal_ramp = sj->ramp_seg >= 0;
   /* an unvoiced fricative starts and stops at once (HE HO WH FF SE SO SH TH, both units, background allowed for: rise
    * and fall 0-4 ms, median 2, where the vowels' 35 ms ramp gave 22-38) */
   if (a->kind == K_FRIC)
@@ -997,6 +1112,8 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   /* a louder onset (VoxRecord solo, both units: the voiced stops' and fricatives' first 1-8 ms, 3-19 dB over the rest) */
   sj->onset = TICKS(a->ob);
   sj->onset_gain = pow(10.0, a->og / 40.0);
+  if (nasal_ramp)
+    sj->onset = 0; /* its ramp replaces the onset boost */
   if (sj->onset > 0)
     sj->attack = 0; /* a sound with an onset starts at once, the onset at full level */
   if (a->kind == K_VSTOP && a->ba && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f)
@@ -1065,6 +1182,40 @@ static int next_sound(const sj_chip *sj, int i) {
   return -1;
 }
 
+/* a Slow among the modifiers between offset i and the next sound */
+static bool slow_before_next(const sj_chip *sj, int i) {
+  while (i < sj->count) {
+    const int c = peek(sj, i);
+    if (c >= 128)
+      return false;
+    if (c == 8)
+      return true;
+    if (c == 7 || c == 14 || c == 15 || c == 16)
+      i += 1;
+    else if (c == 20 || c == 21 || c == 22 || c == 23 || c == 26)
+      i += 2;
+    else
+      return false;
+  }
+  return false;
+}
+
+/* the sound's last span ticks taken off, across its segments */
+static void trim_tail(sj_chip *sj, int span) {
+  while (span > 0 && sj->nseg > 1) {
+    segment *g = &sj->seg[sj->nseg - 1];
+    if (g->ticks > span + 1) {
+      g->ticks -= span;
+      sj->stotal -= span;
+      return;
+    }
+    span -= g->ticks;
+    sj->stotal -= g->ticks;
+    sj->nseg--;
+  }
+}
+
+static bool slow_before_next(const sj_chip *sj, int i);
 /* take the next command from the buffer and start it. the command stays
  * counted in the buffer until it has finished */
 static void next_command(sj_chip *sj) {
@@ -1101,11 +1252,92 @@ static void next_command(sj_chip *sj) {
        * one's end, by more when both are voiced (measured on the pairs:
        * vowel to vowel 51 ms, with a hiss or a stop on either side 10 to 24) */
       const int next = next_sound(sj, n);
+      /* ASSUMPTION (2026-11-07, Man Goes Down P4 only, both units: its Slow IYUW ends ~40-50 ms after ours; the same
+       * Slow IYUW alone matches, VoxProbe 12): a slowed glide followed by modifiers that include a Slow, before the next
+       * sound, plays SLOW_GLIDE_ON ms longer. P4 944 ms on the chip, 875 -> 925 here; the cause is unknown (VoxProbe 13
+       * tests a Slow after a sound) */
+      if (allophones[code - 128].kind == K_GLIDE && sj->slow && next >= 128 && slow_before_next(sj, n) && sj->nseg > 0) {
+        sj->seg[sj->nseg - 1].ticks += TICKS(SLOW_GLIDE_ON * speed_factor(sj, false));
+        sj->stotal += TICKS(SLOW_GLIDE_ON * speed_factor(sj, false));
+      }
+      /* a voiced sound straight into SE bends F2 and F3 to ZZ's, SE's voiced partner, over its last 40 ms (Man Goes
+       * Down P4, both units: IYUW's F2 falls to ~1090 Hz and rises to ~1500 before the hiss; ZZ's F2 is 1469) */
+      if (next == 187 && sj->nseg > 0 && sj->seg[sj->nseg - 1].voiced) {
+        const allophone *zz = &allophones[167 - 128];
+        anticipate(sj, TICKS(40.0 * speed_factor(sj, false)), bent(zz->f2 * HZ_STEP, bend_hz(sj)), bent(zz->f3 * HZ_STEP, bend_hz(sj)));
+      }
+      /* GO followed at once by a sound starting on OW (OW OWRR OWIY OWWW) releases on F2 1430 and F3 1920 Hz, F3 the
+       * stronger by 4-5 dB (Man Goes Down's GO OWWW, both units, the user's drawn lines: two level bands that then split
+       * into OW's F2 and F3); alone it keeps its table formants, which its solo takes need (moving them there: spectrum
+       * 2.28 -> 4.12). Only before OW until another context is recorded (VoxProbe 13 section 7) */
+      if (code == 179 && (next == 137 || next == 153 || next == 156 || next == 164) && sj->nseg > 0) {
+        segment *r = &sj->seg[sj->nseg - 1];
+        const double bh = bend_hz(sj);
+        r->from.f[1] = r->to.f[1] = bent(1430.0, bh);
+        r->from.f[2] = r->to.f[2] = bent(1920.0, bh);
+        r->from.a[1] = r->to.a[1] = r->to.a[1] * 0.5f;
+        r->from.a[2] = r->to.a[2] * 6.0f;
+        r->to.a[2] = r->from.a[2];
+        if (sj->ramp_seg >= 0 && sj->ramp_seg < sj->nseg - 1) {
+          segment *q = &sj->seg[sj->ramp_seg];
+          q->from.f[1] = q->to.f[1] = r->from.f[1];
+          q->from.f[2] = q->to.f[2] = r->from.f[2];
+          q->from.a[1] = q->to.a[1] = r->from.a[1];
+          q->from.a[2] = q->to.a[2] = r->from.a[2];
+        }
+      }
       if (next >= 0 && sj->nseg > 0) {
         segment *l = &sj->seg[sj->nseg - 1];
-        const bool both = l->voiced && next <= 199 && allophones[next - 128].kind != K_FRIC && allophones[next - 128].kind != K_STOP;
+        /* a stop on either side takes the short overlap (the comment's own "a stop on either side"; the code only looked
+         * at the next sound, so GO lost 51 ms of its release to OWWW and turned 15-25 ms early) */
+        const int kc = allophones[code - 128].kind;
+        const bool both = l->voiced && kc != K_STOP && kc != K_VSTOP && next <= 199 && allophones[next - 128].kind != K_FRIC && allophones[next - 128].kind != K_STOP;
         /* no overlap before the same sound again: it plays as a copy, which runs on from this one as a Repeat's do */
-        const int cut = next == code ? 0 : TICKS(both ? T.overlap_v : T.overlap);
+        /* no overlap after an unvoiced stop: its burst and aspiration play whole (the TT AW pairs, VoxProbe 4, 8, 9, both
+         * units: 166-176 ms where ours read 145; 160 with the whole release) */
+        int cut = (next == code || kc == K_STOP) ? 0 : TICKS(both ? T.overlap_v : T.overlap);
+        /* ASSUMPTION (2026-11-07, fitted on VoxProbe 4's vowel pairs, both units, 2600 and Stella; replaces the fixed
+         * 30 ms for these joins, an earlier finding these recordings don't support): a vowel or glide running into a
+         * vowel or glide is cut by JOIN_A - JOIN_K * d ms, d the ERB distance of F1 and F2 between its last frame and the
+         * next sound's; below zero it runs on by that much (the chip takes longer between sounds further apart: AW IY
+         * and IY AW 261/260 ms where the fixed cut gave 215, AW UW 204 where it gave 212). Nasals, liquids and voiced
+         * hisses keep the fixed cut: their table formants aren't a vowel position, and the rule put "man goes down" and
+         * Man Goes Down P2 51-145 ms long */
+        const int kn = next <= 199 ? allophones[next - 128].kind : -1;
+        if (both && next != code && (kc == K_VOWEL || kc == K_GLIDE) && (kn == K_VOWEL || kn == K_GLIDE)) {
+          const allophone *b = &allophones[next - 128];
+          if (b->kind == K_GLIDE)
+            b = &allophones[b->f1]; /* a glide's f1 f2 name the allophones it runs between: it starts on the first's */
+          const double bf[2] = {b->f1 * HZ_STEP, b->f2 * HZ_STEP};
+          double d = 0.0;
+          for (int q = 0; q < 2; q++) {
+            const double ea = 21.4 * sj_log(1.0 + 0.00437 * l->to.f[q]) / M_LN10, eb = 21.4 * sj_log(1.0 + 0.00437 * bf[q]) / M_LN10;
+            d += ea > eb ? ea - eb : eb - ea;
+          }
+          const double ms = (JOIN_A - JOIN_K * d) * speed_factor(sj, false);
+          if (ms >= 0.0)
+            cut = TICKS(ms);
+          else {
+            cut = 0;
+            l->ticks += TICKS(-ms);
+            sj->stotal += TICKS(-ms);
+          }
+        }
+        /* ASSUMPTION (2026-11-07, every recorded voiced-stop pair, both units): a voiced stop into a vowel or glide with
+         * no Slow on it loses 30 - 10 * d ms more off its end, d the ERB distance between its release F2 and the
+         * vowel's (BE EH 168 ms where we gave 198, DO AYWW 284 / 315; BE AW and GO OWWW, far apart, already matched) */
+        if (kc == K_VSTOP && next != code && (kn == K_VOWEL || kn == K_GLIDE) && !slow_before_next(sj, n)) {
+          const allophone *b = &allophones[next - 128];
+          if (b->kind == K_GLIDE)
+            b = &allophones[b->f1];
+          const double ea = 21.4 * sj_log(1.0 + 0.00437 * l->to.f[1]) / M_LN10, eb = 21.4 * sj_log(1.0 + 0.00437 * (b->f2 * HZ_STEP)) / M_LN10;
+          const double d = ea > eb ? ea - eb : eb - ea, extra = 30.0 - 10.0 * d;
+          if (extra > 0.0) {
+            trim_tail(sj, cut + TICKS(extra * speed_factor(sj, false)));
+            l = &sj->seg[sj->nseg - 1];
+            cut = 0;
+          }
+        }
         if (cut > 0 && l->ticks > cut + 1) {
           l->ticks -= cut;
           sj->stotal -= cut;

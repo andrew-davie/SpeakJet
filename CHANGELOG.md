@@ -2,6 +2,32 @@
 
 ## The rebuild
 
+### 0.4.2 (2026-11-07; technical manual 1.11)
+
+Phrases. Every single sound plays exactly as at 0.4.1 apart from 191 TT, 141 NE, 142 NO and 143 NGE below; the rest
+changes only how sounds join, pause and stretch. Fitted on units A and B only (Man Goes Down's phrases and every
+two-sound pair the probes recorded); rules resting on one phrase or a few items are marked ASSUMPTION in the code and
+"assumed" in the technical manual (section 6.8), and VoxProbe 13 tests each. Active length, unit A / unit B / 0.4.1 /
+0.4.2: Man Goes Down's phrase 1 1495 / 1502 / 1518 / 1502 ms, phrase 2 1695 / 1700 / 1775 / 1700, phrase 4 942 / 945
+/ 858 / 925; AW IY 261 / 215 / 270, BE EH 168 / 198 / 168, DO AYWW 280-282 / 315 / 288.
+
+- **Sounds.** 191 TT: a 10 ms onset at +3 dB. 141 NE, 142 NO, 143 NGE: a weak noise band each (NE P 0.67 -> 0.33,
+  NO 0.72 -> 0.50, NGE 1.02 -> 0.73 on the solo takes).
+- **Speed** below 114: speech on the effects' law, (147 - Speed) / 33 (AY and IYUW x1.21 at Speed 108, both units);
+  from 114 up as before.
+- **Pauses:** P0 20, P1 90, P2 200, P3 648, P4 15, P5 30, P6 59 ms (VoxProbe 1, both units, 2600 and Stella; Man
+  Goes Down's gaps).
+- **A voiced stop after a nasal** closes nearly silent: 38 ms, the nasal's F2 and F3 falling into it, the bar 16 dB
+  down, the release rising over 10 ms ("goes" in "man goes down").
+- **Joins.** A stop on either side takes the short 15 ms cut (the code had looked only at the next sound), none after
+  an unvoiced stop. ASSUMPTIONS: vowel and glide joins cut by 66.9 - 6.9 x the F1+F2 ERB distance (runs on when
+  negative), replacing the fixed 30 ms; a voiced stop into a vowel with no Slow on it trimmed by 30 - 10 x its F2
+  distance and, from silence, closing for at most 30 ms; 179 GO before OW releasing on F2 1430, F3 1920 Hz; a slowed
+  glide followed by a Slow 50 ms longer.
+- **Toward SE:** a voiced sound bends to 167 ZZ's F2 and F3 over its last 40 ms. 187 SE's copy 80 ms.
+- **docs:** technical manual 1.11 (a new mark, "assumed"; section 6.8 lists what was fitted on Man Goes Down; Bend
+  0-2's second line corrected to run parallel to the tone), Appendix A regenerated; design.md brought up to the code.
+
 ### 0.4.1 (2026-11-07; technical manual 1.10)
 
 The measurement under the fits repaired first: unit A's 2026-11-05 takes re-placed (HE sat on WH's slot, seven

@@ -132,7 +132,10 @@ units open BE, BO, DE, DO, GE and GO on a voice bar 2–9 dB under the release.
 From silence the bar is there at once. A stop may have its own bar fade-in and
 level (`ba`, `bl`) and release level (`rl`); stops and fricatives may open on a
 louder onset (`ob`, `og`). Then the burst and release, which is the measured
-length.
+length. After a sound the closure lasts at least `JOIN_CLOSURE` (45 ms); after a nasal it goes nearly silent
+(`NASAL_CLOSURE`, `NASAL_FADE`, `NASAL_BAR`, `NASAL_RAMP`: technical manual 6.4, fitted on Man Goes Down). Rules
+marked ASSUMPTION in the code (GO's release before OW, a voiced stop into a vowel trimmed by F2 distance and its
+closure capped at 30 ms when no Slow is involved) are listed in the technical manual, section 6.8.
 
 ## Time
 
@@ -140,16 +143,19 @@ length.
 alone, or followed by pauses (VoxProbe 5 sections 2–4 agree to 5 ms), nor on
 Pitch. It is not the manual's length: vowels play about twice it, diphthongs
 1.3×, the K stops 0.75×. So each allophone carries its measured length at
-Speed 114. Speed is linear: length = L114 · (162 − Speed) / 48 (`speed_a`,
-`speed_b`; AW: 95, 197, 287 ms at Speed 127, 90, 60); the effects shorten
-faster, (147 − Speed) / 33 (`fx_speed_a`, `fx_speed_b`), fitted on every
-effect recording at another Speed (technical manual, section 7). Fast is ×0.77 and
-Slow ×1.22 of the played length, stops unchanged (`fast`, `slow`; VoxRecord,
-both units; the manual says ½ and 1½).
+Speed 114. Speech follows the effects' law below Speed 114, (147 − Speed) / 33 (`fx_speed_a`, `fx_speed_b`;
+VoxProbe 12: AY and IYUW ×1.21 at Speed 108), and (162 − Speed) / 48 from 114 up (`speed_a`, `speed_b`); the effects
+use (147 − Speed) / 33 throughout, fitted on every effect recording at another Speed (technical manual, section 7).
+Fast is ×2/3 and Slow ×4/3 of the played length (`fast`, `slow`; VoxProbe 12, both units); the unvoiced stops and
+affricates are unchanged, the voiced stops take Slow but not Fast.
 
 **Joins.** A sound followed at once by another keeps the voice running: no
 release on it and no attack on the next; it is cut short by 15 ms, 30 when
-both are voiced (`overlap`, `overlap_v`). Pauses, effects and silence keep
+both are voiced (`overlap`, `overlap_v`). A stop on either side takes the 15, and nothing is cut after an unvoiced
+stop. A vowel or glide into a vowel or glide is cut by `JOIN_A` − `JOIN_K`·d ms instead, d the F1+F2 ERB distance,
+running on when that is negative (ASSUMPTION: fitted on VoxProbe 4's vowel pairs). A voiced sound into 187 SE bends
+toward 167 ZZ's formants over its last 40 ms; a slowed glide followed by a Slow plays `SLOW_GLIDE_ON` ms longer
+(ASSUMPTION: Man Goes Down's phrase 4 only). Pauses, effects and silence keep
 the ramps. The look-ahead steps over Fast, Slow, Stress, Relax and the
 two-byte settings, so a pitch byte between words doesn't break a join.
 
@@ -271,8 +277,8 @@ makes it is not known.
 **Bend** moves every oscillator by the same 44 Hz per step from 5 (D1's 697
 and 1209 both step by 44, as do AW's three formants; `bend_hz`); below 5
 there is a further 22 Hz. **Stress**, **Relax** and code 18 change nothing
-measurable in length, pitch or level. The pauses are the manual's but P1 and P4,
-played as 90 and 15 ms (measured, VoxProbe 8).
+measurable in length, pitch or level. The pauses are 20, 90, 200, 648, 15, 30 and 59 ms for P0 to P6 (measured,
+VoxProbe 1 section 5 on both units, and Man Goes Down's gaps; technical manual, section 8).
 
 **Reading ahead.** At a sound's release (an effect's closing fade, else its last
 `READ_AHEAD_MS`, 30 ms) the library takes the command after it early, if it is a
