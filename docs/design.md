@@ -116,9 +116,12 @@ low-passed. CH is unvoiced (no periodicity at the pitch period on either
 unit). The allophones' noise is high-passed twice at 400 Hz (6–21 dB too much
 under 400 Hz without it, every unvoiced fricative on both units), with a corner
 of its own where measured (`hp`: PE, PO); WH carries a white floor 30 dB under
-its band (`wf`); SE, SO and SH start on a 16 ms burst of low noise (`th`, `tc`).
+its band (`wf`); SE, SO and SH start on a 16 ms burst of low noise (`th`, `tc`;
+`th` is /64 of the band since 2026-11-07 — at /256 the byte could not reach the
+chip's burst, twice what SE had); TS's release decays to `nd`/256 of its band
+over its length (−13 dB over 95 ms on both units, the white floor holding).
 These came from the band × time audit: library minus chip, 24 log bands × 2.5 ms,
-against the chip's own take-to-take spread (technical manual 1.8).
+against the chip's own take-to-take spread (technical manual 1.8, 1.10).
 
 **Stops.** A closure (`closure` 30 ms, scaled with Speed, or the stop's own `cl`:
 lined up on the release, BE BO DE DO's bar is 50–55 ms, the final stops' 5–16)
@@ -166,7 +169,10 @@ the glides' copies run 185–290 ms. JH's copy is 80 ms, ZH's 70.
 30 (`attack`, `release`); an unvoiced fricative switches in 3 ms, a nasal rises in
 25, and a sound may have its own (`aa`, `rr`). An effect's tone starts within
 1–3 ms on both units (`fx_attack` 1 ms, `fx_release` 25), many on a 5 ms click,
-and an effect may have its own attack, release and click (the `fxs` table).
+and an effect may have its own attack, release and click (the `fxs` table), and
+since 2026-11-07 its own noise high pass and a burst length: 253 M1 opens on a
+50 ms block of low noise under a hiss that is high-passed at 608 Hz (both units,
+every take; an effect's noise was otherwise white to DC).
 
 ## Levels
 

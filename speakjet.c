@@ -67,6 +67,9 @@
 #ifndef NSWEEP_HPK
 #define NSWEEP_HPK (1.0 / (1.0 + 2.0 * M_PI * 150.0 / 8000.0)) /* the swept noise's high pass (C8, C9): 150 Hz */
 #endif
+#ifndef JOIN_CLOSURE
+#define JOIN_CLOSURE 45.0 /* a stop's closure after a sound, at least this, ms (Man Goes Down's GO) */
+#endif
 #ifndef NHP_TWO
 #define NHP_TWO 1 /* two stages (1) or one (0) */
 #endif
@@ -237,6 +240,8 @@ struct sj_chip {
   double thk;          /* and its low-pass coefficient */
   double nhk;          /* an allophone's noise high pass coefficient */
   double fxburst, fxbk, fxblp; /* an effect's onset burst (fxs): level, low-pass coefficient and state */
+  double fxbms;        /* its length, ms (fxs tl; FXBURST_MS when 0) */
+  double fxhpk;        /* the effect's own noise high pass (fxs hp), one stage; 0: none */
   int copies;        /* copies of a Repeat still to play */
   int copy_of;       /* which allophone */
   frame last; /* where the voice is, for transitions into the next sound */
@@ -301,11 +306,12 @@ typedef struct allophone {
   uint8_t wf;         /* a white floor under its noise band, /256 of the band's level (0: none) */
   uint8_t rr;         /* its own release (fade-out) length, ms (0: the common one) */
   uint8_t tc;         /* its starting burst's low-pass corner, Hz/32 (0: THUMP_HZ) */
-  uint8_t th;         /* a low thump at its start: low noise under 800 Hz fading over 16 ms, /256 of the noise band's level (0: none) */
+  uint8_t th;         /* a low thump at its start: low noise under 800 Hz fading over 16 ms, /64 of the noise band's level (0: none) */
   uint8_t ba;         /* a voiced stop's bar fade-in from silence, ms (0: FRIC_RAMP) */
   int8_t bl;          /* the bar's level re the release, half-decibels (0: the same) */
   uint8_t aa;         /* its own attack (fade-in) length, ms (0: the class's) */
   uint8_t hp;         /* its noise high pass corner, Hz/16 (0: NHP_FC) */
+  uint8_t nd;         /* a decaying release: the noise band's level at the end of its last segment, /256 (0: steady) */
 } allophone;
 
 /* TABLES-BEGIN */
@@ -639,6 +645,8 @@ static void start(sj_chip *sj, bool effect) {
     sj->neq = 0; /* an allophone has no peaking filters */
   sj->attack = TICKS(effect ? T.fx_attack : T.attack);
   sj->fxburst = 0.0;
+  sj->fxbms = FXBURST_MS;
+  sj->fxhpk = 0.0;
   sj->onset = 0;
   sj->onset_from = 0;
   sj->release_gain = 1.0;
@@ -765,9 +773,14 @@ static void play_effect(sj_chip *sj, int code) {
     sj->attack = TICKS(x[0]);
   if (x[1])
     sj->release = TICKS(x[1]);
-  sj->fxburst = x[2] / 256.0;
+  sj->fxburst = x[2] / 64.0; /* /64 since 2026-11-07 (was /256; values divided by four): 253 M1's 50 ms burst needs the range */
   sj->fxbk = 1.0 - exp(-2.0 * M_PI * (x[3] ? x[3] * 32.0 : THUMP_HZ) / 8000.0);
   sj->fxblp = 0.0;
+  /* 253 M1 (2026-11-07, both units, every take): a low block 100-500 Hz for the first ~50 ms under a hiss that has little
+   * under 500 Hz. An effect's noise is otherwise white to DC: its own high pass (hp, Hz/16, one stage) and its burst's own
+   * length (tl, ms) */
+  sj->fxhpk = x[4] ? 1.0 / (1.0 + 2.0 * M_PI * (x[4] * 16.0) / 8000.0) : 0.0;
+  sj->fxbms = x[5] ? (double)x[5] : FXBURST_MS;
 }
 
 static frame allo_frame(const allophone *a, bool second, double bend) {
@@ -820,8 +833,15 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
    * the release: BE BO DE DO GE GO's bar 2-11 dB under the peak through the closure, not a fade up from nothing) */
   if (a->kind == K_VSTOP && bar.a[0] + bar.a[1] + bar.a[2] + bar.na == 0.0f)
     bar = gone;
-  /* each stop's own closure (both units, lined up on the release: BE BO DE DO's bar 50-55 ms, the final stops' 5-16) */
-  const int closure = TICKS((a->cl ? a->cl : T.closure) * speed_factor(sj, false));
+  /* each stop's own closure (both units, lined up on the release: BE BO DE DO's bar 50-55 ms, the final stops' 5-16);
+   * those were measured from silence, where the closure is the voice bar. After a sound the chip closes for at least
+   * JOIN_CLOSURE (2026-11-06, Man Goes Down's NE GO, both units: 30-40 ms at -27 to -37 dB before the burst; ours, with
+   * GO's 8 ms, ran straight on and "goes" lost its /g/; P on every recording with a stop after a sound: MGD P1 1.946 ->
+   * 1.625, EH DE 0.694 -> 0.194, AW TT 1.058 -> 1.023, MGD P2 0.615 -> 0.656, every other unchanged) */
+  double clms = a->cl ? a->cl : T.closure;
+  if (from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f && clms < JOIN_CLOSURE)
+    clms = JOIN_CLOSURE;
+  const int closure = TICKS(clms * speed_factor(sj, false));
   /* from silence, the bar opens on a click: the release's full frame falling into the bar over BAR_CLICK ms (both units,
    * every voiced stop's first 10 ms 11-33 dB over the library's at 1-10 kHz) */
   int click = 0;
@@ -995,8 +1015,13 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   sj->nhk = 1.0 / (1.0 + 2.0 * M_PI * (a->hp ? a->hp * 16.0 : NHP_FC) / 8000.0); /* its own corner (PE, PO: their noise's bottom end) */
   /* a sibilant starts on a burst of low noise (both units, every take: SE SO SH 12-18 dB over their body's 100-700 Hz
    * band at the onset, a column under 1 kHz about 15 ms long) */
-  sj->thump = a->th / 256.0;
+  sj->thump = a->th / 64.0; /* /64 since 2026-11-07 (was /256): SE's thump was pinned at the byte's top and the chip's is
+                             * twice as loud (every figure better at x2); the stored values were divided by four */
   sj->thk = 1.0 - exp(-2.0 * M_PI * (a->tc ? a->tc * 32.0 : THUMP_HZ) / 8000.0);
+  /* a release that decays: the noise band ends its last segment at nd/256 of its level (TS, both units, every take:
+   * -13 dB over its 95 ms, the low band holding - the white floor - while the band falls) */
+  if (a->nd && sj->nseg > 0)
+    sj->seg[sj->nseg - 1].to.na *= a->nd / 256.0f;
   if (a->rr)
     sj->release = TICKS(a->rr); /* a sound's own fade-out (SE, SO: the chip fades over most of the sound) */
   /* the copies of a Repeat follow on; the level ramps once, over the whole */
@@ -1452,8 +1477,8 @@ static double tick(sj_chip *sj) {
      * takes with the background taken off: 6-21 dB too much under 400 Hz without it) */
     double yo = y;
     /* and the swept noise (C8, C9) at NSWEEP_HP (2026-11-06: ~10 dB heavy under 300 Hz without it) */
-    if (!sj->effect || (s->flags & FX_NSWEEP)) {
-      const double k = sj->effect ? NSWEEP_HPK : sj->nhk;
+    if (!sj->effect || (s->flags & FX_NSWEEP) || sj->fxhpk > 0.0) {
+      const double k = sj->effect ? (sj->fxhpk > 0.0 ? sj->fxhpk : NSWEEP_HPK) : sj->nhk;
       const double o1 = k * (sj->nhp[1] + y - sj->nhp[0]);
       sj->nhp[0] = y;
       sj->nhp[1] = o1;
@@ -1491,9 +1516,9 @@ static double tick(sj_chip *sj) {
       v *= sj->onset_gain;
     if (sj->onset_from > 0 && sj->stick >= sj->onset_from)
       v *= sj->release_gain;
-    if (sj->fxburst > 0.0 && sj->stick < TICKS(FXBURST_MS)) {
+    if (sj->fxburst > 0.0 && sj->stick < TICKS(sj->fxbms)) {
       sj->fxblp += sj->fxbk * (2.0 * rnd(sj) - sj->fxblp);
-      v += sj->fxburst * sj->fxblp * (1.0 - (double)sj->stick / TICKS(FXBURST_MS));
+      v += sj->fxburst * sj->fxblp * (1.0 - (double)sj->stick / TICKS(sj->fxbms));
     }
   }
   sj->stick++;

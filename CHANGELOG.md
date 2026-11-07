@@ -2,6 +2,28 @@
 
 ## The rebuild
 
+### Unreleased (2026-11-07; technical manual 1.10)
+
+The measurement under the fits repaired first: unit A's 2026-11-05 takes re-placed (HE sat on WH's slot, seven
+sounds unplaced), the audit's chip run found above the hum (quiet fricatives had been measured on nothing), the
+depth cut no longer emptying HE PO PE TH. Then each affected sound worked to its measurement, and the worst of the
+rest. Over every sound on the solo takes of both units, against 0.3.0: E 4.35 -> 3.83 (37 % of the gap to a second
+AtariVox closed, 29 % at 0.4.0), P 0.64 -> 0.56 (24 %), spectrum 2.54 -> 2.38 (11 %).
+
+- **The sibilants' starting burst** is twice what the byte reached: `th` is now /64 of the band (was /256; stored
+  values divided by four, byte-identical), SE SH SO at x2-x3 better on every figure.
+- **A decaying release** (193 TS: -13 dB over its 95 ms, the white floor holding): the band's end level as a
+  field, `nd` /256. The allophone row grows to 27 bytes.
+- **Allophones.** 183 HE's noise high pass 304 Hz; 186 FF 75 ms, 199 PO 55, 175 DO 30, 170 BE 40, 179 GO 45, 131 EH
+  140; 133 AX, 134 UX and 137 OW with their own attacks (the chip's first pulses are partial); 195 KO's burst
+  high-passed at 304 Hz; 196 EK's band 2000 Hz; searches on HO TH SE SO TS KO GE EB ZZ ZH.
+- **Effects.** Fade-outs where the chip's last 25-40 ms fade and ours stopped: 206 R6 25 ms, 207 R7 20, 254 M2 15,
+  224 B4 40; 229 B9's first parts 5 dB up; searches inside their structures on R6 R4 R3 R2 A7 A8 B2 B6 B7 B8 C0 C3
+  C4 C6. 253 M1 rebuilt as the chip plays it: a 50 ms block of low noise under a hiss high-passed at 608 Hz — two new
+  bytes in the effect structure row (a noise high pass and a burst length; the burst level /64, values divided by
+  four). Tables 5131 B.
+- **docs:** technical manual 1.10 (the burst scale, `nd`, TS), Appendices A and B regenerated.
+
 ### 0.4.0 (2026-11-06; technical manual 1.8)
 
 Structure measured by a band × time audit (library minus chip, 24 log bands × 2.5 ms, against the chip's own

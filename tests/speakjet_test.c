@@ -76,7 +76,9 @@ static void test_phrase_length(void) {
   const double got = (double)n * 1000 / SJ_SAMPLE_RATE;
   /* the sounds' lengths, the stop's closure (its own when it has one, as the engine plays it), and the two sounds
    * followed at once by another cut short by the overlap */
-  const double closure = allophones[199 - 128].cl ? allophones[199 - 128].cl : T.closure;
+  double closure = allophones[199 - 128].cl ? allophones[199 - 128].cl : T.closure;
+  if (closure < JOIN_CLOSURE) /* PO follows OH at once: it closes for at least JOIN_CLOSURE */
+    closure = JOIN_CLOSURE;
   const double want = (allophones[183 - 128].ms + allophones[135 - 128].ms + allophones[199 - 128].ms) * MS_STEP +
                       closure - 2 * T.overlap;
   if (fabs(got - want) > 10)
