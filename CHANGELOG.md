@@ -2,13 +2,14 @@
 
 ## The rebuild
 
-### Unreleased (2026-11-07; technical manual 1.10)
+### 0.4.1 (2026-11-07; technical manual 1.10)
 
 The measurement under the fits repaired first: unit A's 2026-11-05 takes re-placed (HE sat on WH's slot, seven
 sounds unplaced), the audit's chip run found above the hum (quiet fricatives had been measured on nothing), the
 depth cut no longer emptying HE PO PE TH. Then each affected sound worked to its measurement, and the worst of the
-rest. Over every sound on the solo takes of both units, against 0.3.0: E 4.35 -> 3.83 (37 % of the gap to a second
-AtariVox closed, 29 % at 0.4.0), P 0.64 -> 0.56 (24 %), spectrum 2.54 -> 2.38 (11 %).
+rest: 46 sounds changed. Over every sound on the solo takes of both units, against 0.3.0: E 4.35 -> 3.78 (40 % of
+the gap to a second AtariVox closed, 29 % at 0.4.0), P 0.64 -> 0.55 (29 %), spectrum 2.54 -> 2.34 (15 %); against
+1.0.0, E 14.03 -> 3.78, 92 % of that gap.
 
 - **The sibilants' starting burst** is twice what the byte reached: `th` is now /64 of the band (was /256; stored
   values divided by four, byte-identical), SE SH SO at x2-x3 better on every figure.

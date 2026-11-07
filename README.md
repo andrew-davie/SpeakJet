@@ -111,15 +111,21 @@ Three scores, lower is better:
   spectrum, peaks and pitch), averaged over every recording of the sound:
   VoxRecord and VoxProbes 4, 7 and 8, 1191 recordings in all.
 
-At 0.3.0, by sound (each sound's mean, then the mean over sounds):
+At 0.4.1, by sound on both units' VoxRecord solo takes (each sound's mean, then
+the mean over sounds; 0.3.0 beside it, and the two real chips against each other
+as the floor nothing can beat):
 
 ```
-              sounds   spectrum dB   E dB    P
-allophones        72          2.62   4.31   0.61
-effects           55          2.62   4.40   0.92
-all sounds       127          2.62   4.35   0.74
-every recording, item by item               0.89
+                      spectrum dB          E dB              P
+                   0.3.0  0.4.1  chip   0.3.0  0.4.1  chip   0.3.0  0.4.1  chip
+allophones (65)     2.56   2.37  0.97    4.16   3.55  3.10    0.50   0.41  0.22
+effects (54)        2.51   2.29  1.41    4.58   4.05  2.71    0.82   0.70  0.39
+all sounds (119)    2.54   2.34  1.17    4.35   3.78  2.92    0.64   0.55  0.30
 ```
+
+Against 1.0.0 (E 14.03, P 2.44, spectrum 12.97 over the same sounds) the
+library has closed 92 % of the E gap to a second AtariVox, 88 % of P's and 90 %
+of the spectrum's.
 
 What is still known to be off (`docs/technical-manual.md` section 13 has the
 detail):
@@ -180,10 +186,10 @@ measurement of the real chip behind it.
 This branch was written from scratch from the SpeakJet User's Manual and
 recordings of two AtariVoxes only. The brief was the smallest footprint: a rule
 wherever a rule could be found, a few bytes of parameters per sound
-otherwise. `speakjet.c` is about 1550 lines; the tables are about 5 KB
-compiled: 72 allophones of 26 bytes, the effect parts as a byte stream, each
-holding only the fields it uses, and a 4-byte structure row per effect; the
-object is about 27 KB.
+otherwise. `speakjet.c` is about 1580 lines; the tables are 5131 bytes
+compiled: 72 allophones of 27 bytes, the effect parts as a byte stream, each
+holding only the fields it uses, and a 6-byte structure row per effect; the
+object is about 27 KB at -O2.
 
 What the recordings gave:
 
