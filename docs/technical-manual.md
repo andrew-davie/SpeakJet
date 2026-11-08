@@ -854,7 +854,11 @@ Modelled so far: the Speed step, the join terms, KO after a nasal, the KE locus,
 - **A voiced stop into IY is short** (DO IY -20, GO IY -30). TH RR AW is -38.
 - **The slowed glide:** Slow IYUW Slow AW +60, and Slow IYUW Slow SE AW +25 at Speed 100 and +80 at 127. Slow AYWW
   and Slow OWWW before Slow SE AW are -35 and -28. The 25 ms lengthening is wrong in size, and it changes with Speed
-  and with the glide.
+  and with the glide. By picture on both units: Slow's stretch of IYUW falls with Speed (x1.30 at 100, ~x1.24 at
+  114, ~x1.0 at 127, where the slowed IYUW is ~130 ms, as plain; ours stays ~x1.35, 177 ms); in Slow IYUW Slow AW the
+  AW is ~125 ms, as plain, where ours is ~165; after Slow AYWW and Slow OWWW the slowed SE is ~120 ms, ours ~80-90.
+  Applying the step above 115 to slowed sounds as well put Man Goes Down P2 52 ms short (1648 against 1695/1700):
+  not that. Open.
 - **Slowed effects (Speed 0):** R8 R9 C9 within 15 ms; B0 +17, C8 -28, R5 -30.
 - **Answered, no change:** copies of SE and SH, UX copies with Pitch codes between, M2 (with and without Pitch 150),
   RR and IY alone.
