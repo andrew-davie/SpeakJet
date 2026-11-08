@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.11, 2026-11-07.** The version rises with every change to what is known about the chip (new
+**Version 1.13, 2026-11-08.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -696,6 +696,89 @@ used for timing (one global lag over a whole phrase: moving 5 ms of silence in a
 
 ---
 
+### 6.9 What VoxProbe 13 confirmed and corrected (1.13)
+
+VoxProbe 13 build 5 was recorded on both units, 2600 and Stella, on 2026-11-08 (four takes). Each item's active
+length was compared with the library's: within 30 dB of the peak and 10 dB over the take's background, the chips'
+median against ours. Mean |error| per section, 0.4.2 to now: Speed near 114 12.3 to 11.6 ms, joins 14.1 to 10.2,
+into a voiced stop 20.1 to 12.9, a stop's release 14.9 to 11.8, pauses 29.6 to 23.5, unvoiced stops and hisses
+29.9 to 24.8. Man Goes Down: phrase 1 1502 ms, phrase 2 1712, phrase 4 940, against 1495/1502, 1695/1700 and
+942/945 on the two units.
+
+- **Pauses scale with Speed** on the effects' law, (147 - Speed) / 33. Pitch and Bend don't change them (AW P2 AW
+  and AW P6 AW at Speed 100, 116 and 127, Pitch 55 and 110, Bend 1 and 4). At Speed 116 and 127 the chip's pauses
+  are still 40-70 ms shorter than ours, so the true law is steeper there. Open.
+- **The speech Speed law above 114** is too gentle for vowels and glides: IYUW, EYIY and OWWW alone are 18-30 ms
+  long at Speed 118-127. The effects' law fits them, but it shortens Man Goes Down's phrase 2 (Speed 118, mostly
+  consonants and Slows) to 1598-1665 ms against 1700. Not changed. Open.
+- **A Slow on the second of two equal sounds** stops it playing as a Repeat copy: AW Slow SE Slow SE UX plays two
+  whole SEs. SE's copy stays 80 ms: by picture the chips' AW SE SE runs to ~275 ms, as 80 gives (a 25 ms copy, fitted
+  first, followed a length measure that loses quiet hiss under the takes' hum; see section 12).
+- **The slowed-glide lengthening of 6.8 is confirmed in form** by picture on both units: Slow IYUW Slow SE's IYUW ends
+  ~20 ms after ours without it, and Slow IYUW SE (no Slow after) already matches. It is 25 ms, not 50.
+- **A stop into a vowel:** the extra trim of 6.8 now also applies with a Slow on the vowel (BE Slow EH, DO Slow AYWW
+  were 40-49 ms long). *Assumed:* GE and GO take no extra trim (they were 15-50 ms short). GE before OW and UW is still
+  40-50 ms short, for a reason not yet found.
+- *Assumed:* after a sound, DE and DO close 25 ms longer and GE and GO 15 ms longer; after a nasal, DE DO GE GO close
+  10 ms longer than BE and BO. Every stop after NGE is still 38-48 ms short.
+- *Assumed:* a nasal (MM NE NO NGE NGO) and a vowel or glide join with no overlap (IY MM, MM IY, IY NE, NE IY were
+  26-38 ms short), unless either is slowed. All three of phrase 1's nasal joins are slowed, and it keeps its length.
+- **The search that followed (2026-11-08).** Each rule above was switched off in turn and scored two ways: VoxProbe 13's
+  item lengths, and timing inside Man Goes Down's phrases (each phrase's spectrogram warped onto each unit's; the mean
+  distance from the diagonal, ms). That showed the nasal and closure rules above moving phrase 2 by 50 ms. The rules
+  now, all *assumed* unless stated:
+  - above Speed 114 an unslowed vowel or glide, its Repeat copy, and a pause shrink by (155.9 - Speed) / 47.4, a step
+    down from 114 (x0.80 at 118, x0.61 at 127, as VoxProbe 13 section 3 measures; the effects' law gives x0.88 at
+    118), slowed ones keep the effects' law, and the other speech sounds don't shrink at all. This is what lets Man
+    Goes Down P2 (Speed 118) and VoxProbe 13 agree: with the step on the vowels alone, P2's consonants ran 15-40 ms
+    short each; before it, P2's vowels ran 15-30 ms long and hid that;
+  - the nasal no-overlap rule is for vowels only, not glides (phrase 2's MM EYIY keeps its overlap);
+  - the extra 10 ms after a nasal is not applied under Slow (phrase 1's Slow GO);
+  - LE LO WW RR join vowels by the vowel join rule (phrase 2's IY WW IH);
+  - SE SO SH take half of Slow's stretch;
+  - an unvoiced stop straight after a pause code closes 30 ms longer; a slowed one after a sound, 20 ms longer;
+  - a voiced stop after a pause keeps its whole closure (the 30 ms cap of 6.8 is not applied);
+  - after NGE a voiced stop closes 40 ms longer;
+  - no overlap into TH; TH between a voiced sound and another sound plays 25 ms longer (not before a pause);
+  - the voiced-stop-into-vowel rule (30 - 10 x F2 distance) lengthens the release when it falls below zero (by
+    picture: the burst lands with the chips' and the vowel after runs longer when F2 has further to go);
+  - KE and KO after a nasal close 30 ms longer (NE KO OW by picture: KO bursts 30 ms after ours on both units);
+  - an unvoiced stop's closure after a sound is silent after a 10 ms fade (measured: both units go quiet for 20-40 ms
+    before every TT KO PO; ours faded across the whole closure and the runs of sound didn't match on 11 items);
+  - no overlap from a vowel, glide or hiss into TT, nor from NE or NO into KE KO PE PO BE BO; PO into a voiced sound
+    after a vowel overlaps 20 ms;
+  - the sound before a slowed unvoiced stop runs on 40 ms (the Slow read ahead), unless it is a nasal or a pause follows
+    the stop; the slowed stop then releases 15 ms longer before a voiced sound, and closes 20 ms longer only before a
+    pause (Man Goes Down P2's UW Slow TT P1);
+  - an unslowed NE or NO straight into GO or GE runs on 18 ms, 25 more when the GO is slowed, not with a Fast on it
+    (NE GO OW's NE 90 -> 110 ms against 110-120; Man Goes Down P1's NE is slowed and keeps its fitted length);
+  - the stop-into-vowel lengthening is not applied after BO; the GE glide is 8 ms per ERB (10 ended GE OW 10 ms late);
+  - a vowel after GE glides from GE's F2 over 10 ms more per ERB of F2 distance, and is that much longer (by picture:
+    GE OW's F2 falls from ~2000 Hz to OW's over ~60 ms on both units).
+
+  Measured by picture on both units, not assumed:
+  - a sound after a hiss starts as from silence: no sweep of formants or noise band from the hiss (SE TT AW, SE UX);
+  - no starting burst on a sibilant straight after a hiss (the second SE of SE SE: this was phrase 4's dark blob).
+
+  Every single sound at the default Speed is unchanged. Timing inside the phrases, 0.4.2 to now: phrase 1 14.7 to
+  12.3 ms, phrase 2 16.7 to 8.5, phrase 4 9.9 to 6.8; lengths 1488, 1700 and 940 ms. VoxProbe 13's six sections
+  summed (mean |error| per section, lengths13c): 55.0 ms. Boundaries inside items (each run of sound's start and
+  end against the units', on the 38 items whose runs match on both units): 8.3 ms mean.
+- **Tried and not taken:** a slowed TT's release stretched by Slow (the chips' aspiration runs ~75 ms after a vowel;
+  no gain); a vowel running on before a Slow and a hiss (VoxProbe 13 AW Slow SE shows ~30 ms, but Man Goes Down P2's
+  IH Slow TH gets worse); GO into a vowel by the GE rule (section 6 worse); the vowel join constants refitted.
+- **Pauses, corrected placement.** Unit A's 2600 take had section 9 shifted by one item from Speed 100 AW P6 AW to
+  Speed 127 AW P6 AW (an extra run at 223.65 s; the run count still matched). Placed by hand from the runs of sound,
+  both units agree within 15 ms. Measured from each AW's start: the pause factor is x1.40 at Speed 100, x0.81 at 116
+  and x0.61 at 127, which the laws above give; P2 is 188 ms, not 200 (the second AW started 10-20 ms late at every
+  Speed and Pitch; section 9 12.0 -> 9.4 ms).
+- **Still open:** Speed 115-117 (the step is fitted from 116 up);
+  AW IH AW and AY IY 30-40 ms long; Man Goes Down P4's slowed IYUW ~25 ms early and its UX copies ~15 ms long (a
+  fix of one moves the error to the other); NE before GO at Speed 90 and 127 (17 and 30 ms long: the second is the consonant-law conflict below); BO into AY EH 20 ms long; consonants above
+  Speed 114 (P2 at 118 wants them unscaled, NE GO OW at 127 wants them scaled); IY after a voiced stop 15-30 ms short (a weak tail on both units); RR after a sound
+  ~20 ms short; GO IY 30 ms short; a slowed TT's closure and aspiration; the death sound slowed ~20-50 ms short; the transitions'
+  shape. VoxProbe 14's plan (in the lab's notes) carries a test for each.
+
 ## 7. Sound effects
 
 The 55 effects, codes 200-254, are built from the same parts as speech. Each
@@ -1029,8 +1112,9 @@ pause (ms)           20    90   200   648    15    30    59
 The library's AW Pn AW gaps come out a constant 17-22 ms under the chip's for every pause: that constant is AW's own
 fade into and out of silence (section 13), not the pauses. Man Goes Down's phrases 1 and 2, whose pauses sit between
 stops and hisses, match these values within a few ms (ZZ P4 DO 20 ms on both units, 19 in the library). P0 leaves
-about 20 ms; P3, P5 and P6 run 52, 30 and 31 ms under the manual's figures. Pauses do not scale with Speed (VoxProbe
-8); whether Pitch or Bend change them is open (VoxProbe 13 section 9).
+about 20 ms; P3, P5 and P6 run 52, 30 and 31 ms under the manual's figures. Pauses scale with Speed on the
+effects' law, and Pitch and Bend don't change them (VoxProbe 13 section 9, both units; VoxProbe 8's reading that they
+don't scale was wrong). See 6.9.
 
 **Delay n** is n × 10 ms of silence.
 
@@ -1182,8 +1266,19 @@ VoxProbe 6     Volume, slowed stops
 VoxProbe 7     the synthesizer driven directly through the registers, effects at Pitch 20
 VoxProbe 8     reading ahead, the effects' Speed law, pauses, Slow by class, the bed
 VoxProbe 9     clocks, the period rules, Bend sweeps, tones near 0 Hz
+VoxProbe 10    the envelope oscillator by hand (register shapes, levels, noise), slowed effects, the voice
+               against Pitch, Bend on voice and effects, the death sound at several Speeds and Pitches
+VoxProbe 11    Man Goes Down's phrases connected and from a Reset, effects at three Speeds
+VoxProbe 12    Slow and Fast, joins and codes between sounds, Man Goes Down taken apart (without its Slow,
+               Pitch, Bend or Speed codes), the effects' Speed law, the default pitch, M2
+VoxProbe 13    build 5, posted 2026-11-07, recorded 2026-11-08 on both units (4 takes): Bend 0-15, speech at Speed 100-127, joins
+               (vowels, nasals, liquids, glides), stops into vowels with and without Slow, pauses under
+               Speed, Pitch and Bend, unvoiced stops and hisses, Man Goes Down phrase 1
 Man Goes Down  the phrases of a released game, for whole-phrase checks
 ```
+
+On 2026-11-05 every probe was recorded again on both units, each through a real 2600 and through Stella driving
+the AtariVox, so most items have four takes. *This list is updated with each probe recorded.*
 
 **Lessons.**
 
@@ -1208,6 +1303,17 @@ Man Goes Down  the phrases of a released game, for whole-phrase checks
   on all 14 of its recordings).
 - Before calling an odd spectral feature chip output, compare its level in the
   sound against the same recording's silence.
+- **Use only the two reference units.** A recording of Alex Herbert's vox_test ROM on an unidentified AtariVox
+  (probes/VoxTest) was briefly used on 2026-11-07 and dropped: its pauses run 25-55 ms under both reference units',
+  which agree with each other within 10 ms. Before using any recording, name its unit.
+- **Look in the earlier recordings before writing a new probe.** Several of 2026-11-07's questions were already
+  answered by takes on disk: VoxProbe 1's AW Pn AW (every pause code, both units, recorded but never cut into
+  items until then) gave the pause table; VoxProbe 4's sixteen pairs and VoxProbe 8, 9 and 12's stop pairs gave
+  the join rules. An old probe recorded again holds data its first analysis never looked at.
+- **Phrase timing is judged by eye and by length, not by the scores.** The combined error and the perceptual score
+  align a whole phrase with one shift; moving 5 ms of silence inside a gap cost the combined error 1.7, more than
+  any real change. Measure each word's and gap's length (from 30 dB under the peak and 10 dB over the take's own
+  background) against both units, and read spectrograms with both units above the library.
 
 **Scoring.** The library is judged against the recordings by three numbers:
 the whole-sound spectrum error, a combined spectrum, time-frequency and level
@@ -1261,7 +1367,20 @@ Where the library and the chip still differ, or the chip is not understood:
   TT ~9-29 ms under Fast); every vowel's fade into and out of a pause leaves the gap ~19 ms under the chip's (the
   sound's edges, not the pause); Man Goes Down's phrase 4 still shows a low blob where its second SE starts and a
   column where the hiss meets UX, which neither unit has.
-- **The assumed rules** of section 6.8 wait on VoxProbe 13 build 5, which tests each on both units.
+- **The assumed rules** of section 6.8 were tested by VoxProbe 13 build 5; section 6.9 gives what it confirmed and corrected.
+- **A length can't see a quiet hiss after a vowel** (2026-11-08). The takes' hum floor sits ~30-35 dB under a vowel's
+  peak; SE and TH after a vowel fall under it, so "active length" stops at the vowel (AW SE SE read 128 ms on unit A
+  where the SE SE runs to ~275). Lengths are now taken band by band: a 5 ms frame is sound when any of 12 bands is
+  12 dB over that band's floor in the take, so a hiss counts; the library's render is judged on the same take's floors
+  at the take's peak level (lengths13c). The 2600 takes decide; a Stella take counts only where it agrees with them
+  (the Stella takes carry extra sound events). Every reading is checked against the comparison pictures. Timing inside a phrase is measured by warping its spectrogram onto
+  each unit's.
+- **Check each placed item's shape against the other unit** (2026-11-08). A cutter can match the run count and still
+  be shifted by an item: an extra run and a later merge cancel. Unit A's VoxProbe 13 section 9 was shifted by one item
+  for five items, and the shifted windows read as "the units disagree by 55 ms" and as a long tail on unit A's AW.
+  Every item's window length is now compared between the two 2600 takes (none differ by more than 50 ms), and each
+  item's runs of sound (count and boundaries) against both units and ours: inside timing is scored on those boundaries,
+  not only on the first onset to the last end.
 - **The effects' bed:** its dependence on level, and 220 B0's low end (its bed
   falls away below 300 Hz).
 - **The mixer's limit** on three oscillators totalling over 63 (manual) was
@@ -1844,6 +1963,13 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.13  2026-11-08   VoxProbe 13 recorded (library 0.4.3): section 6.9 (the Speed step above 114, pauses, Slow and
+                   copies, unvoiced-stop closures and read-ahead, voiced-stop closures, nasal and liquid joins,
+                   after a hiss, GE, TH); section 12: band-wise lengths, run boundaries, checking placement against
+                   the other unit; open items listed
+1.12  2026-11-07   section 12: VoxProbe 10-13 and the 2026-11-05 recording set listed; lessons on using only the two
+                   reference units, on reading earlier recordings before writing a probe, and on judging phrase
+                   timing by length and spectrogram
 1.11  2026-11-07   fitted on Man Goes Down's phrases and the recorded two-sound pairs, units A and B only (section 6.8;
                    vox_test, an unidentified unit, excluded): speech Speed below 114 on the effects' law (x1.21 at 108);
                    a voiced stop after a nasal closes nearly silent (38 ms, nasal formants falling, bar 16 dB down,

@@ -2,6 +2,35 @@
 
 ## The rebuild
 
+### 0.4.3 (2026-11-08; technical manual 1.13)
+
+From VoxProbe 13, recorded on units A and B (2026-11-08). Every sound played alone at the default Speed is sample for
+sample as at 0.4.2; the tables are unchanged. Man Goes Down: phrase 1 1485 ms, phrase 2 1700, phrase 4 940 (units
+1495/1502, 1695/1700, 942/945); timing inside the phrases (each warped onto both units) 14.7 -> 12.4, 16.7 -> 9.9,
+9.9 -> 6.8 ms. VoxProbe 13: mean length error per section summed 120.9 -> 55.0 ms; boundaries inside items (each run
+of sound's start and end against both units) 8.3 ms mean, every item's runs matching the chips'.
+
+- **Pauses:** P2 200 -> 188 ms (VoxProbe 13 section 9, both units).
+- **Speed** (above 114 ASSUMPTION): pauses scale; above 114 unslowed vowels, glides, their copies and pauses shrink by
+  (155.9 - Speed) / 47.4 and the other speech sounds don't shrink.
+- **Repeats:** a Slow on the second of two equal sounds plays two whole sounds.
+- **Slow:** SE SO SH take half of its stretch.
+- **Stops** (ASSUMPTIONS): the stop-into-vowel trim applies under Slow and not to GE GO; DE DO close 25 ms longer after
+  a sound, GE GO 15; DE DO GE GO 10 ms longer after a nasal unless slowed, 40 after NGE; an unvoiced stop 30 ms longer
+  after a pause, 20 when slowed and before a pause; a voiced stop after a pause keeps its whole closure.
+- **Joins** (ASSUMPTIONS): a nasal and a vowel join with no overlap unless either is slowed; LE LO WW RR join vowels by
+  the vowel rule; no overlap into TH.
+- **Slowed glide:** 50 -> 25 ms (confirmed in form by picture on VoxProbe 13's Slow IYUW Slow SE).
+- **After a hiss** (by picture, both units): the next sound starts as from silence (no sweep from the hiss), and a
+  sibilant has no starting burst (phrase 4's dark blob inside SE SE is gone).
+- **Stop into vowel** (ASSUMPTIONS): the F2-distance rule lengthens the release below zero (not after BO); KE KO after
+  a nasal close 30 ms longer. Unvoiced stops: a silent closure after a 10 ms fade; no overlap into TT from a vowel or
+  hiss, nor from NE/NO into KE KO PE PO BE BO; PO into a vowel overlaps 20 ms; the sound before a slowed one runs on
+  40 ms (not a nasal, not before a pause), the stop releasing 15 ms longer. An unslowed NE or NO into GO/GE runs on
+  18 ms (+25 before a slowed GO; not with Fast).
+- **GE into a vowel** (ASSUMPTION): F2 glides from GE's over 8 ms per ERB of distance. **TH** between a voiced sound
+  and another sound: 25 ms longer (ASSUMPTION).
+
 ### 0.4.2 (2026-11-07; technical manual 1.11)
 
 Phrases. Every single sound plays exactly as at 0.4.1 apart from 191 TT, 141 NE, 142 NO and 143 NGE below; the rest
