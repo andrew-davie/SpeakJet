@@ -834,7 +834,12 @@ Modelled so far: the Speed step, the join terms, KO after a nasal.
   away fits the item lengths but cuts NE ~20 ms short of both units: the rule stays. MM KO's gap is still ~10 ms long,
   and NGE before a stop is ~40 ms short in its own sound (~90 against ~130 ms), where VoxProbe 13's fit put the
   missing time into the closure.
-- **BO into a vowel is long** (BO AW, AY, EH: +20 to +22 ms). BE into the same vowels is right.
+- **BO into a vowel is long** (BO AW, AY, EH: +20 to +22 ms). BE into the same vowels is right. Over all 33 items
+  of BE BO DE DO into a vowel (VoxProbe 4, 13, 14), the error follows neither the F2 distance the trim rule uses nor
+  F1 with F2: BO before AY EH IH AW runs 15-27 ms long by picture all after the release, BO before OW UW IY within
+  10; DO and DE before IY run 18-25 short, BE before IY 8-15 short while Man Goes Down P2's "be with" (BE IY) is
+  right. A BO term and an IY term fitted VoxProbe 14 from VoxProbe 13 (rms 13.5 to 7.3 ms) but overshot BO OW, BO UW
+  and BE IY and put Man Goes Down P2 18 ms long: not modelled. GE and GO are outside the trim rule (GO IY -30). Open.
 - **A voiced stop into IY is short** (DO IY -20, GO IY -30). TH RR AW is -38.
 - **The slowed glide:** Slow IYUW Slow AW +60, and Slow IYUW Slow SE AW +25 at Speed 100 and +80 at 127. Slow AYWW
   and Slow OWWW before Slow SE AW are -35 and -28. The 25 ms lengthening is wrong in size, and it changes with Speed
