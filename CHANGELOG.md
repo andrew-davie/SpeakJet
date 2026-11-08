@@ -29,6 +29,10 @@
 - **KE and KO after a nasal** close 15 ms longer, not 30: the closure's quiet run against both units was 11-30 ms long
   on VoxProbe 14's NE NO MM NGE KO AW and 15 on VoxProbe 13's NE KO OW; now within 4 ms except MM (+15). VoxProbe 13
   section 6 9.6 -> 9.2 ms, VoxProbe 14 section 10 12.2 -> 10.8. Every sound alone and Man Goes Down unchanged.
+- **The KE locus:** a vowel after KE starts at F2 2100 Hz, F1 300, and glides to its own over 8 ms per ERB of F2
+  distance, growing 4 ms per ERB (both units by picture: KE has no formants of its own, and the chip's vowel after it
+  starts at a velar locus). KE AW -30 -> -5, KE OW -45 -> -15, KE UW -30 -> -5 ms; KE IY and KE EH unchanged; VoxProbe
+  14 section 7 11.7 -> 8.0. Every sound alone and Man Goes Down unchanged.
 
 ### 0.4.3 (2026-11-08; technical manual 1.13)
 

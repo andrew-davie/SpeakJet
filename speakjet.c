@@ -87,6 +87,12 @@
 #define XJ_MIN 20.0 /* ... at least this, ... */
 #define XJ_END 31.0 /* ... ending this far into the vowel (cross_join) */
 #endif
+#ifndef KV_KE
+#define KV_KE 2100.0 /* a vowel after KE starts with F2 here (Hz), F1 at KV_F1, and moves to its own (the velar locus) */
+#define KV_F1 300.0
+#define KV_MS 8.0    /* ... over this many ms per ERB of F2 distance */
+#define KV_ADD 4.0   /* ... and is this many ms per ERB longer */
+#endif
 #ifndef NHP_TWO
 #define NHP_TWO 1 /* two stages (1) or one (0) */
 #endif
@@ -250,6 +256,7 @@ struct sj_chip {
   bool after_pause;    /* a pause code played since the last sound */
   bool last_nge;       /* the last sound played was NGE */
   bool after_velar;    /* the last sound played was GE */
+  bool after_kvelar;   /* the last sound played was KE */
   bool last_nasal;    /* the last sound played was a nasal, MM NE NO NGE NGO (not the liquids that share K_NASAL) */
   int ramp_seg;       /* a voiced stop after a nasal: its release ramp's segment (-1: none) */
   bool xon;           /* the next vowel's formants finish a move begun in this sound's tail (cross_join) */
@@ -775,6 +782,7 @@ static void play_effect(sj_chip *sj, int code) {
   sj->last_nasal = false;
   sj->after_pause = false;
   sj->after_velar = false;
+  sj->after_kvelar = false;
   /* its peaking filters (fxeq, at most 3): a fixed shaping of its spectrum toward the chip's, set after its structure
    * was tuned (2026-11-04); RBJ peaking biquads at the chip's rate */
   sj->neq = 0;
@@ -1254,6 +1262,30 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
       cross_segments(sj, from, tgt, tr, ticks, xpost);
       break;
     }
+    /* ASSUMPTION (2026-11-09, VoxProbe 14 section 7, both units by picture: after KE the vowel's F2 starts ~2000-2500 Hz
+     * and falls to AW OW UW's over 60-80 ms, after KO it starts ~1000 and rises to IY's over ~50; KE IY and KO OW, where
+     * the locus is the vowel's, have no glide; ours started on the vowel and KE AW OW UW ran 32-50 ms short, KO IY 20):
+     * KE, which has no formants of its own, hands the vowel a locus to start from; the glide takes ~8 ms per ERB of F2
+     * distance (the pictures' ~60 ms into AW) but the vowel grows only half that. Fitted on the ten KE/KO items: KE AW
+     * -30 -> -5, KE OW -45 -> -15, KE UW -30 -> -5 ms, KE IY EH unchanged. KO is left alone: no one locus fits both KO IY
+     * (-20) and KO EH (+5), which went to +15 and +20 (open) */
+    if (sj->after_kvelar && a->kind == K_VOWEL) {
+      frame lf = tgt;
+      lf.f[0] = bent(KV_F1, bend);
+      lf.f[1] = bent(KV_KE, bend);
+      const double ea = 21.4 * sj_log(1.0 + 0.00437 * lf.f[1]) / M_LN10, eb = 21.4 * sj_log(1.0 + 0.00437 * tgt.f[1]) / M_LN10;
+      const double de = ea > eb ? ea - eb : eb - ea;
+      int gl = TICKS(KV_MS * de * speed_factor(sj, true));
+      ticks += TICKS(KV_ADD * de * speed_factor(sj, true));
+      if (gl > ticks - tr - 1)
+        gl = ticks - tr - 1;
+      if (gl > 0) {
+        add_segment(sj, tr, from, lf, true);
+        add_segment(sj, gl, lf, tgt, true);
+        add_segment(sj, ticks - tr - gl, tgt, tgt, true);
+        break;
+      }
+    }
     add_segment(sj, tr, from, tgt, true);
     add_segment(sj, ticks - tr, tgt, tgt, true);
     break;
@@ -1329,6 +1361,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   sj->last_nasal = a - allophones >= 12 && a - allophones <= 16;
   sj->last_nge = a - allophones == 15;
   sj->after_velar = a - allophones == 50;
+  sj->after_kvelar = a - allophones == 66;
   sj->after_pause = false;
   const bool nasal_ramp = sj->ramp_seg >= 0;
   /* an unvoiced fricative starts and stops at once (HE HO WH FF SE SO SH TH, both units, background allowed for: rise

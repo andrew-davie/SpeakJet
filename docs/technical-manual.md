@@ -807,7 +807,7 @@ into a voiced stop 20.1 to 12.9, a stop's release 14.9 to 11.8, pauses 29.6 to 2
 VoxProbe 14 build 1 (sha1 f94b1488) was recorded on both units, 2600 and Stella, on 2026-11-09 (four takes). Item
 lengths are taken band by band as in 6.9 (probes/VoxProbe14/analysis/lengths14c.py). The two units agree within
 ~10 ms on nearly every item, so each figure below is ours against the chips, for the library 0.4.3 (ours - chip).
-Modelled so far: the Speed step, the join terms, KO after a nasal.
+Modelled so far: the Speed step, the join terms, KO after a nasal, the KE locus.
 
 - **The Speed step is at 116, not 115.** At 115 the chip plays as at 114 (IYUW 225 ms at both). The library
   shortens from 115: IYUW -30, AW P2 AW -35 ms. At 113 ours is 15 ms long (AW, IYUW). *Modelled:* the step now
@@ -818,7 +818,12 @@ Modelled so far: the Speed step, the join terms, KO after a nasal.
   Followed by P2, all three are 20-35 ms short: a pause after a slowed stop is longer on the chip.
 - **A hiss next to a vowel.** AW SE AW and AW TH AW are right, but AW Slow SE AW is -32 and IY SE AW -25 ms. A hiss
   into a vowel from a Reset is short: FF OW -25, SH IY -25 ms. The lone hisses (SE, TH, Slow SE, Slow TH) are right.
-- **Velars:** KE before AW, OW, UW is 32-50 ms short; GO IY -30, KO IY -20. GE is right before every vowel.
+- **Velars:** KE before AW, OW, UW is 32-50 ms short; GO IY -30, KO IY -20. GE is right before every vowel. By
+  picture on both units, the vowel after KE starts at a velar locus (F2 ~2000-2500 Hz, F1 low) and glides to its own
+  over 60-80 ms; after KO, F2 starts ~1000 and rises into IY. Where the locus is the vowel's (KE IY, KO OW) there is no
+  glide. *Modelled (KE locus):* after KE a vowel starts at F2 2100 Hz, F1 300, and glides 8 ms per ERB of F2
+  distance, growing 4 ms per ERB: KE AW -30 to -5, KE OW -45 to -15, KE UW -30 to -5 ms, with the glide's shape on
+  the pictures; section 7 11.7 to 8.0 ms. KO is not modelled: no single locus fits KO IY (-20) and KO EH (+5).
 - **Joins are long.** AW IH +22, AW IH AW +43, IH AW IH +45, AY IY +35, AY IY AW +40 ms: about 20 ms a join.
   IY AW IY is right. *Modelled (join terms):* across every recorded vowel and liquid join (VoxProbe 4, 13, 14) the
   error doesn't follow the distance law; it follows the sounds. IH's joins are long whichever side it is on, RR's
