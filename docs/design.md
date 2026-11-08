@@ -1,22 +1,26 @@
 # Design
 
-This SpeakJet emulation (the second implementation) was written from scratch from two
-sources only: the SpeakJet User's Manual (revision 1.1, 2004) and recordings
+This SpeakJet emulation (the second implementation) was first written from
+scratch from the SpeakJet User's Manual (revision 1.1, 2004) and recordings
 of two AtariVoxes (an AtariVox+, "unit A", and an original AtariVox, "unit
-B") playing the VoxRecord and VoxProbe 1 to 7 test ROMs and Man Goes Down.
+B") playing the VoxRecord and VoxProbe test ROMs (1 to 13 so far) and Man
+Goes Down. Since 2026-11-03 any source may be used, but every claim is
+checked against the recordings of both units before it goes in.
 The aim is the smallest model that matches the recordings: a rule wherever a
 rule could be found, and a few bytes of parameters per sound where it could
 not.
 
-The library is `speakjet.c` (about 1550 lines) and a generated table,
-`speakjet_tables.c`, about 5 KB compiled: 72 allophones of 26 bytes, a
-second frame for the five voiced stops that have their own, and the effects
-as a byte stream of 146 parts, each its length, a byte saying which fields
-follow, its flags and level, then only the tones and fields it uses (most
-parts have no noise, gate, pulse offset or ramp). Frequencies are in 16 Hz
-steps and lengths in 5 ms. Compiled with `-O2` the object is about 18 KB. The
-measured constants are the fields of `struct tune` in `speakjet.c`, named
-below in `code`.
+The library is `speakjet.c` (about 1950 lines), which includes a generated
+table, `speakjet_tables.c` (5131 bytes of tables): 72 allophones of 27 bytes,
+a second frame for the five voiced stops that have their own (BO EB OB ED
+OD), and the effects as a 2721-byte stream of 238 parts, each its length, a
+byte saying which fields follow, its flags and level, then only the tones and
+fields it uses (most parts have no noise, gate, pulse offset or ramp), with
+each effect's offset into it and six bytes of its own (attack, release, start
+burst, the burst's corner, a noise high pass, the burst's length). Frequencies
+are in 16 Hz steps and lengths in 5 ms. Compiled with `-O2` the object is
+about 35 KB. The measured constants are the fields of `struct tune` in
+`speakjet.c`, named below in `code`.
 
 ## The chip
 
@@ -197,7 +201,7 @@ stage after it, is open.
 
 ## Effects
 
-**Parts.** Each effect is one to eight parts. A part plays up to three tones,
+**Parts.** Each effect is one to 29 parts (A5 has the most). A part plays up to three tones,
 each sweeping from a start to an end frequency (linearly; `X` geometrically;
 `E` settling toward the end), and a noise band, for its length. Flags:
 
@@ -214,10 +218,19 @@ each sweeping from a start to an end frequency (linearly; `X` geometrically;
   gate (C8 and C9: 650 Hz to 3 kHz and back every 20 ms, both units)
 - `W`: the tone wanders in pitch, about 1.5 % rms over tens of ms (M0, both
   units)
+- `m`: a tone switching on from silence or off to silence ramps over 3 ms,
+  and voicing after unvoiced sound comes in over 3 ms, instead of stepping (a
+  step is a broadband click the chip doesn't make: R2, A8); per part, since
+  C3's tones do switch sharply on the chip
+- `u`: the noise is replaced by a click every voice period through a comb
+  that dims (not blacks out) a notch every pulse-rate hertz, 12 dB under a
+  noise band of the same byte (B2)
 
 A part may also carry a level ramp across it (`lr`, half-decibels, even in
-dB) and an end level per tone (`ve`), each used only where the chip's part
-measurably changes level (R2, A0, A7, B1, C8).
+dB: R2, A0, A7, A9, B1, C8) and an end level per tone (`ve`: R2, A4–A8, B2,
+C0, C3, C5, C6), each used only where the chip's part measurably changes
+level. An effect may also carry up to three peaking filters (`fxeq`); no
+effect uses them in this version.
 
 **An effect's own pulse rate.** Measured pulse by pulse on VoxProbe 4 (Pitch
 60, 88 and 150, both units) and VoxProbe 7 (Pitch 40 to 200): an effect's
@@ -277,8 +290,9 @@ makes it is not known.
 **Bend** moves every oscillator by the same 44 Hz per step from 5 (D1's 697
 and 1209 both step by 44, as do AW's three formants; `bend_hz`); below 5
 there is a further 22 Hz. **Stress**, **Relax** and code 18 change nothing
-measurable in length, pitch or level. The pauses are 20, 90, 200, 648, 15, 30 and 59 ms for P0 to P6 (measured,
-VoxProbe 1 section 5 on both units, and Man Goes Down's gaps; technical manual, section 8).
+measurable in length, pitch or level. The pauses are 20, 90, 188, 648, 15, 30 and 59 ms for P0 to P6 (measured,
+VoxProbe 1 section 5 on both units, and Man Goes Down's gaps; P2 from VoxProbe 13 section 9; technical manual,
+section 8).
 
 **Reading ahead.** At a sound's release (an effect's closing fade, else its last
 `READ_AHEAD_MS`, 30 ms) the library takes the command after it early, if it is a
@@ -286,32 +300,65 @@ Speed or a Volume (`read_ahead`): Volume applies at once, and Speed rescales the
 rest of the sound's segments. The command is then retired with the sound. Pitch
 and the modifiers are left to run in their turn, and a pause doesn't read ahead.
 
+## The Serial Control Protocol
+
+The manual's control mode is modelled for what the AtariVox can reach. Every
+byte passes the SCP module before the buffer: `\` and a digit enters control
+mode (only node `0`, the AtariVox's), `\` and anything else or `X` leaves it,
+and inside it every byte is single and acts at once, never through the
+buffer. Digits build a decimal value (`A`–`F` are counted, not added); `H`
+sets the memory type and `J` the address; `N` writes memory type 0, the
+synthesizer's registers: 0–5 in hertz (up to 3999), 6 the distortion and 8
+the envelope control (0–255), 7 the master volume (the MSA's Volume, up to
+127), 11–15 the oscillator volumes (0–31). `R` empties the buffer while the
+sound playing plays on, `S` stops the MSA taking from the buffer until `T`,
+and `W` is a power-on reset.
+
+Between the MSA's sounds the registers play: five sines at registers 1–5 and
+11–15, oscillators 1–3 under the envelope oscillator when register 8's bit 6
+is set (restarting with each of its pulses, as the voice's formants) and 4
+and 5 half under it with bit 7; the envelope runs at register 0's rate with
+the effects' period rule. Register 6 spreads 4 and 5 into noise round their
+frequencies. There is no bed under a register tone (57 dB down, VoxProbe 10).
+The level is `SCP_DB` 5.9 dB over the effects' tones (VoxProbe 9, both
+units: the 1000 Hz tone at volume 31 against 235 C5). Unmeasured and guessed:
+the distortion's law (here a random frequency error of up to its value / 255
+a tick) and the envelope at 0 Hz (here silent).
+
 ## Fitting
 
 The allophone and effect numbers were first read off the recordings (formant
 peaks, band edges, lengths, levels) and refined against the recordings with
-two scores, each comparing the library with the chip the way the two chips
-compare with each other, so 0 is "as close as a second chip": E, on the
-spectrum and the harmonics' levels, and P, on length, the level over time,
-the time-frequency picture, spectrum, lines and pitch. Both add the
-recording's own background to the library's render before comparing.
+three scores: the spectrum (the whole sound's spectrum error, rms dB, or the
+harmonics' for a voice), E (the spectrum, the time-frequency cells and the
+level over time together, rms dB, on the VoxRecord solo takes) and P (the
+perceptual score, the mean over every recording of the sound, the better
+judge). All three add the recording's own background to the library's render
+before comparing.
 
 Each sound's numbers are annealed inside its measured structure (kind,
 lengths, parts, tones and flags fixed; formants within ±10 % and kept in
 order, levels within a factor of 2, the level byte within ±6 dB), on its own
 recordings, its probe recordings and the connected recordings containing it.
 A result is judged with its level set back to the chip's, and ships only if
-it gains on one score without losing beyond a small margin on the other: an
-allophone must gain 0.1 on E with P (alone and in connected speech) no more
-than 0.05 and 0.02 worse; an effect must gain 0.1 on E with P no more than
-0.02 worse, or 0.1 on P with E no more than 0.05 worse, and be no more than
-0.2 worse on the plain spectrum. Every
+it gains without losing beyond a small margin elsewhere, the same rules for
+allophones and effects, scored at four frame delays with the best kept: the
+spectrum no more than 0.2 worse, and E 0.1 better with P no more than 0.02
+worse, or P 0.1 better with E no more than 0.05 worse, or P 0.01 better with
+E no worse, or P 0.05 and the spectrum 0.2 better with E no more than 0.1
+worse. An allophone's P in connected speech must also be no more than 0.02
+worse, and the level must stay the chip's. Drawn sounds (structure redrawn
+from the spectrograms) have their own gate: the drawn lines must match
+better, the envelope no more than 0.1 worse and the spectrum no more than 1.0
+worse. Every
 ship rebuilds the C library and the Go port and checks that they render the
 same samples.
 
 ## What is not modelled
 
-The Serial Control Protocol; Wait, the port commands and the EEPROM phrases;
+The Serial Control Protocol's EEPROM (memory type 32), its `V` command (the
+chip says "Ready"; the phrase is unmeasured), baud rate and detune; Wait, the
+port commands and the EEPROM phrases;
 the demo mode; the Stress and Relax commands; the mixer's limit of 63 on the
 three oscillators' volumes (`clip` 0); the output's second harmonic, about
 40 dB under a tone on both units (B0; `dist2`, `dist3` 0). Known to be off:
