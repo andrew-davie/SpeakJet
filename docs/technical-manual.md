@@ -807,7 +807,7 @@ into a voiced stop 20.1 to 12.9, a stop's release 14.9 to 11.8, pauses 29.6 to 2
 VoxProbe 14 build 1 (sha1 f94b1488) was recorded on both units, 2600 and Stella, on 2026-11-09 (four takes). Item
 lengths are taken band by band as in 6.9 (probes/VoxProbe14/analysis/lengths14c.py). The two units agree within
 ~10 ms on nearly every item, so each figure below is ours against the chips, for the library 0.4.3 (ours - chip).
-Modelled so far: the Speed step, the join terms.
+Modelled so far: the Speed step, the join terms, KO after a nasal.
 
 - **The Speed step is at 116, not 115.** At 115 the chip plays as at 114 (IYUW 225 ms at both). The library
   shortens from 115: IYUW -30, AW P2 AW -35 ms. At 113 ours is 15 ms long (AW, IYUW). *Modelled:* the step now
@@ -827,7 +827,13 @@ Modelled so far: the Speed step, the join terms.
   took VoxProbe 14 from rms 30.1 to 10.6. Every sound alone and Man Goes Down's phrases are unchanged. AY IY stays
   ~32 ms long: on both units AY holds ~70 ms before F2 rises to IY (ours ~110), while AY EH is right. Open.
 - **A nasal before BO or KO is long.** NE BO AW +45, NO BO AW +40, MM KO AW +37, NE KO AW and NO KO AW +30 ms. Before
-  DO and GO it is right, and so is NGE before every stop.
+  DO and GO it is right, and so is NGE before every stop. Taken apart by picture (2026-11-09) it is three faults:
+  KO's closure after a nasal was 11-30 ms long (and 15 on VoxProbe 13's NE KO OW): *modelled*, 15 ms extra, not 30.
+  BO and the vowel after it run ~30 ms long whatever comes before (see BO into a vowel). And KO's release with the
+  vowel after it runs ~14 ms long, after AW as after a nasal. Taking the overlap rule for NE and NO into these stops
+  away fits the item lengths but cuts NE ~20 ms short of both units: the rule stays. MM KO's gap is still ~10 ms long,
+  and NGE before a stop is ~40 ms short in its own sound (~90 against ~130 ms), where VoxProbe 13's fit put the
+  missing time into the closure.
 - **BO into a vowel is long** (BO AW, AY, EH: +20 to +22 ms). BE into the same vowels is right.
 - **A voiced stop into IY is short** (DO IY -20, GO IY -30). TH RR AW is -38.
 - **The slowed glide:** Slow IYUW Slow AW +60, and Slow IYUW Slow SE AW +25 at Speed 100 and +80 at 127. Slow AYWW

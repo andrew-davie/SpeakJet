@@ -26,6 +26,9 @@
   aside: rms 16.8 -> 4.1 ms, max 42 -> 10 (AW IH +22 -> -3, AW IH AW +42 -> -2, AW RR -13 -> -2, OW IY OW -20 -> 0).
   Every sound alone and Man Goes Down's phrases are sample for sample / ms for ms as before. AY IY is still ~32 ms
   long (open).
+- **KE and KO after a nasal** close 15 ms longer, not 30: the closure's quiet run against both units was 11-30 ms long
+  on VoxProbe 14's NE NO MM NGE KO AW and 15 on VoxProbe 13's NE KO OW; now within 4 ms except MM (+15). VoxProbe 13
+  section 6 9.6 -> 9.2 ms, VoxProbe 14 section 10 12.2 -> 10.8. Every sound alone and Man Goes Down unchanged.
 
 ### 0.4.3 (2026-11-08; technical manual 1.13)
 
