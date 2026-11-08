@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.13, 2026-11-08.** The version rises with every change to what is known about the chip (new
+**Version 1.16, 2026-11-09.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -479,6 +479,29 @@ sweep up from 0 Hz.
 **Vowels, nasals and voiced fricatives** are two segments: the transition from
 the last frame to the target, then the target held for the rest of the length.
 
+**Crossing joins (1.14, ASSUMPTION in its constants; the shape measured on both units).** Between two sounds of the
+vowel family (vowels, glides, and the liquids LE LO WW RR) the formants do not wait for the boundary. Each moves on
+one straight line that starts inside the first sound and ends about 31 ms into the second; the line's length grows
+with the distance: 5 + 5.5·d ms, at least 20, d the F1+F2 ERB distance between the first sound's last frame and the
+second's first. Levels keep the 25 ms transition. Measured with LPC formant tracks on VoxProbe 13 section 5 (units A
+and B agree within ~5 ms) against each join's boundary:
+
+```
+join      d (ERB)   chip move (F1 and F2 together)    25 ms rule
+AW IY     11        ~100-175 ms from onset            150-175
+IY AW     11        ~100-175                          141-166
+OW IY     10.7      ~90-175                           136-161
+AW EH     4.3       ~100-145                          109-134
+UW AW     3.4       ~90-115 (VoxProbe 4)              short already
+AW WW     ~3        ~100-115                          close already
+```
+
+Small moves therefore look like the old rule; large ones (front against back vowels, IY into WW) start up to ~50 ms
+before the boundary. An earlier reading that F1 and F2 move at different times was a tracker fault: LPC at 8 kHz
+swaps IY's F2 (~2180 Hz) for the next pole down. The constants were fitted on VoxProbe 13 section 5 together with
+VoxProbe 4 section 5 and VoxProbe 8 section 10; held out, VoxProbe 4's AW IY P 0.949 -> 0.013, IY AW 0.805 -> 0.029.
+Nasals keep the 25 ms rule (MM IY, IY MM, NE IY: the chip moves in ~10 ms).
+
 **Fricatives** are one plain segment: the noise band held, no transition.
 
 ### 6.3 Glides
@@ -779,6 +802,35 @@ into a voiced stop 20.1 to 12.9, a stop's release 14.9 to 11.8, pauses 29.6 to 2
   ~20 ms short; GO IY 30 ms short; a slowed TT's closure and aspiration; the death sound slowed ~20-50 ms short; the transitions'
   shape. VoxProbe 14's plan (in the lab's notes) carries a test for each.
 
+### 6.10 What VoxProbe 14 measured (1.16)
+
+VoxProbe 14 build 1 (sha1 f94b1488) was recorded on both units, 2600 and Stella, on 2026-11-09 (four takes). Item
+lengths are taken band by band as in 6.9 (probes/VoxProbe14/analysis/lengths14c.py). The two units agree within
+~10 ms on nearly every item, so each figure below is ours against the chips, for the library 0.4.3 (ours - chip).
+Nothing here is modelled yet.
+
+- **The Speed step is at 116, not 115.** At 115 the chip plays as at 114 (IYUW 225 ms at both). The library
+  shortens from 115: IYUW -30, AW P2 AW -35 ms. At 113 ours is 15 ms long (AW, IYUW).
+- **Consonants shrink above 114** (the assumed "no change" is wrong). NE between AWs: +30, +35, +60 ms at Speed 114,
+  118, 127; NE GO OW at 122 +22. DH between AWs is short: -32 and -50 ms at 114 and 118; FF at 118 -22.
+- **Slow on an unvoiced stop.** The fitted +20 ms closure is right for TT, too much for KO and PO (+30, +25).
+  Followed by P2, all three are 20-35 ms short: a pause after a slowed stop is longer on the chip.
+- **A hiss next to a vowel.** AW SE AW and AW TH AW are right, but AW Slow SE AW is -32 and IY SE AW -25 ms. A hiss
+  into a vowel from a Reset is short: FF OW -25, SH IY -25 ms. The lone hisses (SE, TH, Slow SE, Slow TH) are right.
+- **Velars:** KE before AW, OW, UW is 32-50 ms short; GO IY -30, KO IY -20. GE is right before every vowel.
+- **Joins are long.** AW IH +22, AW IH AW +43, IH AW IH +45, AY IY +35, AY IY AW +40 ms: about 20 ms a join.
+  IY AW IY is right.
+- **A nasal before BO or KO is long.** NE BO AW +45, NO BO AW +40, MM KO AW +37, NE KO AW and NO KO AW +30 ms. Before
+  DO and GO it is right, and so is NGE before every stop.
+- **BO into a vowel is long** (BO AW, AY, EH: +20 to +22 ms). BE into the same vowels is right.
+- **A voiced stop into IY is short** (DO IY -20, GO IY -30). TH RR AW is -38.
+- **The slowed glide:** Slow IYUW Slow AW +60, and Slow IYUW Slow SE AW +25 at Speed 100 and +80 at 127. Slow AYWW
+  and Slow OWWW before Slow SE AW are -35 and -28. The 25 ms lengthening is wrong in size, and it changes with Speed
+  and with the glide.
+- **Slowed effects (Speed 0):** R8 R9 C9 within 15 ms; B0 +17, C8 -28, R5 -30.
+- **Answered, no change:** copies of SE and SH, UX copies with Pitch codes between, M2 (with and without Pitch 150),
+  RR and IY alone.
+
 ## 7. Sound effects
 
 The 55 effects, codes 200-254, are built from the same parts as speech. Each
@@ -901,6 +953,16 @@ specific to effects: under VoxProbe 10's plain 1000 Hz register tone it is about
 57 dB down on all three takes, against 34-40 dB under an effect's tone. What in
 the effect path makes it is open (section 13). The model treats the bed as a
 fixed post-process, not a fitted value.
+
+**Per effect (1.15, 2026-11-08, both units).** Against the chip, the floor under each effect's tones (its middle,
+bins clear of both sides' lines, the chip 8 dB over the take's background) is right on average with the model above:
+-0.4 dB over 41 effects. Per sound it runs from -16 to +5 dB. No single change of the law fixes both ends: a lower
+corner with a larger scale brings 220 B0 from +3.6 to +0.1 dB and 215 A5 from -7.0 to -0.7 but turns 227 B7 from +3.8
+to -4.3, and over all 55 effects moves E 4.030 -> 4.022 and P 0.885 -> 0.890; a term proportional to the signal itself
+does nothing for the high tones. So the library gives each effect its own scale of the bed (fxs `bs`, percent; 0 =
+100), set where E and P both improve: 215 A5 151, 218 A8 160, 220 B0 81, 222 B2 77. Tried and left at 100 (worse):
+R2, A6, A7, B4, B5, B7. 218 A8's floor sits 16 dB under the chip's and barely moves with the bed: something else
+makes it on the chip (open).
 
 **Level wobble.** Plain effect tones also carry a slow wobble in level:
 white noise through a one-pole low-pass (coefficient 0.05, spread to about
@@ -1274,6 +1336,9 @@ VoxProbe 12    Slow and Fast, joins and codes between sounds, Man Goes Down take
 VoxProbe 13    build 5, posted 2026-11-07, recorded 2026-11-08 on both units (4 takes): Bend 0-15, speech at Speed 100-127, joins
                (vowels, nasals, liquids, glides), stops into vowels with and without Slow, pauses under
                Speed, Pitch and Bend, unvoiced stops and hisses, Man Goes Down phrase 1
+VoxProbe 14    build 1 (sha1 f94b1488), recorded 2026-11-09 on both units (4 takes): the Speed step, consonants
+               above 114, Slow on unvoiced stops, hisses after vowels and alone, velars, joins, nasals and BO
+               before stops, copies, the slowed glide, M2, every effect at Speed 0
 Man Goes Down  the phrases of a released game, for whole-phrase checks
 ```
 
@@ -1331,6 +1396,10 @@ spectrum as a guard.
 
 ---
 
+- **Formant tracks (1.14).** LPC on the chip's 8 kHz signal swaps a high F2 (IY ~2180 Hz) for the next pole down
+  from frame to frame; a 15/85 % crossing time read off such a track is wrong. Read the track itself, frame by
+  frame, before trusting any timing taken from it.
+
 ## 13. Known gaps and open questions
 
 Where the library and the chip still differ, or the chip is not understood:
@@ -1381,6 +1450,10 @@ Where the library and the chip still differ, or the chip is not understood:
   Every item's window length is now compared between the two 2600 takes (none differ by more than 50 ms), and each
   item's runs of sound (count and boundaries) against both units and ours: inside timing is scored on those boundaries,
   not only on the first onset to the last end.
+- **A matching count is not a placement** (2026-11-09). VoxProbe 14's section 4 cut to its 11 items on three takes and
+  was one item late on all three: AW Slow PO P2 AW cut as two runs, and the lone Slow TT and Slow KO (bursts under the
+  cutter) made up the count. Sections whose items include a lone stop or hiss are placed from a 2 kHz high-pass
+  envelope at offsets checked on all four takes (place14.py), and the cutter's count is never taken as proof.
 - **The effects' bed:** its dependence on level, and 220 B0's low end (its bed
   falls away below 300 Hz).
 - **The mixer's limit** on three oscillators totalling over 63 (manual) was
@@ -1963,6 +2036,15 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.16  2026-11-09   VoxProbe 14 recorded: section 6.10 (the Speed step at 116, consonants shrink above 114, Slow on
+                   unvoiced stops, SE after a vowel, velars, joins, nasals and BO before stops, the slowed glide, the
+                   slowed effects); section 12: VoxProbe 14's line, a matching item count can still be one item late
+1.15  2026-11-08   section 7.5: the bed per effect (fxs bs) after a floor survey of 41 effects on both units; 219 A9's
+                   last part carries low noise; 229 B9's U-shaped pulsed line needs no fourth tone (the chip's high
+                   tones stop before its rise)
+1.14  2026-11-08   crossing joins (section 6.2): vowel-family formants move on one line across the join, length
+                   growing with F1+F2 distance, ending ~31 ms into the next sound; section 12: formant tracks
+                   need continuity checks (IY's F2 mislabelled at 8 kHz)
 1.13  2026-11-08   VoxProbe 13 recorded (library 0.4.3): section 6.9 (the Speed step above 114, pauses, Slow and
                    copies, unvoiced-stop closures and read-ahead, voiced-stop closures, nasal and liquid joins,
                    after a hiss, GE, TH); section 12: band-wise lengths, run boundaries, checking placement against

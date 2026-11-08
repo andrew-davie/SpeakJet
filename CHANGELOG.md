@@ -2,6 +2,23 @@
 
 ## The rebuild
 
+### Unreleased (technical manual 1.16)
+
+- **Crossing joins** (ASSUMPTION in the constants, shape measured on units A and B): between vowels, glides and LE LO
+  WW RR the formants move on one line across the join, 5 + 5.5 ms per ERB of F1+F2 distance (at least 20 ms), ending
+  31 ms into the next sound; the old rule moved them over 25 ms after the boundary. Every sound alone is sample for
+  sample as before. VoxProbe 4 AW IY P 0.949 -> 0.013, IY AW 0.805 -> 0.029; all 44 recorded multi-sound items E
+  4.747 -> 4.695, P 0.5525 -> 0.5101; Man Goes Down P2's "be with" moves as on both units.
+- **219 A9:** its last part (the 100 Hz tone, 260-320 ms) carries a low noise band (1000 Hz, 2000 wide, level 5):
+  on both units it runs flat to ~1 kHz 25-30 dB over the take's silence where ours had none. Spectrum 1.34 -> 1.31,
+  E 4.77 -> 2.97, P 1.61 -> 0.58 (gate2 HOLD on tfdelta 333 -> 433 only: the new noise cells; the picture matches both
+  units). Effect tables 2721 -> 2724 B.
+- **219 A9** (revised): the tail's noise band is 1200 Hz, 2400 wide, level 6, with the effect's high pass at 512 Hz
+  (the first band put 250-500 Hz 10 dB over the chip): within ~4 dB of both units in every band to 4 kHz.
+- **The bed per effect** (fxs `bs`, a seventh byte per effect, +55 B): 218 A8 160 %, 222 B2 77 % (E 4.35 -> 4.10,
+  4.10 -> 3.85; P down on both). The common law stays. (215 A5 151 % and 220 B0 81 % were fitted and
+  withdrawn.)
+
 ### 0.4.3 (2026-11-08; technical manual 1.13)
 
 From VoxProbe 13, recorded on units A and B (2026-11-08). Every sound played alone at the default Speed is sample for

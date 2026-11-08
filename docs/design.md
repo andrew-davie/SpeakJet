@@ -157,7 +157,10 @@ affricates are unchanged, the voiced stops take Slow but not Fast.
 release on it and no attack on the next; it is cut short by 15 ms, 30 when
 both are voiced (`overlap`, `overlap_v`). A stop on either side takes the 15, and nothing is cut after an unvoiced
 stop. A vowel or glide into a vowel or glide is cut by `JOIN_A` − `JOIN_K`·d ms instead, d the F1+F2 ERB distance,
-running on when that is negative (ASSUMPTION: fitted on VoxProbe 4's vowel pairs). A voiced sound into 187 SE bends
+running on when that is negative (ASSUMPTION: fitted on VoxProbe 4's vowel pairs). Between two sounds of the vowel
+family (vowels, glides, LE LO WW RR) `cross_join` bends the first sound's tail and `cross_segments` finishes the move
+in the second: each formant on one line of `XJ_A` + `XJ_K`·d ms (at least `XJ_MIN`), ending `XJ_END` ms into the
+second sound (ASSUMPTION: fitted on VoxProbe 13 section 5, VoxProbe 4 section 5, VoxProbe 8 section 10). A voiced sound into 187 SE bends
 toward 167 ZZ's formants over its last 40 ms; a slowed glide followed by a Slow plays `SLOW_GLIDE_ON` ms longer
 (ASSUMPTION: Man Goes Down's phrase 4 only). Pauses, effects and silence keep
 the ramps. The look-ahead steps over Fast, Slow, Stress, Relax and the
@@ -283,7 +286,8 @@ Protocol has a bed about −75 dB per bin under it at 125, 1000 and 3000 Hz
 alike on both units, far under the effects', and a bed proportional to the
 signal alone, set to the steady tones, scores far worse on the effects: the
 bed belongs to the effects' playback, not the output stage. Why the chip
-makes it is not known.
+makes it is not known. Each effect may scale it (fxs `bs`, percent, 0 = 100; `bscale`): A5 A8 B0 B2 do, from a floor survey against both
+units (technical manual 7.5).
 
 ## Commands
 
@@ -315,7 +319,7 @@ sound playing plays on, `S` stops the MSA taking from the buffer until `T`,
 and `W` is a power-on reset.
 
 Between the MSA's sounds the registers play: five sines at registers 1–5 and
-11–15, oscillators 1–3 under the envelope oscillator when register 8's bit 6
+11–15, 4 and 5 at half the amplitude of 1–3 (6 dB under, as measured), oscillators 1–3 under the envelope oscillator when register 8's bit 6
 is set (restarting with each of its pulses, as the voice's formants) and 4
 and 5 half under it with bit 7; the envelope runs at register 0's rate with
 the effects' period rule. Register 6 spreads 4 and 5 into noise round their
