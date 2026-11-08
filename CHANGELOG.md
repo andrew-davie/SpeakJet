@@ -33,6 +33,10 @@
   distance, growing 4 ms per ERB (both units by picture: KE has no formants of its own, and the chip's vowel after it
   starts at a velar locus). KE AW -30 -> -5, KE OW -45 -> -15, KE UW -30 -> -5 ms; KE IY and KE EH unchanged; VoxProbe
   14 section 7 11.7 -> 8.0. Every sound alone and Man Goes Down unchanged.
+- **Slow on KO and PO** (VoxProbe 14 section 4, both units): the vowel ahead runs on and the release grows only
+  before a slowed TT; a slowed KE KO PE PO after a sound closes 20 ms longer instead, before a sound as before a pause.
+  AW Slow KO AW +30 -> -5, AW Slow PO AW +25 -> -10 ms; section 4 15.5 -> 11.8. Every sound alone, VoxProbe 13's Slow
+  TT items and Man Goes Down unchanged.
 
 ### 0.4.3 (2026-11-08; technical manual 1.13)
 

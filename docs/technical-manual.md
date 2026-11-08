@@ -807,7 +807,7 @@ into a voiced stop 20.1 to 12.9, a stop's release 14.9 to 11.8, pauses 29.6 to 2
 VoxProbe 14 build 1 (sha1 f94b1488) was recorded on both units, 2600 and Stella, on 2026-11-09 (four takes). Item
 lengths are taken band by band as in 6.9 (probes/VoxProbe14/analysis/lengths14c.py). The two units agree within
 ~10 ms on nearly every item, so each figure below is ours against the chips, for the library 0.4.3 (ours - chip).
-Modelled so far: the Speed step, the join terms, KO after a nasal, the KE locus.
+Modelled so far: the Speed step, the join terms, KO after a nasal, the KE locus, Slow on KO and PO.
 
 - **The Speed step is at 116, not 115.** At 115 the chip plays as at 114 (IYUW 225 ms at both). The library
   shortens from 115: IYUW -30, AW P2 AW -35 ms. At 113 ours is 15 ms long (AW, IYUW). *Modelled:* the step now
@@ -815,7 +815,13 @@ Modelled so far: the Speed step, the join terms, KO after a nasal, the KE locus.
 - **Consonants shrink above 114** (the assumed "no change" is wrong). NE between AWs: +30, +35, +60 ms at Speed 114,
   118, 127; NE GO OW at 122 +22. DH between AWs is short: -32 and -50 ms at 114 and 118; FF at 118 -22.
 - **Slow on an unvoiced stop.** The fitted +20 ms closure is right for TT, too much for KO and PO (+30, +25).
-  Followed by P2, all three are 20-35 ms short: a pause after a slowed stop is longer on the chip.
+  Followed by P2, all three are 20-35 ms short: a pause after a slowed stop is longer on the chip. By picture and
+  by parts: before a slowed TT the vowel ahead runs on (~155 ms) and TT's release grows; before a slowed KO or PO
+  the vowel doesn't (~130 ms, as unslowed), the release is as unslowed, and the closure grows instead (KO 56 against
+  44 ms, PO 101 against 85). *Modelled:* the run-on and the release's +15 ms are TT's only; a slowed KE KO PE PO
+  after a sound closes 20 ms longer before a sound as well as before a pause. AW Slow KO AW +30 to -5, AW Slow PO AW
+  +25 to -10 ms; section 4 15.5 to 11.8. Still open: after a slowed TT the chip's P2 is ~44 ms longer than ours; PO's
+  release noise runs ~40 ms against the chip's ~15 (plain or slowed).
 - **A hiss next to a vowel.** AW SE AW and AW TH AW are right, but AW Slow SE AW is -32 and IY SE AW -25 ms. A hiss
   into a vowel from a Reset is short: FF OW -25, SH IY -25 ms. The lone hisses (SE, TH, Slow SE, Slow TH) are right.
 - **Velars:** KE before AW, OW, UW is 32-50 ms short; GO IY -30, KO IY -20. GE is right before every vowel. By
