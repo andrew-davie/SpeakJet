@@ -824,6 +824,11 @@ Modelled so far: the Speed step, the join terms, KO after a nasal, the KE locus,
   release noise runs ~40 ms against the chip's ~15 (plain or slowed).
 - **A hiss next to a vowel.** AW SE AW and AW TH AW are right, but AW Slow SE AW is -32 and IY SE AW -25 ms. A hiss
   into a vowel from a Reset is short: FF OW -25, SH IY -25 ms. The lone hisses (SE, TH, Slow SE, Slow TH) are right.
+  By picture the hiss itself is what is short (SH before IY ~55 against ~80 ms, FF before OW ~65 against ~75, SE
+  between vowels ~70 against 90-100), and the vowel after it 5-20 ms long; SH FF TH alone are within 5 ms. Taking the
+  15 ms overlap away from every unvoiced hiss into a vowel fixed SH IY, FF OW and IY SE AW (to -10) but put SE AW, SE
+  UX and the TH items 15-30 long, section 9 8.3 to 14.4 ms and Man Goes Down P4 955 against 942/945: not modelled.
+  Open.
 - **Velars:** KE before AW, OW, UW is 32-50 ms short; GO IY -30, KO IY -20. GE is right before every vowel. By
   picture on both units, the vowel after KE starts at a velar locus (F2 ~2000-2500 Hz, F1 low) and glides to its own
   over 60-80 ms; after KO, F2 starts ~1000 and rises into IY. Where the locus is the vowel's (KE IY, KO OW) there is no
