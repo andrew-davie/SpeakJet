@@ -564,7 +564,9 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
  * an unslowed vowel or glide (and its Repeat copy) and a pause shrink by (155.9 - Speed) / 47.4, a step down from 114
  * (118: x0.80, 127: x0.61, as measured; the effects' law gives x0.88 at 118), and the other speech sounds don't shrink
  * at all. P2 1700 ms against 1695/1700, timing inside it 12.9 -> 8.5 ms; with the step on the vowels alone the
- * consonants ran 15-40 ms short each. Below 114 nothing changes */
+ * consonants ran 15-40 ms short each. Below 114 nothing changes. The step is at 116, not 115 (2026-11-09, VoxProbe 14
+ * section 2, both units: at Speed 115 IYUW is 225 ms as at 114, AW P2 AW 435 against 455 at 113; with the step at 115
+ * ours read IYUW -30, AW P2 AW -35 ms), so Speed 115 plays as 114 */
 static double speed_step(const sj_chip *sj) { return (155.9 - sj->speed) / 47.4; }
 
 static double speed_factor(const sj_chip *sj, bool effect) {
@@ -1003,7 +1005,7 @@ static int copy_segments(sj_chip *sj, const allophone *a) {
   const double bend = bend_hz(sj);
   const frame tgt = allo_frame(a, false, bend);
   sj->nseg = 0;
-  const int ticks = TICKS((a->cp * MS_STEP + T.copy_extra) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->speed > 114 && !sj->slow ? speed_step(sj) : speed_factor(sj, false)));
+  const int ticks = TICKS((a->cp * MS_STEP + T.copy_extra) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->speed > 115 && !sj->slow ? speed_step(sj) : speed_factor(sj, false)));
   if (a->kind == K_STOP || a->kind == K_VSTOP) {
     /* the copy opens on a closure, then the release; cp is the whole copy, measured from one copy's onset to the next.
      * the closure is silent (VoxProbe 4 and 7, both units: GE, GO and the final stops dip 27-35 dB between copies,
@@ -1207,7 +1209,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   /* vowels and glides take the effects' Speed law above 114 too (2026-11-08, VoxProbe 13 section 3, all four takes:
    * AW AY EYIY IYUW OWWW UX alone at Speed 118, 122, 127 10-30 ms long on the speech law, within a few ms on this one;
    * Man Goes Down P2 at Speed 118 1698 ms against 1695/1700 with the liquid joins below) */
-  int ticks = TICKS(modified_ms(sj, a, a->ms * MS_STEP) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) ? (sj->speed > 114 && !sj->slow ? speed_step(sj) : speed_factor(sj, true)) : (sj->speed > 114 ? 1.0 : speed_factor(sj, false))));
+  int ticks = TICKS(modified_ms(sj, a, a->ms * MS_STEP) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) ? (sj->speed > 115 && !sj->slow ? speed_step(sj) : speed_factor(sj, true)) : (sj->speed > 114 ? 1.0 : speed_factor(sj, false))));
   const frame tgt = allo_frame(a, false, bend), tgt0 = tgt;
   const frame from = from_frame(sj, tgt);
   const bool xon = sj->xon;
@@ -1442,7 +1444,7 @@ static void next_command(sj_chip *sj) {
     const uint8_t data = n == 2 ? (uint8_t)peek(sj, 1) : 0;
     sj->executing = n;
     if (code <= 6) {
-      play_pause(sj, T.pause[code] * (sj->speed > 114 ? speed_step(sj) : (T.fx_speed_a - sj->speed) / T.fx_speed_b));
+      play_pause(sj, T.pause[code] * (sj->speed > 115 ? speed_step(sj) : (T.fx_speed_a - sj->speed) / T.fx_speed_b));
       sj->joined = false;
     } else if (code >= 128 && code <= 199) {
       /* a sound played straight after the same sound (joined, controls between allowed) plays as a Repeat copy of

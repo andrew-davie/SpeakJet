@@ -807,10 +807,11 @@ into a voiced stop 20.1 to 12.9, a stop's release 14.9 to 11.8, pauses 29.6 to 2
 VoxProbe 14 build 1 (sha1 f94b1488) was recorded on both units, 2600 and Stella, on 2026-11-09 (four takes). Item
 lengths are taken band by band as in 6.9 (probes/VoxProbe14/analysis/lengths14c.py). The two units agree within
 ~10 ms on nearly every item, so each figure below is ours against the chips, for the library 0.4.3 (ours - chip).
-Nothing here is modelled yet.
+Modelled so far: the Speed step.
 
 - **The Speed step is at 116, not 115.** At 115 the chip plays as at 114 (IYUW 225 ms at both). The library
-  shortens from 115: IYUW -30, AW P2 AW -35 ms. At 113 ours is 15 ms long (AW, IYUW).
+  shortens from 115: IYUW -30, AW P2 AW -35 ms. At 113 ours is 15 ms long (AW, IYUW). *Modelled:* the step now
+  starts at 116 (section 2 mean |error| 12.0 to 10.0 ms, worst -35 to +15); Speed 115 plays as 114.
 - **Consonants shrink above 114** (the assumed "no change" is wrong). NE between AWs: +30, +35, +60 ms at Speed 114,
   118, 127; NE GO OW at 122 +22. DH between AWs is short: -32 and -50 ms at 114 and 118; FF at 118 -22.
 - **Slow on an unvoiced stop.** The fitted +20 ms closure is right for TT, too much for KO and PO (+30, +25).

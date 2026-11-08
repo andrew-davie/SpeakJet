@@ -18,6 +18,9 @@
 - **The bed per effect** (fxs `bs`, a seventh byte per effect, +55 B): 218 A8 160 %, 222 B2 77 % (E 4.35 -> 4.10,
   4.10 -> 3.85; P down on both). The common law stays. (215 A5 151 % and 220 B0 81 % were fitted and
   withdrawn.)
+- **The Speed step is at 116** (VoxProbe 14 section 2, both units): at Speed 115 vowels, glides and pauses play as at
+  114, where they shrank on the step law. IYUW at 115 -30 -> -10 ms, AW P2 AW -35 -> +10; section 2 mean |error|
+  12.0 -> 10.0 ms. Only Speed 115 changes: every sound at Speeds 60-114 and 116-127 is sample for sample as before.
 
 ### 0.4.3 (2026-11-08; technical manual 1.13)
 
