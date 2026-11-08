@@ -21,6 +21,11 @@
 - **The Speed step is at 116** (VoxProbe 14 section 2, both units): at Speed 115 vowels, glides and pauses play as at
   114, where they shrank on the step law. IYUW at 115 -30 -> -10 ms, AW P2 AW -35 -> +10; section 2 mean |error|
   12.0 -> 10.0 ms. Only Speed 115 changes: every sound at Speeds 60-114 and 116-127 is sample for sample as before.
+- **Join terms** (alloj, a side table, +8 B): a vowel or glide join's cut grows by a term for each of the two sounds:
+  IH +15, AW +6, OW -10, RR -16 ms. Vowel and liquid joins recorded on VoxProbe 4, 13 and 14 (both units), AY's
+  aside: rms 16.8 -> 4.1 ms, max 42 -> 10 (AW IH +22 -> -3, AW IH AW +42 -> -2, AW RR -13 -> -2, OW IY OW -20 -> 0).
+  Every sound alone and Man Goes Down's phrases are sample for sample / ms for ms as before. AY IY is still ~32 ms
+  long (open).
 
 ### 0.4.3 (2026-11-08; technical manual 1.13)
 

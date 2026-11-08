@@ -807,7 +807,7 @@ into a voiced stop 20.1 to 12.9, a stop's release 14.9 to 11.8, pauses 29.6 to 2
 VoxProbe 14 build 1 (sha1 f94b1488) was recorded on both units, 2600 and Stella, on 2026-11-09 (four takes). Item
 lengths are taken band by band as in 6.9 (probes/VoxProbe14/analysis/lengths14c.py). The two units agree within
 ~10 ms on nearly every item, so each figure below is ours against the chips, for the library 0.4.3 (ours - chip).
-Modelled so far: the Speed step.
+Modelled so far: the Speed step, the join terms.
 
 - **The Speed step is at 116, not 115.** At 115 the chip plays as at 114 (IYUW 225 ms at both). The library
   shortens from 115: IYUW -30, AW P2 AW -35 ms. At 113 ours is 15 ms long (AW, IYUW). *Modelled:* the step now
@@ -820,7 +820,12 @@ Modelled so far: the Speed step.
   into a vowel from a Reset is short: FF OW -25, SH IY -25 ms. The lone hisses (SE, TH, Slow SE, Slow TH) are right.
 - **Velars:** KE before AW, OW, UW is 32-50 ms short; GO IY -30, KO IY -20. GE is right before every vowel.
 - **Joins are long.** AW IH +22, AW IH AW +43, IH AW IH +45, AY IY +35, AY IY AW +40 ms: about 20 ms a join.
-  IY AW IY is right.
+  IY AW IY is right. *Modelled (join terms):* across every recorded vowel and liquid join (VoxProbe 4, 13, 14) the
+  error doesn't follow the distance law; it follows the sounds. IH's joins are long whichever side it is on, RR's
+  short. A few sounds carry a term of their own added to the join's cut (alloj): IH +15, AW +6, OW -10, RR -16 ms.
+  The 26 joins without AY go from rms 16.8 to 4.1 ms (max 42 to 10); fitted on VoxProbe 4 and 13 alone, the terms
+  took VoxProbe 14 from rms 30.1 to 10.6. Every sound alone and Man Goes Down's phrases are unchanged. AY IY stays
+  ~32 ms long: on both units AY holds ~70 ms before F2 rises to IY (ours ~110), while AY EH is right. Open.
 - **A nasal before BO or KO is long.** NE BO AW +45, NO BO AW +40, MM KO AW +37, NE KO AW and NO KO AW +30 ms. Before
   DO and GO it is right, and so is NGE before every stop.
 - **BO into a vowel is long** (BO AW, AY, EH: +20 to +22 ms). BE into the same vowels is right.

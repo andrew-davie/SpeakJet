@@ -234,7 +234,7 @@ static void test_names(void) {
  * in the effects' optional fields or a side table, never a fixed column (2606 bytes when this test was written) */
 #define TABLE_BUDGET 5000
 static void test_table_size(void) {
-  const size_t n = sizeof allophones + sizeof allog + sizeof fxdata + sizeof fxat;
+  const size_t n = sizeof allophones + sizeof allog + sizeof alloj + sizeof fxdata + sizeof fxat;
   if (n > TABLE_BUDGET)
     FAIL("the tables are %zu bytes, over the %d-byte budget", n, TABLE_BUDGET);
 }

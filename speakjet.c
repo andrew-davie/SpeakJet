@@ -567,6 +567,18 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
  * consonants ran 15-40 ms short each. Below 114 nothing changes. The step is at 116, not 115 (2026-11-09, VoxProbe 14
  * section 2, both units: at Speed 115 IYUW is 225 ms as at 114, AW P2 AW 435 against 455 at 113; with the step at 115
  * ours read IYUW -30, AW P2 AW -35 ms), so Speed 115 plays as 114 */
+/* ASSUMPTION (2026-11-09, VoxProbe 4, 13 and 14's vowel and liquid joins, both units, the 2600 takes): besides the
+ * distance law, a few sounds carry a join term of their own (alloj), added to the cut of every vowel or glide join
+ * they are on either side of: IH +15, AW +6, OW -10, RR -16 ms. The law alone left AW IH, IH AW IH and AW IH AW
+ * 22-45 ms long and AW RR, RR AW 10-13 ms short; with the terms the 26 joins without AY read rms 16.8 -> 5.0 ms, max
+ * 42 -> 10. Fitted on VoxProbe 4 and 13 alone, the terms took VoxProbe 14 from rms 30.1 to 10.6 ms. AY IY is still
+ * ~30 ms long: no term on AY or IY fits it with AY EH and IY's other joins (open) */
+static double join_term(int idx) {
+  for (int i = 0; i < ALLOJ_N; i++)
+    if (alloj[i][0] == idx)
+      return alloj[i][1] - 128.0;
+  return 0.0;
+}
 static double speed_step(const sj_chip *sj) { return (155.9 - sj->speed) / 47.4; }
 
 static double speed_factor(const sj_chip *sj, bool effect) {
@@ -1598,7 +1610,7 @@ static void next_command(sj_chip *sj) {
             const double ea = 21.4 * sj_log(1.0 + 0.00437 * l->to.f[q]) / M_LN10, eb = 21.4 * sj_log(1.0 + 0.00437 * bf[q]) / M_LN10;
             d += (q == 0 ? JOIN_W1 : 1.0) * (ea > eb ? ea - eb : eb - ea);
           }
-          const double ms = (JOIN_A - JOIN_K * d) * speed_factor(sj, false);
+          const double ms = (JOIN_A - JOIN_K * d + join_term(code - 128) + join_term(next - 128)) * speed_factor(sj, false);
           if (ms >= 0.0)
             cut = TICKS(ms);
           else {
