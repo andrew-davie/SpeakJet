@@ -272,7 +272,7 @@ struct sj_chip {
   bool joined;        /* the last sound ran straight into the next: no ramps at that join */
   bool after_pause;    /* a pause code played since the last sound */
   bool last_nge;       /* the last sound played was NGE */
-  bool after_velar; bool after_vstop, after_velar2;    /* the last sound played was GE */
+  bool after_velar; int aidx; bool after_vstop, after_velar2;    /* the last sound played was GE */
   bool after_kvelar;   /* the last sound played was KE */
   bool last_nasal;    /* the last sound played was a nasal, MM NE NO NGE NGO (not the liquids that share K_NASAL) */
   int ramp_seg;       /* a voiced stop after a nasal: its release ramp's segment (-1: none) */
@@ -1369,6 +1369,7 @@ static void cross_segments(sj_chip *sj, frame from, frame tgt, int tr, int ticks
 static void play_allophone(sj_chip *sj, const allophone *a) {
   const double bend = bend_hz(sj);
   sj->aplain = (a - allophones) <= 11; /* 2.0.0 */
+  sj->aidx = (int)(a - allophones);
   /* vowels and glides take the effects' Speed law above 114 too (2026-11-08, VoxProbe 13 section 3, all four takes:
    * AW AY EYIY IYUW OWWW UX alone at Speed 118, 122, 127 10-30 ms long on the speech law, within a few ms on this one;
    * Man Goes Down P2 at Speed 118 1698 ms against 1695/1700 with the liquid joins below) */
@@ -2160,7 +2161,7 @@ static double tick(sj_chip *sj) {
           sj->period++;
         }
       sj->ptick = sj->period;
-      if (!sj->vstarted && !sj->effect && sj->aplain) sj->ptick += 12; /* 2.0.0: the first voicing period after silence is longer (every vowel, 4 takes: pulses at 4 16 28 40) */
+      if (!sj->vstarted && !sj->effect && sj->aplain && sj->aidx != 1 && sj->aidx != 7) sj->ptick += 12; /* 2.0.1: not IH OH */ /* 2.0.0: the first voicing period after silence is longer (every vowel, 4 takes: pulses at 4 16 28 40) */
       sj->vstarted = true;
     }
     /* an effect's third tone is a plain tone beside the voice */
@@ -2176,7 +2177,7 @@ static double tick(sj_chip *sj) {
     case FX_TRI: env = x; break; /* VoxProbe 7, both units: a rising ramp, then straight back to nothing */
     case FX_SQUARE: env = x < 0.5 ? 1.0 : 0.0; break;
     default:
-      env = age < T.env_rise ? (double)age / T.env_rise : 1.0 - (double)(age - T.env_rise) / (!sj->effect && sj->aplain ? 72.0 : T.env_fall); /* 2.0.0: a plain vowel's voicing falls over 72 ticks (11 vowels closer, nothing else changes) */
+      env = age < T.env_rise ? (double)age / T.env_rise : 1.0 - (double)(age - T.env_rise) / (!sj->effect && sj->aplain && (sj->aidx == 2 || sj->aidx == 6 || sj->aidx == 10 || sj->aidx == 8) ? 72.0 : T.env_fall) /* 2.0.1: the 72-tick fall on EY UX UH AW only, 58 on the other plain vowels (per vowel, X over every allophone: 11 closer, none worse) */; /* 2.0.0: a plain vowel's voicing falls over 72 ticks (11 vowels closer, nothing else changes) */
       if (env < 0.0)
         env = 0.0;
     }

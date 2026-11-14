@@ -188,7 +188,8 @@ the glides' copies run 185–290 ms. JH's copy is 80 ms, ZH's 70.
 30 (`attack`, `release`); an unvoiced fricative switches in 3 ms, a nasal rises in
 25, and a sound may have its own (`aa`, `rr`). Since 2.0.0 every vowel and glide has its own attack, 20–60 ms
 (technical manual 6.11), shortened in proportion to the pitch period above Pitch 88 and never lengthened below; the
-plain vowels' first voicing period from silence is 12 ticks longer and their pulse falls over 72 ticks, not 58;
+plain vowels' first voicing period from silence is 12 ticks longer (not IH OH) and EY UX UH AW's pulse falls over 72
+ticks, not 58 (2.0.1, per vowel);
 198 PE and 199 PO's low pulse swells in over 10 ms. An effect's tone starts within
 1–3 ms on both units (`fx_attack` 1 ms, `fx_release` 25), many on a 5 ms click,
 and an effect may have its own attack, release and click (the `fxs` table), and

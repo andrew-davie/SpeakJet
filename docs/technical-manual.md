@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.18, 2026-11-15.** The version rises with every change to what is known about the chip (new
+**Version 1.19, 2026-11-16.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -886,8 +886,10 @@ What the allophones gained, each measured on both units:
 - **The attack is in pitch periods above Pitch 88**: aa ms at 88, shortened by 88/Pitch above it (VoxProbe 7's "Pitch
   150 then AW/IY/OW", both units, 5-17 % closer), never lengthened below it (Man Goes Down's IYUW at Pitch 76 is full
   within its first pulses).
-- **The first voicing period of a plain vowel from silence is 12 ticks longer**, and the plain vowels' pulse falls
-  over 72 ticks, not 58 (section 4.2); 11 vowels closer without the first, none worse with it.
+- **The first voicing period of a plain vowel from silence is 12 ticks longer** (every plain vowel but IH and OH), and
+  EY UX UH AW's pulse falls over 72 ticks, not 58 (section 4.2). Library 2.0.0 applied both to all twelve plain vowels;
+  measured per vowel on the corrected measure (1.19), each suits some vowels and hurts others: OH with 0.4.3's entry and
+  neither rule scores 0.88, with both 1.15. 2.0.1 applies them per vowel (11 allophones closer, none further).
 - **PE and PO's low pulse swells in over 10 ms.**
 - **Joins.** A vowel or glide after a voiced stop other than GE GO opens at its own level and amplitudes while its
   formants still glide from the stop's release (Man Goes Down's DO AYWW: the vowel at full level straight after the
@@ -2161,6 +2163,8 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.19  2026-11-16   library 2.0.1: the plain vowels' first-period and 72-tick-fall rules per vowel (6.11); IH AY OH back
+                   on 0.4.3's entries; 233 C3 back on 0.4.3's description
 1.18  2026-11-15   library 2.0.0's allophones and joins (6.11), merged with the VoxProbe 14 work of 1.16: per-vowel attacks, the attack in pitch periods above 88,
                    the plain vowels' first period and fall, PE PO's low pulse rise, the vowel after a voiced stop, the
                    voiced fricative after a pause, the voiced stop after a short pause, DO/GO-only closures, the glide
