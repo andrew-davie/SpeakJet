@@ -50,6 +50,14 @@ static void render_chunk(sj_chip *sj, pcm_buffer *b, double gain, bool *sounding
 
 size_t sjr_render(const uint8_t *codes, size_t n, double gain, int16_t **pcm) {
   sj_chip *sj = sj_new();
+  /* SJ_SEED: the noise's sequence from another seed (2026-11-11: the visual score is averaged over several) */
+  const char *seed = getenv("SJ_SEED");
+  if (sj != NULL && seed != NULL && *seed)
+    sj_seed(sj, (uint32_t)strtoul(seed, NULL, 0));
+  /* SJ_OUTPUT=atarivox: the held output with the clock images (the scoring tools, against the recordings); default clean */
+  const char *outm = getenv("SJ_OUTPUT");
+  if (sj != NULL && outm != NULL && strcmp(outm, "atarivox") == 0)
+    sj_set_output(sj, SJ_OUTPUT_ATARIVOX);
   pcm_buffer b = {NULL, 0, 0, false};
   bool sounding = false;
   const size_t limit = (size_t)MAX_SECONDS * SJ_SAMPLE_RATE;

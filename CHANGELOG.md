@@ -2,6 +2,80 @@
 
 ## The rebuild
 
+### 2.0.0 (2026-11-15; technical manual 1.16)
+
+Every effect (200-254) rebuilt against the recordings of units A and B, one sound at a time, each judged by its
+spectrogram against the chip's four takes (1.0 = as close as another recording of the chip). Against 0.4.3 as shipped:
+mean 1.26 -> 0.99 over the 55 effects, 53 closer; 211 A1 keeps 0.4.3's description (0.67 on 0.4.3's engine, 0.71 on
+this one; the re-described one scored 0.76); effect frames 4341 -> 4073 B, all tables 6.9 KB. The speech sounds' engine is unchanged by this part. The allophones: each keeps whichever of its 0.4.3
+entry and its unreleased (2026-11-08..13) entry scores closer to the chip on this engine (17 take 0.4.3's: AWRR AXRR DH
+DO EY EYIY IHWW IYEH LO MM NGO OB OG SH SO TH TS); mean over 65 allophones 1.26 (0.4.3) -> 1.17.
+
+- **The effects' engine** (all effect-only; the speech sounds are as before):
+  - they start hard (no attack ramp);
+  - the bed is flatter (slope term 0.0468, one pole at 0.5) with a second, flat term that follows the signal's
+    magnitude held over 20 ms, so a quiet passage keeps a bed under it (227 B7: -30 dB on both units); the bed does
+    not follow the level ramps, fades and decays (220 B0 and every pure-tone effect);
+  - a second-order term in the output stage (0.07);
+  - a gate's off part is the last 31 % of its period, 34 dB down (229 B9: a 3.6 ms drop every 11.5 ms on every take);
+  - a swept noise climbs for half its cycle (C8, C9, all four takes).
+- **Voicing's first period** (the plain vowels IY..UW from silence): 12 ticks (1.5 ms) longer than the rest; every vowel
+  on all four takes pulses at about 4, 16, 28, 40 ms. 10 vowels closer (UH 1.59 -> 1.34, AW 1.47 -> 1.37, IY 1.39 ->
+  1.29), none further; applied to every voiced sound it made the voiced stops and nasals worse, so it stops at vowels.
+- **The plain vowels' voicing pulse** falls over 72 ticks, not 58 (the effects and the other speech sounds keep 58): 11
+  vowels closer (AX 1.55 -> 1.43, UX 1.62 -> 1.47, IH 1.44 -> 1.31), none further.
+- **The effects' descriptions**, from the chip's own measurements: 23 re-described (C6 C7 A7 B2 B9 A6 A8 A9 C0 C9 C4
+  R0 R1 A4 C2 B8 B6 R4 C5 A0 A5 and others; e.g. 236 C6 15 frames 388 B -> 7 frames 159 B, a pulse rate gliding
+  67 -> 130 -> 67 Hz under two formants on their own timings; 222 B2 21 frames 671 B -> 10 frames 181 B, a 56 Hz/ms
+  linear glide), the other 32 kept and checked against their pictures.
+- **The speech sounds' attacks** (X scored at the best of shifts -12..+12 ms round the onset, as the gates do; the
+  earlier attack law of 12 ms for every vowel was an artefact of onset-only alignment): per vowel, AW AWRR AXRR AXUW
+  AYWW IY IYRR IYUW OH OW OWIY 45 ms; EYIY EYRR IHWW OHIH 60; AX EH EY OHIY OWWW UX 30; AY EHLL 20; IH UH OWRR IYEH the
+  35 ms default; UW 12. The vowel rules above (first period, 72-tick fall) are being re-measured under this X.
+- **Other speech sounds**: 199 PO and 198 PE's low pulse swells in over 10 ms (PE 1.16 -> 1.13, PO 1.15 -> 1.14); SO
+  PO OG EK levels down 4, 4, 6 and 12 dB (0.78 -> 0.73, 1.14 -> 1.09, 1.11 -> 1.05, 0.95 -> 0.79); 193 TS 95 -> 115 ms
+  (ended 18 ms before the chip; 1.04 -> 0.94); HO WH IYEH take 0.4.3's entries (HO's unreleased fit was 40 dB quiet).
+- **A speech sound's attack is in pitch periods**: its aa ms at Pitch 88, shortened by 88/Pitch (VoxProbe 7's 'pitch 150
+  then AW/IY/OW', both units, 5-17 % closer; nothing else changes).
+- **Crossing joins out of a glide**: a crossing cut longer than the glide's last segment (its end hold) now trims across
+  the segments instead of being skipped (VoxProbe 8's AYWW AW, both units: 38-42 ms long -> within 4; Slow AYWW AW 42 -> 7).
+- **A vowel after a voiced stop** (BE BO DE DO EB ED, not GE GO) opens at its own level and amplitudes, its formants still
+  gliding from the stop's release (Man Goes Down P1's DO AYWW, both units: the vowel at full level straight after the bar;
+  ours ramped from the bar's level over the transition).
+- **A voiced fricative after a pause** (DH VV ZZ ZH JH) opens with 40 ms of its noise alone before the voicing (Man Goes
+  Down P2's EYIY P4 DH, both units: the frication 40 ms before the voicing where ours voiced at once).
+- The pitch-period attack is never lengthened below Pitch 88 (P2's IYUW at Pitch 40 is full within its first pulses).
+- **A voiced stop after a short pause** (P4-P6) opens its bar 12 ms into the pause (Man Goes Down P1's ZZ P4 DO, both
+  units: the bar 11 ms after ZZ's end where ours waited 23; P1 1518 -> 1506 ms against the chip's 1500/1505).
+- **The longer closure after a sound** belongs to DO (+25 ms) and GO (+15) only, as VoxProbe 13 measured; DE and GE had
+  it by analogy and were 25 ms long after a vowel (VoxProbe 4's EH DE, both units: 191 -> 167 ms against 169/180).
+- **A vowel or glide above Pitch 88 runs longer** (ASSUMPTION: linear in Pitch, 16 % at 150; VoxProbe 7's 'Pitch 150 then
+  AW/IY/OW', both units, 133-134 ms where the library gave 113-117).
+- **Slow on a plain vowel** stretches it x1.29, not x4/3 (VoxProbe 8's slowed AW and IY, both units, 149-150 ms where
+  x4/3 gave 154-157); glides and nasals keep x4/3. Man Goes Down phrase 1 1500 -> 1491 ms against the chips' 1483/1490.
+- **Effect attacks**: 211 A1, 240 D0 and 205 R5 start over 2 ticks (0.69 -> 0.64, 1.02 -> 0.95, 1.23 -> 1.15); the rest
+  stay hard.
+- Earlier unreleased work, below, is part of this version.
+
+#### Earlier, unreleased until 2.0.0 (technical manual 1.15)
+
+- **Crossing joins** (ASSUMPTION in the constants, shape measured on units A and B): between vowels, glides and LE LO
+  WW RR the formants move on one line across the join, 5 + 5.5 ms per ERB of F1+F2 distance (at least 20 ms), ending
+  31 ms into the next sound; the old rule moved them over 25 ms after the boundary. Every sound alone is sample for
+  sample as before. VoxProbe 4 AW IY P 0.949 -> 0.013, IY AW 0.805 -> 0.029; all 44 recorded multi-sound items E
+  4.747 -> 4.695, P 0.5525 -> 0.5101; Man Goes Down P2's "be with" moves as on both units.
+- **219 A9:** its last part (the 100 Hz tone, 260-320 ms) carries a low noise band (1000 Hz, 2000 wide, level 5):
+  on both units it runs flat to ~1 kHz 25-30 dB over the take's silence where ours had none. Spectrum 1.34 -> 1.31,
+  E 4.77 -> 2.97, P 1.61 -> 0.58 (gate2 HOLD on tfdelta 333 -> 433 only: the new noise cells; the picture matches both
+  units). Effect tables 2721 -> 2724 B.
+- **219 A9** (revised): the tail's noise band is 1200 Hz, 2400 wide, level 6, with the effect's high pass at 512 Hz
+  (the first band put 250-500 Hz 10 dB over the chip): within ~4 dB of both units in every band to 4 kHz.
+- **The bed per effect** (fxs `bs`, a seventh byte per effect, +55 B): 215 A5 151 %, 218 A8 160 %, 220 B0 81 %, 222 B2
+  77 % (E 5.11 -> 4.78, 4.35 -> 4.10, 3.76 -> 3.50, 4.10 -> 3.85; P down on all four). The common law stays.
+- **229 B9:** its U-shaped pulsed line is built (900 -> 500 -> 900 Hz; the rise is one pulsed tone where the old part
+  held three flat ones), every part 4.5 dB up to keep the chip's loudness: spectrum 2.49 -> 1.58, E 4.72 -> 4.55,
+  P 0.89 -> 0.77 (gate PASS). Effect tables 2724 -> 2718 B.
+
 ### 0.4.3 (2026-11-08; technical manual 1.13)
 
 From VoxProbe 13, recorded on units A and B (2026-11-08). Every sound played alone at the default Speed is sample for

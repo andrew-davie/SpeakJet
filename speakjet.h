@@ -41,10 +41,10 @@ extern "C" {
 #endif
 
 /* library version */
-#define SJ_VERSION_MAJOR 0
-#define SJ_VERSION_MINOR 4
-#define SJ_VERSION_PATCH 3
-#define SJ_VERSION "0.4.3"
+#define SJ_VERSION_MAJOR 2
+#define SJ_VERSION_MINOR 0
+#define SJ_VERSION_PATCH 0
+#define SJ_VERSION "2.0.0"
 
 /* the rate at which samples are produced. the chip makes its own at about
  * 8kHz (the manual: "The frequency is produced at a rate of 8192 samples per
@@ -95,6 +95,24 @@ int sj_buffered(const sj_chip *sj);
  * cleared and the controls return to their defaults. the sound already
  * playing is not cut short. a half received two byte command is dropped */
 void sj_reset(sj_chip *sj);
+
+/* Start the noise's random sequence and the tones' oscillator phases from
+ * the given seed (any value; without it the chip starts from fixed ones).
+ * The real chip's tones start wherever their free-running oscillators are and
+ * its noise is a long sequence, so each play differs: several seeds are
+ * several plays of the same sound, for scoring a fit on what it is on average
+ * rather than on one lucky or unlucky play */
+void sj_seed(sj_chip *sj, uint32_t seed);
+
+/* the output stage (2026-11-13). SJ_OUTPUT_CLEAN (the default): the chip's 8026 Hz samples interpolated band-limited to
+ * SJ_SAMPLE_RATE, then the AtariVox's measured in-band response - no clock images. SJ_OUTPUT_ATARIVOX: the samples held
+ * as the AtariVox holds them (it has no reconstruction filter), so every tone carries its mirror images round 8 kHz, as
+ * the real thing's speaker does; the output as the library made it before this. Clean adds 3 ms of latency (the
+ * interpolator's window). Either way the synthesis is the same */
+#define SJ_OUTPUT_CLEAN 0
+#define SJ_OUTPUT_ATARIVOX 1
+void sj_set_output(sj_chip *sj, int mode);
+int sj_get_output(const sj_chip *sj);
 
 /* fill buf with the next n samples of output, at SJ_SAMPLE_RATE, in the
  * range -1 to 1. returns true if the chip is producing sound */
