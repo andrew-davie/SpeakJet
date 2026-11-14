@@ -88,6 +88,12 @@
 #define XJ_MIN 20.0 /* ... at least this, ... */
 #define XJ_END 31.0 /* ... ending this far into the vowel (cross_join) */
 #endif
+#ifndef KV_KE
+#define KV_KE 2100.0 /* a vowel after KE starts with F2 here (Hz), F1 at KV_F1, and moves to its own (the velar locus) */
+#define KV_F1 300.0
+#define KV_MS 8.0    /* ... over this many ms per ERB of F2 distance */
+#define KV_ADD 4.0   /* ... and is this many ms per ERB longer */
+#endif
 #ifndef NHP_TWO
 #define NHP_TWO 1 /* two stages (1) or one (0) */
 #endif
@@ -267,6 +273,7 @@ struct sj_chip {
   bool after_pause;    /* a pause code played since the last sound */
   bool last_nge;       /* the last sound played was NGE */
   bool after_velar; bool after_vstop, after_velar2;    /* the last sound played was GE */
+  bool after_kvelar;   /* the last sound played was KE */
   bool last_nasal;    /* the last sound played was a nasal, MM NE NO NGE NGO (not the liquids that share K_NASAL) */
   int ramp_seg;       /* a voiced stop after a nasal: its release ramp's segment (-1: none) */
   bool xon;           /* the next vowel's formants finish a move begun in this sound's tail (cross_join) */
@@ -610,7 +617,21 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
  * an unslowed vowel or glide (and its Repeat copy) and a pause shrink by (155.9 - Speed) / 47.4, a step down from 114
  * (118: x0.80, 127: x0.61, as measured; the effects' law gives x0.88 at 118), and the other speech sounds don't shrink
  * at all. P2 1700 ms against 1695/1700, timing inside it 12.9 -> 8.5 ms; with the step on the vowels alone the
- * consonants ran 15-40 ms short each. Below 114 nothing changes */
+ * consonants ran 15-40 ms short each. Below 114 nothing changes. The step is at 116, not 115 (2026-11-09, VoxProbe 14
+ * section 2, both units: at Speed 115 IYUW is 225 ms as at 114, AW P2 AW 435 against 455 at 113; with the step at 115
+ * ours read IYUW -30, AW P2 AW -35 ms), so Speed 115 plays as 114 */
+/* ASSUMPTION (2026-11-09, VoxProbe 4, 13 and 14's vowel and liquid joins, both units, the 2600 takes): besides the
+ * distance law, a few sounds carry a join term of their own (alloj), added to the cut of every vowel or glide join
+ * they are on either side of: IH +15, AW +6, OW -10, RR -16 ms. The law alone left AW IH, IH AW IH and AW IH AW
+ * 22-45 ms long and AW RR, RR AW 10-13 ms short; with the terms the 26 joins without AY read rms 16.8 -> 5.0 ms, max
+ * 42 -> 10. Fitted on VoxProbe 4 and 13 alone, the terms took VoxProbe 14 from rms 30.1 to 10.6 ms. AY IY is still
+ * ~30 ms long: no term on AY or IY fits it with AY EH and IY's other joins (open) */
+static double join_term(int idx) {
+  for (int i = 0; i < ALLOJ_N; i++)
+    if (alloj[i][0] == idx)
+      return alloj[i][1] - 128.0;
+  return 0.0;
+}
 static double speed_step(const sj_chip *sj) { return (155.9 - sj->speed) / 47.4; }
 
 static double speed_factor(const sj_chip *sj, bool effect) {
@@ -817,6 +838,7 @@ static void play_effect(sj_chip *sj, int code) {
   sj->last_nasal = false;
   sj->after_pause = false;
   sj->after_velar = false; sj->after_vstop = false; sj->after_velar2 = false;
+  sj->after_kvelar = false;
   /* its peaking filters (fxeq, at most 3): a fixed shaping of its spectrum toward the chip's, set after its structure
    * was tuned (2026-11-04); RBJ peaking biquads at the chip's rate */
   sj->neq = 0;
@@ -1058,13 +1080,18 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
   if (a->kind == K_STOP && sj->after_pause)
     clms += 30.0;
   /* ASSUMPTION (2026-11-08, VoxProbe 13 NE KO OW, both units by picture: NE stops at 0.105 s and KO bursts at 0.15, 30 ms
-   * after ours; NE TT and NE PO already land): KE and KO after a nasal close 30 ms longer */
+   * after ours; NE TT and NE PO already land): KE and KO after a nasal close longer. 15 ms, not 30 (2026-11-09, the
+   * closure's quiet run against both units' 2600 takes: with 30 it was 11-30 ms long on VoxProbe 14's NE NO MM NGE KO AW
+   * and 15 on VoxProbe 13's NE KO OW itself) */
   if ((a - allophones == 66 || a - allophones == 67) && sj->last_nasal && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f)
-    clms += 30.0;
+    clms += 15.0;
   /* ASSUMPTION (2026-11-08): a slowed unvoiced stop after a sound closes 20 ms longer (VoxProbe 13 section 10, all four
    * takes: AW Slow TT AW and Slow AYWW Slow TT 60 ms short; Man Goes Down P2's UW Slow TT: P2 timing 17.0 -> 12.3) */
-  if (a->kind == K_STOP && sj->slow && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f && next_sound(sj, sj->executing) < 128)
-    clms += 20.0; /* only before a pause (2026-11-08): before a sound the vowel ahead runs on instead (see the join) */
+  /* only before a pause (2026-11-08): before a sound the vowel ahead runs on instead (see the join). That is TT's way;
+   * a slowed KE KO PE PO closes longer before a sound too (2026-11-09, VoxProbe 14 section 4, both units: AW Slow KO AW's
+   * closure 56 ms against 44 unslowed, AW Slow PO AW's 101 against 85, where the AW ahead doesn't run on) */
+  if (a->kind == K_STOP && sj->slow && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f && (next_sound(sj, sj->executing) < 128 || a - allophones != 63))
+    clms += 20.0;
   const bool nasal_join = a->kind == K_VSTOP && sj->last_nasal && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f;
   /* the gap's width, band by band on both units' Man Goes Down NE GO (2026-11-07): 20-32 ms under the row's peak
    * -45 dB at 700-3000 Hz, closing at 473-485 ms; 45 ms read 28-38 and closed 480-488 */
@@ -1138,7 +1165,7 @@ static int copy_segments(sj_chip *sj, const allophone *a) {
   const double bend = bend_hz(sj);
   const frame tgt = allo_frame(a, false, bend);
   sj->nseg = 0;
-  const int ticks = TICKS((a->cp * MS_STEP + T.copy_extra) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->speed > 114 && !sj->slow ? speed_step(sj) : speed_factor(sj, false)));
+  const int ticks = TICKS((a->cp * MS_STEP + T.copy_extra) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->speed > 115 && !sj->slow ? speed_step(sj) : speed_factor(sj, false)));
   if (a->kind == K_STOP || a->kind == K_VSTOP) {
     /* the copy opens on a closure, then the release; cp is the whole copy, measured from one copy's onset to the next.
      * the closure is silent (VoxProbe 4 and 7, both units: GE, GO and the final stops dip 27-35 dB between copies,
@@ -1345,7 +1372,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   /* vowels and glides take the effects' Speed law above 114 too (2026-11-08, VoxProbe 13 section 3, all four takes:
    * AW AY EYIY IYUW OWWW UX alone at Speed 118, 122, 127 10-30 ms long on the speech law, within a few ms on this one;
    * Man Goes Down P2 at Speed 118 1698 ms against 1695/1700 with the liquid joins below) */
-  int ticks = TICKS(modified_ms(sj, a, a->ms * MS_STEP) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) ? (sj->speed > 114 && !sj->slow ? speed_step(sj) : speed_factor(sj, true)) : (sj->speed > 114 ? 1.0 : speed_factor(sj, false))));
+  int ticks = TICKS(modified_ms(sj, a, a->ms * MS_STEP) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) ? (sj->speed > 115 && !sj->slow ? speed_step(sj) : speed_factor(sj, true)) : (sj->speed > 114 ? 1.0 : speed_factor(sj, false))));
   /* ASSUMPTION (2026-11-15, VoxProbe 7's 'Pitch 150 then AW/IY/OW', both units: 133-134 ms where the library gives 113-117, the same
    * sounds 114-123 at Pitch 88): a vowel or glide above Pitch 88 runs longer, by 16 % at 150, taken as linear in Pitch; one Pitch measured */
   if ((a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->pitch > 88)
@@ -1390,6 +1417,30 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     if (xon && (a->kind == K_VOWEL || (a - allophones >= 17 && a - allophones <= 20))) {
       cross_segments(sj, from, tgt, tr, ticks, xpost);
       break;
+    }
+    /* ASSUMPTION (2026-11-09, VoxProbe 14 section 7, both units by picture: after KE the vowel's F2 starts ~2000-2500 Hz
+     * and falls to AW OW UW's over 60-80 ms, after KO it starts ~1000 and rises to IY's over ~50; KE IY and KO OW, where
+     * the locus is the vowel's, have no glide; ours started on the vowel and KE AW OW UW ran 32-50 ms short, KO IY 20):
+     * KE, which has no formants of its own, hands the vowel a locus to start from; the glide takes ~8 ms per ERB of F2
+     * distance (the pictures' ~60 ms into AW) but the vowel grows only half that. Fitted on the ten KE/KO items: KE AW
+     * -30 -> -5, KE OW -45 -> -15, KE UW -30 -> -5 ms, KE IY EH unchanged. KO is left alone: no one locus fits both KO IY
+     * (-20) and KO EH (+5), which went to +15 and +20 (open) */
+    if (sj->after_kvelar && a->kind == K_VOWEL) {
+      frame lf = tgt;
+      lf.f[0] = bent(KV_F1, bend);
+      lf.f[1] = bent(KV_KE, bend);
+      const double ea = 21.4 * sj_log(1.0 + 0.00437 * lf.f[1]) / M_LN10, eb = 21.4 * sj_log(1.0 + 0.00437 * tgt.f[1]) / M_LN10;
+      const double de = ea > eb ? ea - eb : eb - ea;
+      int gl = TICKS(KV_MS * de * speed_factor(sj, true));
+      ticks += TICKS(KV_ADD * de * speed_factor(sj, true));
+      if (gl > ticks - tr - 1)
+        gl = ticks - tr - 1;
+      if (gl > 0) {
+        add_segment(sj, tr, from, lf, true);
+        add_segment(sj, gl, lf, tgt, true);
+        add_segment(sj, ticks - tr - gl, tgt, tgt, true);
+        break;
+      }
     }
     add_segment(sj, tr, from, tgt, true);
     add_segment(sj, ticks - tr, tgt, tgt, true);
@@ -1468,6 +1519,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   sj->last_nasal = a - allophones >= 12 && a - allophones <= 16;
   sj->last_nge = a - allophones == 15;
   sj->after_velar = a - allophones == 50; sj->after_vstop = a->kind == K_VSTOP; sj->after_velar2 = a - allophones == 50 || a - allophones == 51;
+  sj->after_kvelar = a - allophones == 66;
   sj->after_pause = false;
   const bool nasal_ramp = sj->ramp_seg >= 0;
   /* an unvoiced fricative starts and stops at once (HE HO WH FF SE SO SH TH, both units, background allowed for: rise
@@ -1610,7 +1662,7 @@ static void next_command(sj_chip *sj) {
     sj->executing = n;
     if (code <= 6) {
       {
-        double pms = T.pause[code] * (sj->speed > 114 ? speed_step(sj) : (T.fx_speed_a - sj->speed) / T.fx_speed_b);
+        double pms = T.pause[code] * (sj->speed > 115 ? speed_step(sj) : (T.fx_speed_a - sj->speed) / T.fx_speed_b);
         const int nx = next_sound(sj, n);
         /* 2.0.0: after a short pause (P4-P6), a voiced stop's bar opens 12 ms into the pause before it (Man Goes Down P1's ZZ P4 DO, both units: the bar
          * 11 ms after ZZ's end, ours 23) */
@@ -1706,8 +1758,10 @@ static void next_command(sj_chip *sj) {
         }
         /* ASSUMPTION (2026-11-08, VoxProbe 13 AW Slow TT AW and Slow AYWW Slow TT, both units, the runs of sound: the
          * sound before a slowed unvoiced stop runs on ~40 ms - the Slow is read ahead - unless it is a nasal or the stop
-         * is followed by a pause (Man Goes Down P2's UW Slow TT P1): AW 130 -> 170 ms against 170) */
-        if (next <= 199 && allophones[next - 128].kind == K_STOP && slow_before_next(sj, n) && allophones[code - 128].kind != K_STOP && !(code >= 140 && code <= 144)) {
+         * is followed by a pause (Man Goes Down P2's UW Slow TT P1): AW 130 -> 170 ms against 170). Before TT only
+         * (2026-11-09, VoxProbe 14 section 4, both units by picture: before a slowed KO or PO the AW is ~130 ms, as unslowed,
+         * where ours ran ~160; AW Slow KO AW +30 -> ~0, AW Slow PO AW +25) */
+        if (next == 191 && slow_before_next(sj, n) && allophones[code - 128].kind != K_STOP && !(code >= 140 && code <= 144)) {
           int j = n;
           while (j < sj->count && peek(sj, j) < 128)
             j += (peek(sj, j) >= 20 && peek(sj, j) <= 26) ? 2 : 1;
@@ -1716,7 +1770,9 @@ static void next_command(sj_chip *sj) {
             sj->stotal += TICKS(40.0);
           }
         }
-        if (allophones[code - 128].kind == K_STOP && sj->slow && !prev_nasal && next <= 199 && allophones[next - 128].kind != K_STOP && allophones[next - 128].kind != K_FRIC) {
+        /* TT only (2026-11-09, VoxProbe 14 section 4, both units: after a slowed KO or PO the release is as unslowed, 145
+         * against 142 ms; the Slow goes into their closure) */
+        if (code == 191 && sj->slow && !prev_nasal && next <= 199 && allophones[next - 128].kind != K_STOP && allophones[next - 128].kind != K_FRIC) {
           l->ticks += TICKS(15.0); /* 15, not 40, now the vowel ahead runs on: the release after it 185 ms against 185 */
           sj->stotal += TICKS(15.0);
         }
@@ -1772,7 +1828,7 @@ static void next_command(sj_chip *sj) {
             const double ea = 21.4 * sj_log(1.0 + 0.00437 * l->to.f[q]) / M_LN10, eb = 21.4 * sj_log(1.0 + 0.00437 * bf[q]) / M_LN10;
             d += (q == 0 ? JOIN_W1 : 1.0) * (ea > eb ? ea - eb : eb - ea);
           }
-          const double ms = (JOIN_A - JOIN_K * d) * speed_factor(sj, false);
+          const double ms = (JOIN_A - JOIN_K * d + join_term(code - 128) + join_term(next - 128)) * speed_factor(sj, false);
           if (ms >= 0.0) {
             cut = TICKS(ms);
             crossing = true;

@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.17, 2026-11-15.** The version rises with every change to what is known about the chip (new
+**Version 1.18, 2026-11-15.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -802,7 +802,72 @@ into a voiced stop 20.1 to 12.9, a stop's release 14.9 to 11.8, pauses 29.6 to 2
   ~20 ms short; GO IY 30 ms short; a slowed TT's closure and aspiration; the death sound slowed ~20-50 ms short; the transitions'
   shape. VoxProbe 14's plan (in the lab's notes) carries a test for each.
 
-### 6.10 Rebuilt against both units (library 2.0.0, 1.17)
+### 6.10 What VoxProbe 14 measured (1.16)
+
+VoxProbe 14 build 1 (sha1 f94b1488) was recorded on both units, 2600 and Stella, on 2026-11-09 (four takes). Item
+lengths are taken band by band as in 6.9 (probes/VoxProbe14/analysis/lengths14c.py). The two units agree within
+~10 ms on nearly every item, so each figure below is ours against the chips, for the library 0.4.3 (ours - chip).
+Modelled so far: the Speed step, the join terms, KO after a nasal, the KE locus, Slow on KO and PO.
+
+- **The Speed step is at 116, not 115.** At 115 the chip plays as at 114 (IYUW 225 ms at both). The library
+  shortens from 115: IYUW -30, AW P2 AW -35 ms. At 113 ours is 15 ms long (AW, IYUW). *Modelled:* the step now
+  starts at 116 (section 2 mean |error| 12.0 to 10.0 ms, worst -35 to +15); Speed 115 plays as 114.
+- **Consonants shrink above 114** (the assumed "no change" is wrong). NE between AWs: +30, +35, +60 ms at Speed 114,
+  118, 127; NE GO OW at 122 +22. DH between AWs is short: -32 and -50 ms at 114 and 118; FF at 118 -22.
+- **Slow on an unvoiced stop.** The fitted +20 ms closure is right for TT, too much for KO and PO (+30, +25).
+  Followed by P2, all three are 20-35 ms short: a pause after a slowed stop is longer on the chip. By picture and
+  by parts: before a slowed TT the vowel ahead runs on (~155 ms) and TT's release grows; before a slowed KO or PO
+  the vowel doesn't (~130 ms, as unslowed), the release is as unslowed, and the closure grows instead (KO 56 against
+  44 ms, PO 101 against 85). *Modelled:* the run-on and the release's +15 ms are TT's only; a slowed KE KO PE PO
+  after a sound closes 20 ms longer before a sound as well as before a pause. AW Slow KO AW +30 to -5, AW Slow PO AW
+  +25 to -10 ms; section 4 15.5 to 11.8. Still open: after a slowed TT the chip's P2 is ~44 ms longer than ours; PO's
+  release noise runs ~40 ms against the chip's ~15 (plain or slowed).
+- **A hiss next to a vowel.** AW SE AW and AW TH AW are right, but AW Slow SE AW is -32 and IY SE AW -25 ms. A hiss
+  into a vowel from a Reset is short: FF OW -25, SH IY -25 ms. The lone hisses (SE, TH, Slow SE, Slow TH) are right.
+  By picture the hiss itself is what is short (SH before IY ~55 against ~80 ms, FF before OW ~65 against ~75, SE
+  between vowels ~70 against 90-100), and the vowel after it 5-20 ms long; SH FF TH alone are within 5 ms. Taking the
+  15 ms overlap away from every unvoiced hiss into a vowel fixed SH IY, FF OW and IY SE AW (to -10) but put SE AW, SE
+  UX and the TH items 15-30 long, section 9 8.3 to 14.4 ms and Man Goes Down P4 955 against 942/945: not modelled.
+  Open.
+- **Velars:** KE before AW, OW, UW is 32-50 ms short; GO IY -30, KO IY -20. GE is right before every vowel. By
+  picture on both units, the vowel after KE starts at a velar locus (F2 ~2000-2500 Hz, F1 low) and glides to its own
+  over 60-80 ms; after KO, F2 starts ~1000 and rises into IY. Where the locus is the vowel's (KE IY, KO OW) there is no
+  glide. *Modelled (KE locus):* after KE a vowel starts at F2 2100 Hz, F1 300, and glides 8 ms per ERB of F2
+  distance, growing 4 ms per ERB: KE AW -30 to -5, KE OW -45 to -15, KE UW -30 to -5 ms, with the glide's shape on
+  the pictures; section 7 11.7 to 8.0 ms. KO is not modelled: no single locus fits KO IY (-20) and KO EH (+5).
+- **Joins are long.** AW IH +22, AW IH AW +43, IH AW IH +45, AY IY +35, AY IY AW +40 ms: about 20 ms a join.
+  IY AW IY is right. *Modelled (join terms):* across every recorded vowel and liquid join (VoxProbe 4, 13, 14) the
+  error doesn't follow the distance law; it follows the sounds. IH's joins are long whichever side it is on, RR's
+  short. A few sounds carry a term of their own added to the join's cut (alloj): IH +15, AW +6, OW -10, RR -16 ms.
+  The 26 joins without AY go from rms 16.8 to 4.1 ms (max 42 to 10); fitted on VoxProbe 4 and 13 alone, the terms
+  took VoxProbe 14 from rms 30.1 to 10.6. Every sound alone and Man Goes Down's phrases are unchanged. AY IY stays
+  ~32 ms long: on both units AY holds ~70 ms before F2 rises to IY (ours ~110), while AY EH is right. Open.
+- **A nasal before BO or KO is long.** NE BO AW +45, NO BO AW +40, MM KO AW +37, NE KO AW and NO KO AW +30 ms. Before
+  DO and GO it is right, and so is NGE before every stop. Taken apart by picture (2026-11-09) it is three faults:
+  KO's closure after a nasal was 11-30 ms long (and 15 on VoxProbe 13's NE KO OW): *modelled*, 15 ms extra, not 30.
+  BO and the vowel after it run ~30 ms long whatever comes before (see BO into a vowel). And KO's release with the
+  vowel after it runs ~14 ms long, after AW as after a nasal. Taking the overlap rule for NE and NO into these stops
+  away fits the item lengths but cuts NE ~20 ms short of both units: the rule stays. MM KO's gap is still ~10 ms long,
+  and NGE before a stop is ~40 ms short in its own sound (~90 against ~130 ms), where VoxProbe 13's fit put the
+  missing time into the closure.
+- **BO into a vowel is long** (BO AW, AY, EH: +20 to +22 ms). BE into the same vowels is right. Over all 33 items
+  of BE BO DE DO into a vowel (VoxProbe 4, 13, 14), the error follows neither the F2 distance the trim rule uses nor
+  F1 with F2: BO before AY EH IH AW runs 15-27 ms long by picture all after the release, BO before OW UW IY within
+  10; DO and DE before IY run 18-25 short, BE before IY 8-15 short while Man Goes Down P2's "be with" (BE IY) is
+  right. A BO term and an IY term fitted VoxProbe 14 from VoxProbe 13 (rms 13.5 to 7.3 ms) but overshot BO OW, BO UW
+  and BE IY and put Man Goes Down P2 18 ms long: not modelled. GE and GO are outside the trim rule (GO IY -30). Open.
+- **A voiced stop into IY is short** (DO IY -20, GO IY -30). TH RR AW is -38.
+- **The slowed glide:** Slow IYUW Slow AW +60, and Slow IYUW Slow SE AW +25 at Speed 100 and +80 at 127. Slow AYWW
+  and Slow OWWW before Slow SE AW are -35 and -28. The 25 ms lengthening is wrong in size, and it changes with Speed
+  and with the glide. By picture on both units: Slow's stretch of IYUW falls with Speed (x1.30 at 100, ~x1.24 at
+  114, ~x1.0 at 127, where the slowed IYUW is ~130 ms, as plain; ours stays ~x1.35, 177 ms); in Slow IYUW Slow AW the
+  AW is ~125 ms, as plain, where ours is ~165; after Slow AYWW and Slow OWWW the slowed SE is ~120 ms, ours ~80-90.
+  Applying the step above 115 to slowed sounds as well put Man Goes Down P2 52 ms short (1648 against 1695/1700):
+  not that. Open.
+- **Slowed effects (Speed 0):** R8 R9 C9 within 15 ms; B0 +17, C8 -28, R5 -30.
+- **Answered, no change:** copies of SE and SH, UX copies with Pitch codes between, M2 (with and without Pitch 150),
+  RR and IY alone.
+### 6.11 Rebuilt against both units (library 2.0.0, 1.18)
 
 Every allophone and effect in 2.0.0 was judged by one measure: the render's spectrogram, at six resolutions from 1.3
 to 43 ms, against the chip's four takes of the sound (both units), each take's background subtracted, the render
@@ -1227,7 +1292,7 @@ leave the buffer with the sound.
 
 ---
 
-### 9.1 When a Pitch command takes effect (1.17, open)
+### 9.1 When a Pitch command takes effect (1.18, open)
 
 A Pitch command (22 n) placed between sounds does not take effect at the next sound. Measured by the voicing period
 in steady stretches of Man Goes Down, both units:
@@ -1370,6 +1435,9 @@ VoxProbe 12    Slow and Fast, joins and codes between sounds, Man Goes Down take
 VoxProbe 13    build 5, posted 2026-11-07, recorded 2026-11-08 on both units (4 takes): Bend 0-15, speech at Speed 100-127, joins
                (vowels, nasals, liquids, glides), stops into vowels with and without Slow, pauses under
                Speed, Pitch and Bend, unvoiced stops and hisses, Man Goes Down phrase 1
+VoxProbe 14    build 1 (sha1 f94b1488), recorded 2026-11-09 on both units (4 takes): the Speed step, consonants
+               above 114, Slow on unvoiced stops, hisses after vowels and alone, velars, joins, nasals and BO
+               before stops, copies, the slowed glide, M2, every effect at Speed 0
 Man Goes Down  the phrases of a released game, for whole-phrase checks
 ```
 
@@ -1431,7 +1499,7 @@ spectrum as a guard.
   from frame to frame; a 15/85 % crossing time read off such a track is wrong. Read the track itself, frame by
   frame, before trusting any timing taken from it.
 
-### 12.5 Lessons from the 2.0.0 rebuild (1.17)
+### 12.5 Lessons from the 2.0.0 rebuild (1.18)
 
 - **Score at the best of a few shifts, never at one onset.** An onset rule places a render by one feature; on a stop
   whose bar fades in it put the render 8 ms out and read 1.61 where 1.29 was right. The measure now scores at shifts
@@ -1507,6 +1575,10 @@ Where the library and the chip still differ, or the chip is not understood:
   Every item's window length is now compared between the two 2600 takes (none differ by more than 50 ms), and each
   item's runs of sound (count and boundaries) against both units and ours: inside timing is scored on those boundaries,
   not only on the first onset to the last end.
+- **A matching count is not a placement** (2026-11-09). VoxProbe 14's section 4 cut to its 11 items on three takes and
+  was one item late on all three: AW Slow PO P2 AW cut as two runs, and the lone Slow TT and Slow KO (bursts under the
+  cutter) made up the count. Sections whose items include a lone stop or hiss are placed from a 2 kHz high-pass
+  envelope at offsets checked on all four takes (place14.py), and the cutter's count is never taken as proof.
 - **The effects' bed:** its dependence on level, and 220 B0's low end (its bed
   falls away below 300 Hz).
 - **The mixer's limit** on three oscillators totalling over 63 (manual) was
@@ -2089,14 +2161,17 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
-1.17  2026-11-15   library 2.0.0's allophones and joins (6.10): per-vowel attacks, the attack in pitch periods above 88,
+1.18  2026-11-15   library 2.0.0's allophones and joins (6.11), merged with the VoxProbe 14 work of 1.16: per-vowel attacks, the attack in pitch periods above 88,
                    the plain vowels' first period and fall, PE PO's low pulse rise, the vowel after a voiced stop, the
                    voiced fricative after a pause, the voiced stop after a short pause, DO/GO-only closures, the glide
                    crossing cut; when a Pitch command takes effect (9.1, open); measuring lessons (12.5); known gaps
                    updated (Pitch timing, the chip's slow unvoiced decay, TT/TH level next to a vowel, AW's attack)
-1.16  2026-11-15   library 2.0.0: the effects rebuilt against units A and B (section on effects): hard start, a flatter
+1.17  2026-11-15   library 2.0.0: the effects rebuilt against units A and B (section on effects): hard start, a flatter
                    bed with a 20 ms held flat term that ignores fades and ramps, a second-order output term, the gate's
                    off part the last 31 % of its period at -34 dB, swept noise climbing for half its cycle.
+1.16  2026-11-09   VoxProbe 14 recorded: section 6.10 (the Speed step at 116, consonants shrink above 114, Slow on
+                   unvoiced stops, SE after a vowel, velars, joins, nasals and BO before stops, the slowed glide, the
+                   slowed effects); section 12: VoxProbe 14's line, a matching item count can still be one item late
 1.15  2026-11-08   section 7.5: the bed per effect (fxs bs) after a floor survey of 41 effects on both units; 219 A9's
                    last part carries low noise; 229 B9's U-shaped pulsed line needs no fourth tone (the chip's high
                    tones stop before its rise)

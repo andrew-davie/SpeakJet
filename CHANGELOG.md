@@ -2,7 +2,7 @@
 
 ## The rebuild
 
-### 2.0.0 (2026-11-15; technical manual 1.16)
+### 2.0.0 (2026-11-15; technical manual 1.18)
 
 Every effect (200-254) rebuilt against the recordings of units A and B, one sound at a time, each judged by its
 spectrogram against the chip's four takes (1.0 = as close as another recording of the chip). Against 0.4.3 as shipped:
@@ -55,9 +55,13 @@ DO EY EYIY IHWW IYEH LO MM NGO OB OG SH SO TH TS); mean over 65 allophones 1.26 
   x4/3 gave 154-157); glides and nasals keep x4/3. Man Goes Down phrase 1 1500 -> 1491 ms against the chips' 1483/1490.
 - **Effect attacks**: 211 A1, 240 D0 and 205 R5 start over 2 ticks (0.69 -> 0.64, 1.02 -> 0.95, 1.23 -> 1.15); the rest
   stay hard.
+- **VoxProbe 14's rules** (below, from the canonical branch of 2026-11-09, merged into this release): the Speed step at
+  116, the join terms IH +15 OW -10 RR -16 ms (AW's +6 was fitted on an AW whose attack and length have changed; on
+  this engine it made every AW pair further and is 0), the KE locus, KE and KO after a nasal +15 ms, Slow on KO and PO.
 - Earlier unreleased work, below, is part of this version.
 
 #### Earlier, unreleased until 2.0.0 (technical manual 1.15)
+#### VoxProbe 14's findings, unreleased until 2.0.0 (technical manual 1.16)
 
 - **Crossing joins** (ASSUMPTION in the constants, shape measured on units A and B): between vowels, glides and LE LO
   WW RR the formants move on one line across the join, 5 + 5.5 ms per ERB of F1+F2 distance (at least 20 ms), ending
@@ -75,6 +79,28 @@ DO EY EYIY IHWW IYEH LO MM NGO OB OG SH SO TH TS); mean over 65 allophones 1.26 
 - **229 B9:** its U-shaped pulsed line is built (900 -> 500 -> 900 Hz; the rise is one pulsed tone where the old part
   held three flat ones), every part 4.5 dB up to keep the chip's loudness: spectrum 2.49 -> 1.58, E 4.72 -> 4.55,
   P 0.89 -> 0.77 (gate PASS). Effect tables 2724 -> 2718 B.
+- **The bed per effect** (fxs `bs`, a seventh byte per effect, +55 B): 218 A8 160 %, 222 B2 77 % (E 4.35 -> 4.10,
+  4.10 -> 3.85; P down on both). The common law stays. (215 A5 151 % and 220 B0 81 % were fitted and
+  withdrawn.)
+- **The Speed step is at 116** (VoxProbe 14 section 2, both units): at Speed 115 vowels, glides and pauses play as at
+  114, where they shrank on the step law. IYUW at 115 -30 -> -10 ms, AW P2 AW -35 -> +10; section 2 mean |error|
+  12.0 -> 10.0 ms. Only Speed 115 changes: every sound at Speeds 60-114 and 116-127 is sample for sample as before.
+- **Join terms** (alloj, a side table, +8 B): a vowel or glide join's cut grows by a term for each of the two sounds:
+  IH +15, AW +6, OW -10, RR -16 ms. Vowel and liquid joins recorded on VoxProbe 4, 13 and 14 (both units), AY's
+  aside: rms 16.8 -> 4.1 ms, max 42 -> 10 (AW IH +22 -> -3, AW IH AW +42 -> -2, AW RR -13 -> -2, OW IY OW -20 -> 0).
+  Every sound alone and Man Goes Down's phrases are sample for sample / ms for ms as before. AY IY is still ~32 ms
+  long (open).
+- **KE and KO after a nasal** close 15 ms longer, not 30: the closure's quiet run against both units was 11-30 ms long
+  on VoxProbe 14's NE NO MM NGE KO AW and 15 on VoxProbe 13's NE KO OW; now within 4 ms except MM (+15). VoxProbe 13
+  section 6 9.6 -> 9.2 ms, VoxProbe 14 section 10 12.2 -> 10.8. Every sound alone and Man Goes Down unchanged.
+- **The KE locus:** a vowel after KE starts at F2 2100 Hz, F1 300, and glides to its own over 8 ms per ERB of F2
+  distance, growing 4 ms per ERB (both units by picture: KE has no formants of its own, and the chip's vowel after it
+  starts at a velar locus). KE AW -30 -> -5, KE OW -45 -> -15, KE UW -30 -> -5 ms; KE IY and KE EH unchanged; VoxProbe
+  14 section 7 11.7 -> 8.0. Every sound alone and Man Goes Down unchanged.
+- **Slow on KO and PO** (VoxProbe 14 section 4, both units): the vowel ahead runs on and the release grows only
+  before a slowed TT; a slowed KE KO PE PO after a sound closes 20 ms longer instead, before a sound as before a pause.
+  AW Slow KO AW +30 -> -5, AW Slow PO AW +25 -> -10 ms; section 4 15.5 -> 11.8. Every sound alone, VoxProbe 13's Slow
+  TT items and Man Goes Down unchanged.
 
 ### 0.4.3 (2026-11-08; technical manual 1.13)
 

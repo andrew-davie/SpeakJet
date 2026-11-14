@@ -166,7 +166,7 @@ than a glide's last segment trims across its segments (2.0.0: VoxProbe 8's AYWW 
 stop other than GE GO opens at its own level and amplitudes while its formants glide from the release; a voiced
 fricative after a pause opens with 40 ms of noise alone; a voiced stop after a short pause (P4–P6) opens its bar
 12 ms into the pause; the longer closure after a sound is DO's (+25 ms) and GO's (+15) only (all 2.0.0, Man Goes
-Down and VoxProbe 4 on both units; technical manual 6.10). A voiced sound into 187 SE bends
+Down and VoxProbe 4 on both units; technical manual 6.11). A voiced sound into 187 SE bends
 toward 167 ZZ's formants over its last 40 ms; a slowed glide followed by a Slow plays `SLOW_GLIDE_ON` ms longer
 (ASSUMPTION: Man Goes Down's phrase 4 only). Pauses, effects and silence keep
 the ramps. The look-ahead steps over Fast, Slow, Stress, Relax and the
@@ -187,7 +187,7 @@ the glides' copies run 185–290 ms. JH's copy is 80 ms, ZH's 70.
 **Level over time.** A sound after silence ramps in over 35 ms and out over
 30 (`attack`, `release`); an unvoiced fricative switches in 3 ms, a nasal rises in
 25, and a sound may have its own (`aa`, `rr`). Since 2.0.0 every vowel and glide has its own attack, 20–60 ms
-(technical manual 6.10), shortened in proportion to the pitch period above Pitch 88 and never lengthened below; the
+(technical manual 6.11), shortened in proportion to the pitch period above Pitch 88 and never lengthened below; the
 plain vowels' first voicing period from silence is 12 ticks longer and their pulse falls over 72 ticks, not 58;
 198 PE and 199 PO's low pulse swells in over 10 ms. An effect's tone starts within
 1–3 ms on both units (`fx_attack` 1 ms, `fx_release` 25), many on a 5 ms click,
@@ -350,7 +350,7 @@ judge). All three add the recording's own background to the library's render
 before comparing. For 2.0.0 one measure replaced them: the render's spectrogram at six resolutions (1.3–43 ms)
 against the chip's four takes of the sound (both units), each take's background subtracted, scored at the best of
 shifts of −12..+12 ms round the onset and divided by the takes' own leave-one-out spread, so 1.0 is "as far from the
-chip as another take of it"; a rule ships only when no sound scores worse under it (technical manual 6.10, 12.5).
+chip as another take of it"; a rule ships only when no sound scores worse under it (technical manual 6.11, 12.5).
 
 Each sound's numbers are annealed inside its measured structure (kind,
 lengths, parts, tones and flags fixed; formants within ±10 % and kept in
