@@ -98,52 +98,57 @@ every function.
 
 ## How close it is
 
-Every allophone and sound effect is compared with recordings of two real
-AtariVoxes (an original AtariVox and an AtariVox+). The library is given each
-recording's own background noise, and both sides are cut out by the same rule.
-Three scores, lower is better:
+Every allophone and sound effect is scored against the chip's own recordings:
+four takes of each sound alone, two from each of two real AtariVoxes (an
+original AtariVox and an AtariVox+). The score, X, compares spectrograms at six
+resolutions, from 1.3 ms to 43 ms windows, with each take's background noise
+taken off, and finds the best alignment within 12 ms of the sound's start. It
+is calibrated on the chip itself: the four takes are scored against each other,
+and a sound's distance is divided by that spread. So **X = 1.0 means "as far
+from the chip as another recording of the chip"**, and lower is closer.
 
-- **spectrum**: the whole-sound spectrum error in rms dB (a voice line by line
-  over its harmonics), on the VoxRecord takes of each sound alone.
-- **E**: the spectrum, the time-frequency picture and the level over time
-  together, in rms dB, on the same takes.
-- **P**: a perceptual score (length, level over time, time-frequency picture,
-  spectrum, peaks and pitch), averaged over every recording of the sound:
-  VoxRecord and VoxProbes 4, 7 and 8, 1191 recordings in all.
-
-At 0.4.1, by sound on both units' VoxRecord solo takes (each sound's mean, then
-the mean over sounds; 0.3.0 beside it, and the two real chips against each other
-as the floor nothing can beat):
+0.5.1 against 0.4.3, both scored the same way on the same recordings:
 
 ```
-                      spectrum dB          E dB              P
-                   0.3.0  0.4.1  chip   0.3.0  0.4.1  chip   0.3.0  0.4.1  chip
-allophones (65)     2.56   2.37  0.97    4.16   3.55  3.10    0.50   0.41  0.22
-effects (54)        2.51   2.29  1.41    4.58   4.05  2.71    0.82   0.70  0.39
-all sounds (119)    2.54   2.34  1.17    4.35   3.78  2.92    0.64   0.55  0.30
+                                      0.4.3   0.5.1
+allophones (72), mean X                1.07    0.93   57 closer, none further
+sound effects (55), mean X             1.22    0.98   52 closer, 1 further (237 C7)
+joins (88 recorded pairs and phrases)  1437     514   mean cost; 56 closer, 15 further
+lengths 15 ms or more off (88 items)     24      14
 ```
 
-Against 1.0.0 (E 14.03, P 2.44, spectrum 12.97 over the same sounds) the
-library has closed 92 % of the E gap to a second AtariVox, 88 % of P's and 90 %
-of the spectrum's.
+The joins are VoxProbe 4, 7 and 8's two-sound pairs and Man Goes Down's
+phrases, on both units, scored by a lined-up time-frequency difference. Man
+Goes Down's phrase lengths, against the two chips:
+
+```
+              unit A   unit B   0.4.3   0.5.1
+phrase 1        1483     1490    1475    1491 ms
+phrase 2        1676     1671    1683    1690 ms
+phrase 4         782      787     779     771 ms
+```
+
+Biggest gains: 235 C5 -45 %, 253 M1 -43 %, 159 EHLL -36 %, 223 B3 -36 %,
+213 A3 and 228 B8 -35 %. Every sound's score is in [`docs/scores.md`](docs/scores.md).
 
 What is still known to be off (`docs/technical-manual.md` section 13 has the
 detail):
 
-- The worst sounds by P are effects: 254 M2, 218 A8, 210 A0, 235 C5 and
-  219 A9 (1.47 to 1.66). The best allophones score under 0.15.
-- Man Goes Down's phrases score worse than the sounds alone. Its death sound
-  (231 C1 at Pitch 212 and Speed 62) runs 24 ms short, and its pulse rate
-  starts near 411 Hz where the chip's climbs from 228.
+- The furthest sounds are effects: 238 C8 (1.75), 207 R7 (1.44), 239 C9
+  (1.43) and 206 R6 (1.34); then the voiced stops 174 DE (1.29) and 171 BO
+  (1.24), whose closure bar is fuller and release darker on the chip.
+- 237 C7 is 1.17 against 0.4.3's 1.12. On the chip a voiced effect's pulse rings
+  on at -20 to -30 dB until the next pulse; the library's falls to silence
+  within 5 ms. The mechanism isn't found yet.
+- A Pitch command inside a phrase takes effect one to five sounds late on the
+  chip; the library applies it at the next sound. Man Goes Down's phrase 2 runs
+  long mostly because of this.
+- After an unvoiced stop or hiss the chip's level dies away over about 100 ms;
+  the library's stops within a few.
 - Bend below zero: the chip folds a tone bent under about 50-90 Hz to near
   2.4 kHz; the library doesn't. 215 A5 also has a 40 Hz tone the library lacks.
 - Volume: the chip is linear in amplitude; the library still uses an older,
   flatter curve above Volume 32.
-- The reset default Pitch is 87 (the period the chip plays at its default),
-  not the manual's 88: provisional until a recording settles it.
-- 235 C5's opening and the robots 200 R0 to 203 R3 pulse with a timbre the
-  library's pulse doesn't make. 205 R5, 208 R8, 209 R9, 238 C8, 239 C9 and
-  220 B0 have structure not yet modelled.
 - Stress and Relax do nothing, because nothing measurable was found.
 
 Numbers aren't everything: listening against the chip is the final check.
@@ -183,13 +188,12 @@ regenerates them.
 [`docs/design.md`](docs/design.md) describes the model and every
 measurement of the real chip behind it.
 
-This branch was written from scratch from the SpeakJet User's Manual and
-recordings of two AtariVoxes only. The brief was the smallest footprint: a rule
-wherever a rule could be found, a few bytes of parameters per sound
-otherwise. `speakjet.c` is about 1580 lines; the tables are 5131 bytes
-compiled: 72 allophones of 27 bytes, the effect parts as a byte stream, each
-holding only the fields it uses, and a 6-byte structure row per effect; the
-object is about 27 KB at -O2.
+Every rule is taken from recordings of two AtariVoxes, and every claim is
+checked against both. A rule went in only when no sound scored further from
+the chip under it. `speakjet.c` is about 2450 lines; the tables are 7190 bytes
+compiled: 72 allophones of 34 bytes, the effect parts as a byte stream holding
+only the fields each uses, and a 9-byte structure row per effect; the object
+is about 99 KB at -O2.
 
 What the recordings gave:
 
@@ -214,11 +218,11 @@ What the recordings gave:
   low noise.
 - **Timing and controls.** A sound's length is the same streamed, alone or
   before a pause, and the same at every Pitch; it is linear in Speed; Fast
-  is x2/3 and Slow x4/3 (Slow also on the voiced stops), and a sound straight
+  is x2/3 and Slow x4/3 (x1.29 on a plain vowel; Slow also on the voiced stops), and a sound straight
   after the same sound plays as a Repeat copy. Inside a run of sounds the
   voice runs on without fading, each sound cut 15 ms short (30 when both are
-  voiced); only a run's edges ramp, 35 ms in and 30 out (unvoiced
-  fricatives 3 ms, nasals in 25). Stops have their own closures, a voice bar
+  voiced); only a run's edges ramp, each vowel and glide in over its own 20-60
+  ms (unvoiced fricatives 3 ms, nasals 25). Stops have their own closures, a voice bar
   with weak upper formants, and louder onsets. Each Repeat copy
   lasts the sound's measured copy length (a stop's copy is the stop again).
   Bend moves every oscillator by 44 Hz a step; Volume follows an older
@@ -226,7 +230,7 @@ What the recordings gave:
   was since found linear; Stress, Relax and code 18 do nothing measurable.
   The command after a sound is read at the sound's release, and a Speed or
   Volume there changes the rest of the sound.
-- **Sound effects.** Each is one to eleven parts of up to three sweeping
+- **Sound effects.** Each is one to thirteen parts of up to four sweeping
   tones and a noise band, read off the chip's own tracks: pulsed effects at
   Pitch plus an offset of their own, the robots a carrier at 800 + 300·n Hz
   beside a low tone and its octave, plain tones that hold and end in a 55 ms
@@ -256,6 +260,7 @@ which the Gopher2600 emulator uses for its AtariVox.
 | `tools/text2speakjet/` | Text to SpeakJet codes, with its dictionaries and tests |
 | `samples/` | Sample phrases, their codes and WAVs |
 | `docs/design.md` | How the emulation works, and every measurement behind it |
+| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.1 |
 | `docs/technical-manual.md` | The SpeakJet itself, as measured: hardware, synthesizer, voice, allophones, stops, Repeat, effects, commands, and what is still unknown |
 | `docs/reference/` | The SpeakJet User's Manual, and the PhraseALator dictionary text2speakjet uses |
 | `CHANGELOG.md` | What changed, with the measurements behind each change |
