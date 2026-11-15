@@ -7,6 +7,14 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
+### Unreleased
+
+- **237 C7's pulse rate** follows the chip's track: Pitch 88 for its first section, then rising, where its fitted
+  offsets ran its pulses 1-1.5 ms too often from 85 to 130 ms, so each pulse had too little time to die away before
+  the next (both units' pulse times; between pulses the chip falls to -24..-36 dB, ours to -21..-23). The offsets
+  were searched by X from the chip-measured track: 1.17 -> 1.07 (0.4.3: 1.12). No effect is now further from the
+  chip than 0.4.3; effects mean 0.98 -> 0.97.
+
 ### 0.5.1 (2026-11-16; technical manual 1.19)
 
 No allophone is now further from the chip than 0.4.3 was. 0.5.0 had four (IY IH OH UW): its two plain-vowel rules,

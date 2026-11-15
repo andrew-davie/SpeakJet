@@ -112,7 +112,7 @@ from the chip as another recording of the chip"**, and lower is closer.
 ```
                                       0.4.3   0.5.1
 allophones (72), mean X                1.07    0.93   57 closer, none further
-sound effects (55), mean X             1.22    0.98   52 closer, 1 further (237 C7)
+sound effects (55), mean X             1.22    0.97   53 closer, none further
 joins (88 recorded pairs and phrases)  1437     514   mean cost; 56 closer, 15 further
 lengths 15 ms or more off (88 items)     24      14
 ```
@@ -137,9 +137,6 @@ detail):
 - The furthest sounds are effects: 238 C8 (1.75), 207 R7 (1.44), 239 C9
   (1.43) and 206 R6 (1.34); then the voiced stops 174 DE (1.29) and 171 BO
   (1.24), whose closure bar is fuller and release darker on the chip.
-- 237 C7 is 1.17 against 0.4.3's 1.12. On the chip a voiced effect's pulse rings
-  on at -20 to -30 dB until the next pulse; the library's falls to silence
-  within 5 ms. The mechanism isn't found yet.
 - A Pitch command inside a phrase takes effect one to five sounds late on the
   chip; the library applies it at the next sound. Man Goes Down's phrase 2 runs
   long mostly because of this.

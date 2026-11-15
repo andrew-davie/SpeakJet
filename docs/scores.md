@@ -1,6 +1,6 @@
 # Accuracy by sound
 
-X for every sound, 0.4.3 against 0.5.1, both scored the same way on the same recordings (four
+X for every sound, 0.4.3 against the current library (0.5.1 plus 237 C7's pulse-rate track), both scored the same way on the same recordings (four
 takes per sound, two from each of two AtariVoxes; 1.0 = as far from the chip as another recording of it,
 lower is closer). See the README for how X is measured.
 
@@ -115,7 +115,7 @@ code  sound   0.4.3  0.5.1   change
 234   C4      1.33   1.10    -17 %
 235   C5      1.76   0.96    -45 %
 236   C6      1.45   1.11    -23 %
-237   C7      1.12   1.17     +4 %
+237   C7      1.12   1.07     -4 %
 238   C8      1.89   1.75     -7 %
 239   C9      1.93   1.43    -26 %
 240   D0      1.16   0.95    -18 %
@@ -135,5 +135,5 @@ code  sound   0.4.3  0.5.1   change
 254   M2      0.81   0.72    -11 %
 
 allophones (72)  mean 1.07 -> 0.93
-effects (55)     mean 1.22 -> 0.98   (1.23 if taken from the rounded figures above)
+effects (55)     mean 1.22 -> 0.97
 ```
