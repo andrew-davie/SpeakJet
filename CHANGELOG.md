@@ -2,25 +2,30 @@
 
 ## The rebuild
 
-### 2.0.1 (2026-11-16; technical manual 1.19)
+**Version numbers (2026-11-16).** The releases first tagged v2.0.0 and v2.0.1 are renumbered 0.5.0 and 0.5.1, so the C
+and Go libraries share one number: a Go module at v2 or above needs a /v2 import path, which would break every
+importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
+v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
-No allophone is now further from the chip than 0.4.3 was. 2.0.0 had four (IY IH OH UW): its two plain-vowel rules,
+### 0.5.1 (2026-11-16; technical manual 1.19)
+
+No allophone is now further from the chip than 0.4.3 was. 0.5.0 had four (IY IH OH UW): its two plain-vowel rules,
 the longer first voicing period and the 72-tick pulse fall, were adopted for all twelve plain vowels on a scorer that
 was later corrected, and on the corrected one they suit some vowels and not others. Measured per vowel (every
-combination of the two rules with both its 0.4.3 and its 2.0.0 entry, X on the chip's four takes) and regressed over
+combination of the two rules with both its 0.4.3 and its 0.5.0 entry, X on the chip's four takes) and regressed over
 every allophone: 11 closer, none further.
 
 - **The 72-tick pulse fall** is EY UX UH AW's only; the other plain vowels fall over 58 ticks, as every other sound.
 - **The longer first voicing period** from silence is every plain vowel's but IH's and OH's.
 - **IH AY OH** take back their 0.4.3 entries (with the rules above OH scores 0.88, as 0.4.3 did; IH 0.95; AY 1.02).
-- **233 C3** takes back its 0.4.3 description (0.92 on this engine against 2.0.0's 1.05).
+- **233 C3** takes back its 0.4.3 description (0.92 on this engine against 0.5.0's 1.05).
 
 Against 0.4.3 as shipped, under the same measure: allophones mean 1.07 -> 0.93 (57 closer, none further, 15 within
 0.01); effects 1.22 -> 0.98 (52 closer, 1 further: C7 1.12 -> 1.17); the 88 recorded join items' cost 1437 -> 514
 (56 closer, 15 further by 15 % or more); items 15 ms or more off in length 24 -> 14. Tables 7190 B. C and Go
 sample-identical within 2.8e-5.
 
-### 2.0.0 (2026-11-15; technical manual 1.18)
+### 0.5.0 (2026-11-15; technical manual 1.18)
 
 Every effect (200-254) rebuilt against the recordings of units A and B, one sound at a time, each judged by its
 spectrogram against the chip's four takes (1.0 = as close as another recording of the chip). Against 0.4.3 as shipped:
@@ -78,8 +83,8 @@ DO EY EYIY IHWW IYEH LO MM NGO OB OG SH SO TH TS); mean over 65 allophones 1.26 
   this engine it made every AW pair further and is 0), the KE locus, KE and KO after a nasal +15 ms, Slow on KO and PO.
 - Earlier unreleased work, below, is part of this version.
 
-#### Earlier, unreleased until 2.0.0 (technical manual 1.15)
-#### VoxProbe 14's findings, unreleased until 2.0.0 (technical manual 1.16)
+#### Earlier, unreleased until 0.5.0 (technical manual 1.15)
+#### VoxProbe 14's findings, unreleased until 0.5.0 (technical manual 1.16)
 
 - **Crossing joins** (ASSUMPTION in the constants, shape measured on units A and B): between vowels, glides and LE LO
   WW RR the formants move on one line across the join, 5 + 5.5 ms per ERB of F1+F2 distance (at least 20 ms), ending

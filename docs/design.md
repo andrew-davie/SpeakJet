@@ -145,13 +145,13 @@ closure capped at 30 ms when no Slow is involved) are listed in the technical ma
 
 **Length.** A sound's length does not depend on whether it is streamed, sent
 alone, or followed by pauses (VoxProbe 5 sections 2–4 agree to 5 ms). Above Pitch 88 a vowel or glide runs longer
-(ASSUMPTION, 2.0.0: linear in Pitch, 16 % at 150, from VoxProbe 7's three vowels at Pitch 150 on both units). It is not the manual's length: vowels play about twice it, diphthongs
+(ASSUMPTION, 0.5.0: linear in Pitch, 16 % at 150, from VoxProbe 7's three vowels at Pitch 150 on both units). It is not the manual's length: vowels play about twice it, diphthongs
 1.3×, the K stops 0.75×. So each allophone carries its measured length at
 Speed 114. Speech follows the effects' law below Speed 114, (147 − Speed) / 33 (`fx_speed_a`, `fx_speed_b`;
 VoxProbe 12: AY and IYUW ×1.21 at Speed 108), and (162 − Speed) / 48 from 114 up (`speed_a`, `speed_b`); the effects
 use (147 − Speed) / 33 throughout, fitted on every effect recording at another Speed (technical manual, section 7).
 Fast is ×2/3 and Slow ×4/3 of the played length (`fast`, `slow`; VoxProbe 12, both units), except that Slow on a
-plain vowel is ×1.29 (2.0.0, VoxProbe 8's slowed AW and IY on both units); the unvoiced stops and
+plain vowel is ×1.29 (0.5.0, VoxProbe 8's slowed AW and IY on both units); the unvoiced stops and
 affricates are unchanged, the voiced stops take Slow but not Fast.
 
 **Joins.** A sound followed at once by another keeps the voice running: no
@@ -162,10 +162,10 @@ running on when that is negative (ASSUMPTION: fitted on VoxProbe 4's vowel pairs
 family (vowels, glides, LE LO WW RR) `cross_join` bends the first sound's tail and `cross_segments` finishes the move
 in the second: each formant on one line of `XJ_A` + `XJ_K`·d ms (at least `XJ_MIN`), ending `XJ_END` ms into the
 second sound (ASSUMPTION: fitted on VoxProbe 13 section 5, VoxProbe 4 section 5, VoxProbe 8 section 10); a crossing cut longer
-than a glide's last segment trims across its segments (2.0.0: VoxProbe 8's AYWW AW). A vowel or glide after a voiced
+than a glide's last segment trims across its segments (0.5.0: VoxProbe 8's AYWW AW). A vowel or glide after a voiced
 stop other than GE GO opens at its own level and amplitudes while its formants glide from the release; a voiced
 fricative after a pause opens with 40 ms of noise alone; a voiced stop after a short pause (P4–P6) opens its bar
-12 ms into the pause; the longer closure after a sound is DO's (+25 ms) and GO's (+15) only (all 2.0.0, Man Goes
+12 ms into the pause; the longer closure after a sound is DO's (+25 ms) and GO's (+15) only (all 0.5.0, Man Goes
 Down and VoxProbe 4 on both units; technical manual 6.11). A voiced sound into 187 SE bends
 toward 167 ZZ's formants over its last 40 ms; a slowed glide followed by a Slow plays `SLOW_GLIDE_ON` ms longer
 (ASSUMPTION: Man Goes Down's phrase 4 only). Pauses, effects and silence keep
@@ -186,10 +186,10 @@ the glides' copies run 185–290 ms. JH's copy is 80 ms, ZH's 70.
 
 **Level over time.** A sound after silence ramps in over 35 ms and out over
 30 (`attack`, `release`); an unvoiced fricative switches in 3 ms, a nasal rises in
-25, and a sound may have its own (`aa`, `rr`). Since 2.0.0 every vowel and glide has its own attack, 20–60 ms
+25, and a sound may have its own (`aa`, `rr`). Since 0.5.0 every vowel and glide has its own attack, 20–60 ms
 (technical manual 6.11), shortened in proportion to the pitch period above Pitch 88 and never lengthened below; the
 plain vowels' first voicing period from silence is 12 ticks longer (not IH OH) and EY UX UH AW's pulse falls over 72
-ticks, not 58 (2.0.1, per vowel);
+ticks, not 58 (0.5.1, per vowel);
 198 PE and 199 PO's low pulse swells in over 10 ms. An effect's tone starts within
 1–3 ms on both units (`fx_attack` 1 ms, `fx_release` 25), many on a 5 ms click,
 and an effect may have its own attack, release and click (the `fxs` table), and
@@ -348,7 +348,7 @@ harmonics' for a voice), E (the spectrum, the time-frequency cells and the
 level over time together, rms dB, on the VoxRecord solo takes) and P (the
 perceptual score, the mean over every recording of the sound, the better
 judge). All three add the recording's own background to the library's render
-before comparing. For 2.0.0 one measure replaced them: the render's spectrogram at six resolutions (1.3–43 ms)
+before comparing. For 0.5.0 one measure replaced them: the render's spectrogram at six resolutions (1.3–43 ms)
 against the chip's four takes of the sound (both units), each take's background subtracted, scored at the best of
 shifts of −12..+12 ms round the onset and divided by the takes' own leave-one-out spread, so 1.0 is "as far from the
 chip as another take of it"; a rule ships only when no sound scores worse under it (technical manual 6.11, 12.5).
@@ -378,7 +378,7 @@ chip says "Ready"; the phrase is unmeasured), baud rate and detune; Wait, the
 port commands and the EEPROM phrases;
 the demo mode; the Stress and Relax commands; the mixer's limit of 63 on the
 three oscillators' volumes (`clip` 0); the output's second harmonic under the speech sounds (`dist2`, `dist3` 0;
-the effects carry a second-order term of 0.07 since 2.0.0); when a Pitch command takes effect inside a phrase (one to
+the effects carry a second-order term of 0.07 since 0.5.0); when a Pitch command takes effect inside a phrase (one to
 five sounds late on Man Goes Down, applied at the next sound here; technical manual 9.1). Known to be off:
 the effects' bed (above), and the nasals' pulse: at Pitch 40 NGE's first
 formant dies away more slowly than the library's and its skirt ripples every
