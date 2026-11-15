@@ -140,9 +140,6 @@ detail):
 - A Pitch command inside a phrase takes effect one to five sounds late on the
   chip; the library applies it at the next sound. Man Goes Down's phrase 2 runs
   long mostly because of this.
-- The chip's noise is a fixed sequence that replays with each sound; the library's
-  is random. This is the likely floor under every hiss, and why C8 and C9 are the
-  furthest sounds.
 - After an unvoiced stop or hiss the chip's level dies away over about 100 ms;
   the library's stops within a few.
 - Bend below zero: the chip folds a tone bent under about 50-90 Hz to near
@@ -210,8 +207,7 @@ What the recordings gave:
   full at once and falls linearly over about 7 ms. The pulse is the same on
   both units to the sample.
 - **Noise.** White noise through a two-pole resonance at the chip's rate:
-  the hiss is Gaussian-distributed noise on both units, not a tone (though not random:
-  the chip replays the same sequence each time, which the library doesn't yet). Each band is read
+  the hiss is Gaussian noise on both units, not a tone. Each band is read
   off the chip's spectrum (FF flat, SH near 2.9 kHz, WH at 800 Hz, the
   sibilants peaking near Nyquist, PE and PO low-passed). Each noise sound is
   a centre, a bandwidth and a level; the allophones' noise is high-passed
