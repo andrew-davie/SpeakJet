@@ -1,11 +1,11 @@
 # Accuracy by sound
 
-X for every sound, 0.4.3 against the current library (0.5.1 plus 237 C7's pulse-rate track), both scored the same way on the same recordings (four
+X for every sound, 0.4.3 against 0.5.2, both scored the same way on the same recordings (four
 takes per sound, two from each of two AtariVoxes; 1.0 = as far from the chip as another recording of it,
 lower is closer). See the README for how X is measured.
 
 ```
-code  sound   0.4.3  0.5.1   change
+code  sound   0.4.3  0.5.2   change
 128   IY      1.00   0.97     -3 %
 129   IH      0.95   0.95     +0 %
 130   EY      1.21   1.04    -14 %

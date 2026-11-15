@@ -2241,7 +2241,8 @@ static double tick(sj_chip *sj) {
       lvl = sj_exp(-5.0 * sw / 20.0 * M_LN10); /* and 5 dB quieter at the top, beyond what the output stage takes (2026-11-06: 15 dB, the chip's own figure, scored worse on spectrum, E and P) */
     }
     /* white noise through a two-pole resonance at nf with bandwidth nw (the
-     * chip's hiss is random noise - Gaussian to the sample, both units - not
+     * chip's hiss is Gaussian to the sample, both units, though not random: it replays a fixed sequence with
+     * each sound, not yet modelled - not
      * a tone; FF is flat to 4 kHz, the others resonate from WH's 800 Hz to
      * SE's 4 kHz). the gain holds the
      * output power at the input's whatever the band (the AR(2) variance) */

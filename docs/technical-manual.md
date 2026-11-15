@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.19, 2026-11-16.** The version rises with every change to what is known about the chip (new
+**Version 1.20, 2026-11-16.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -363,9 +363,16 @@ A plain tone's phase is never reset by the pulse.
 
 ## 5. Noise
 
-**The source (measured).** The chip's hiss is random noise, Gaussian to the
+**The source (measured).** The chip's hiss is Gaussian-distributed to the
 sample: kurtosis 2.8-3.2, and 4-5 % of samples beyond two sigma. It is not a
 tone whose frequency is thrown about, which would have a constant envelope.
+
+**It is not random (1.20).** The same noise waveform recurs in every take of a sound, and across both
+units: take-to-take waveform correlation, best within 4 ms over 50 ms windows, is HE 0.58-0.71, FF
+0.45-0.61, TH 0.42-0.57, SE 0.46-0.64, C8 0.33-0.81, C9 0.35-0.95 (independent random noise would give
+under 0.1). 238 C8's sweep also repeats cycle to cycle (0.55-0.85 at zero lag). So the source is a fixed
+pseudo-random sequence that restarts with each sound, most likely a shift register. The library still
+draws fresh random noise each time; recovering the chip's sequence is open (section 13).
 
 **The model.** White noise through a two-pole resonance at the tick rate, each
 sound with its own centre `fc`, bandwidth `bw` and level `na`:
@@ -1598,8 +1605,10 @@ Where the library and the chip still differ, or the chip is not understood:
   so how their pulse tracks a low Pitch is not modelled right.
 - **254 M2's sidebands** (section 7.12): the ±262 Hz lines on every band are
   measured but not explained.
-- **237 C7** is a cluster of short banded columns in an arch shape, not yet
-  modelled; **227 B7** waits on the bed rule (section 7.5).
+- **The noise sequence** (section 5): the chip's noise is a fixed pseudo-random sequence restarting with each
+  sound; the library's is random. This is likely the floor under every hiss at fine time resolution, and why
+  238 C8 (1.75) and 239 C9 (1.43) are the furthest sounds. C8's sweep period is 20 ms, not the table's 21.
+- **227 B7** waits on the bed rule (section 7.5). 237 C7 was fixed in 0.5.2 (its pulse-rate track).
 
 ---
 
@@ -2156,13 +2165,15 @@ P1 100 ms, P4 30 ms                     about 90 and 15 ms
 Volume                                  linear in amplitude
 Speed                                   speech (162 - S)/48, effects (147 - S)/33
 commands take effect in order           the one after a sound is read at its release
-noise: an oscillator disordered by      Gaussian noise through a two-pole resonance
-  white noise
+noise: an oscillator disordered by      a fixed pseudo-random sequence restarting each sound
+  white noise                           (the library: random noise, a two-pole resonance)
 ```
 
 ## Revision history
 
 ```
+1.20  2026-11-16   library 0.5.2: 237 C7's pulse-rate track; the chip's noise is a fixed sequence restarting
+                   with each sound, not random (section 5; open in 13); C8's sweep period 20 ms
 1.19  2026-11-16   library 0.5.1: the plain vowels' first-period and 72-tick-fall rules per vowel (6.11); IH AY OH back
                    on 0.4.3's entries; 233 C3 back on 0.4.3's description
 1.18  2026-11-15   library 0.5.0's allophones and joins (6.11), merged with the VoxProbe 14 work of 1.16: per-vowel attacks, the attack in pitch periods above 88,

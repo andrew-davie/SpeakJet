@@ -107,7 +107,7 @@ tenths, the second frame holds the last tenth. The voice moves to a new
 sound's frame over 25 ms (`transition`); after silence it starts at the
 sound's own formants with no level, instead of sweeping up from 0 Hz.
 
-**Noise.** The chip's hiss is random noise, Gaussian to the sample on both
+**Noise.** The chip's hiss is Gaussian-distributed to the sample on both
 units (kurtosis 2.8–3.2, 4–5 % of samples beyond two sigma), not a tone whose
 frequency is thrown about (that has a constant envelope: kurtosis 1.9,
 nothing beyond two sigma). So the noise is white noise through a two-pole
@@ -126,6 +126,11 @@ chip's burst, twice what SE had); TS's release decays to `nd`/256 of its band
 over its length (−13 dB over 95 ms on both units, the white floor holding).
 These came from the band × time audit: library minus chip, 24 log bands × 2.5 ms,
 against the chip's own take-to-take spread (technical manual 1.8, 1.10).
+
+That distribution hides that it is not random: the same waveform recurs in every take of a sound and
+across both units (take-to-take correlation 0.33-0.95 on FF HE TH SE C8 C9), so the chip replays a fixed
+pseudo-random sequence from each sound's start. The library's noise is random; matching the chip's
+sequence is open (technical manual 5 and 13).
 
 **Stops.** A closure (`closure` 30 ms, scaled with Speed, or the stop's own `cl`:
 lined up on the release, BE BO DE DO's bar is 50–55 ms, the final stops' 5–16)

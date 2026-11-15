@@ -107,10 +107,10 @@ is calibrated on the chip itself: the four takes are scored against each other,
 and a sound's distance is divided by that spread. So **X = 1.0 means "as far
 from the chip as another recording of the chip"**, and lower is closer.
 
-0.5.1 against 0.4.3, both scored the same way on the same recordings:
+0.5.2 against 0.4.3, both scored the same way on the same recordings:
 
 ```
-                                      0.4.3   0.5.1
+                                      0.4.3   0.5.2
 allophones (72), mean X                1.07    0.93   57 closer, none further
 sound effects (55), mean X             1.22    0.97   53 closer, none further
 joins (88 recorded pairs and phrases)  1437     514   mean cost; 56 closer, 15 further
@@ -122,7 +122,7 @@ phrases, on both units, scored by a lined-up time-frequency difference. Man
 Goes Down's phrase lengths, against the two chips:
 
 ```
-              unit A   unit B   0.4.3   0.5.1
+              unit A   unit B   0.4.3   0.5.2
 phrase 1        1483     1490    1475    1491 ms
 phrase 2        1676     1671    1683    1690 ms
 phrase 4         782      787     779     771 ms
@@ -140,6 +140,9 @@ detail):
 - A Pitch command inside a phrase takes effect one to five sounds late on the
   chip; the library applies it at the next sound. Man Goes Down's phrase 2 runs
   long mostly because of this.
+- The chip's noise is a fixed sequence that replays with each sound; the library's
+  is random. This is the likely floor under every hiss, and why C8 and C9 are the
+  furthest sounds.
 - After an unvoiced stop or hiss the chip's level dies away over about 100 ms;
   the library's stops within a few.
 - Bend below zero: the chip folds a tone bent under about 50-90 Hz to near
@@ -207,7 +210,8 @@ What the recordings gave:
   full at once and falls linearly over about 7 ms. The pulse is the same on
   both units to the sample.
 - **Noise.** White noise through a two-pole resonance at the chip's rate:
-  the hiss is Gaussian noise on both units, not a tone. Each band is read
+  the hiss is Gaussian-distributed noise on both units, not a tone (though not random:
+  the chip replays the same sequence each time, which the library doesn't yet). Each band is read
   off the chip's spectrum (FF flat, SH near 2.9 kHz, WH at 800 Hz, the
   sibilants peaking near Nyquist, PE and PO low-passed). Each noise sound is
   a centre, a bandwidth and a level; the allophones' noise is high-passed
@@ -257,7 +261,7 @@ which the Gopher2600 emulator uses for its AtariVox.
 | `tools/text2speakjet/` | Text to SpeakJet codes, with its dictionaries and tests |
 | `samples/` | Sample phrases, their codes and WAVs |
 | `docs/design.md` | How the emulation works, and every measurement behind it |
-| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.1 |
+| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.2 |
 | `docs/technical-manual.md` | The SpeakJet itself, as measured: hardware, synthesizer, voice, allophones, stops, Repeat, effects, commands, and what is still unknown |
 | `docs/reference/` | The SpeakJet User's Manual, and the PhraseALator dictionary text2speakjet uses |
 | `CHANGELOG.md` | What changed, with the measurements behind each change |
