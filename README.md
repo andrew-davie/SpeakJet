@@ -104,8 +104,12 @@ original AtariVox and an AtariVox+). The score, X, compares spectrograms at six
 resolutions, from 1.3 ms to 43 ms windows, with each take's background noise
 taken off, and finds the best alignment within 12 ms of the sound's start. It
 is calibrated on the chip itself: the four takes are scored against each other,
-and a sound's distance is divided by that spread. So **X = 1.0 means "as far
-from the chip as another recording of the chip"**, and lower is closer.
+and a sound's distance is divided by that spread; lower is closer. Checked by
+scoring each real take as if it were ours against the other three: unit B's
+takes land near **1.0** (0.98-1.09), unit A's further out (1.2-2.4; its oldest
+take has the noisiest background and is the outlier, and VoxProbe 15 records a
+replacement). So **X near 1.0 is about as close as unit B's own recordings are
+to each other**.
 
 0.5.3 against 0.4.3, both scored the same way on the same recordings:
 
