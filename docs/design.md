@@ -96,7 +96,9 @@ spectra the chip has no fundamental energy from it (UH's first harmonic is
 holds to one 48 kHz sample on both units, and the gaps between harmonics sit
 30–60 dB under them. There is no noise floor under the voice and no jitter in
 the formants (`floor` and `jitter` 0; at 0.05 and 0.03 they filled those gaps
-to 15–30 dB).
+to 15–30 dB). Vowels only: a nasal's pulses differ from one another above 700 Hz (0.73–0.83 alike, vowels
+0.95–1.00), so every nasal carries a noise band (0.5.3), and so does a voiced stop's bar (BE BO in place of
+its weak F2 F3, `LBAR_*`; DE DO ED OD beside them, `BAR_*`).
 
 **Allophones.** Each is a kind (vowel, nasal, glide, voiced fricative,
 fricative, stop, voiced stop, affricate), three formants (frequency and level
@@ -135,8 +137,8 @@ lined up on the release, BE BO DE DO's bar is 50–55 ms, the final stops' 5–1
 in which the sound before fades away (both units fall 30 dB over 50–60 ms at
 Speed 114 and twice that at Speed 60, with no cut to silence); a voiced stop
 hums through it on its first formant with the upper ones weak (×0.12): both
-units open BE, BO, DE, DO, GE and GO on a voice bar 2–9 dB under the release.
-From silence the bar is there at once. A stop may have its own bar fade-in and
+units open BE, BO, DE, DO, GE and GO on a voice bar 2–9 dB under the release,
+part noise above 700 Hz except on the velars (0.5.3). From silence the bar is there at once. A stop may have its own bar fade-in and
 level (`ba`, `bl`) and release level (`rl`); stops and fricatives may open on a
 louder onset (`ob`, `og`). Then the burst and release, which is the measured
 length. After a sound the closure lasts at least `JOIN_CLOSURE` (45 ms); after a nasal it goes nearly silent
@@ -231,7 +233,7 @@ each sweeping from a start to an end frequency (linearly; `X` geometrically;
   bump; `F`: a fade, below
 - a gate period for the gated ones: its off half dips 8 dB, not to silence
   (`gate_depth` 0.4; C8, C9, both units); `S`: the noise band sweeps with the
-  gate (C8 and C9: 650 Hz to 3 kHz and back every 20 ms, both units)
+  gate, linearly in Hz (238 C8: about 800 Hz to 2.95 kHz and back every 20 ms, both units)
 - `W`: the tone wanders in pitch, about 1.5 % rms over tens of ms (M0, both
   units)
 - `m`: a tone switching on from silence or off to silence ramps over 3 ms,

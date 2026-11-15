@@ -107,13 +107,13 @@ is calibrated on the chip itself: the four takes are scored against each other,
 and a sound's distance is divided by that spread. So **X = 1.0 means "as far
 from the chip as another recording of the chip"**, and lower is closer.
 
-0.5.2 against 0.4.3, both scored the same way on the same recordings:
+0.5.3 against 0.4.3, both scored the same way on the same recordings:
 
 ```
-                                      0.4.3   0.5.2
-allophones (72), mean X                1.07    0.93   57 closer, none further
-sound effects (55), mean X             1.22    0.97   53 closer, none further
-joins (88 recorded pairs and phrases)  1437     514   mean cost; 56 closer, 15 further
+                                      0.4.3   0.5.3
+allophones (72), mean X                1.07    0.92   66 closer, 2 further (136 AW +0.02, 158 IYEH +0.01)
+sound effects (55), mean X             1.22    0.97   55 closer, none further
+joins (88 recorded pairs and phrases)  1437     513   mean cost; 56 closer by 5 %+, 14 further by 15 %+
 lengths 15 ms or more off (88 items)     24      14
 ```
 
@@ -122,11 +122,13 @@ phrases, on both units, scored by a lined-up time-frequency difference. Man
 Goes Down's phrase lengths, against the two chips:
 
 ```
-              unit A   unit B   0.4.3   0.5.2
+              unit A   unit B   0.4.3   0.5.3
 phrase 1        1483     1490    1475    1491 ms
-phrase 2        1676     1671    1683    1690 ms
-phrase 4         782      787     779     771 ms
+phrase 2        1676     1671    1683    1705 ms
 ```
+
+(Phrase 4 is left out: the recordings' labels end before its final EK burst, so the chips' figures miss
+it and ours, now louder there, include it.)
 
 Biggest gains: 235 C5 -45 %, 253 M1 -43 %, 159 EHLL -36 %, 223 B3 -36 %,
 213 A3 and 228 B8 -35 %. Every sound's score is in [`docs/scores.md`](docs/scores.md).
@@ -134,9 +136,9 @@ Biggest gains: 235 C5 -45 %, 253 M1 -43 %, 159 EHLL -36 %, 223 B3 -36 %,
 What is still known to be off (`docs/technical-manual.md` section 13 has the
 detail):
 
-- The furthest sounds are effects: 238 C8 (1.75), 207 R7 (1.44), 239 C9
-  (1.43) and 206 R6 (1.34); then the voiced stops 174 DE (1.29) and 171 BO
-  (1.24), whose closure bar is fuller and release darker on the chip.
+- The furthest sounds are effects: 238 C8 (1.63), 207 R7 (1.44), 239 C9
+  (1.43) and 206 R6 (1.34); then 174 DE (1.24) and 171 BO (1.20). The voiced
+  stops' bar is now part noise, as on the chip, but their release still differs.
 - A Pitch command inside a phrase takes effect one to five sounds late on the
   chip; the library applies it at the next sound. Man Goes Down's phrase 2 runs
   long mostly because of this.
@@ -257,7 +259,7 @@ which the Gopher2600 emulator uses for its AtariVox.
 | `tools/text2speakjet/` | Text to SpeakJet codes, with its dictionaries and tests |
 | `samples/` | Sample phrases, their codes and WAVs |
 | `docs/design.md` | How the emulation works, and every measurement behind it |
-| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.2 |
+| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.3 |
 | `docs/technical-manual.md` | The SpeakJet itself, as measured: hardware, synthesizer, voice, allophones, stops, Repeat, effects, commands, and what is still unknown |
 | `docs/reference/` | The SpeakJet User's Manual, and the PhraseALator dictionary text2speakjet uses |
 | `CHANGELOG.md` | What changed, with the measurements behind each change |

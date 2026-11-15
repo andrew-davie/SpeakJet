@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.20, 2026-11-16.** The version rises with every change to what is known about the chip (new
+**Version 1.21, 2026-11-16.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -508,6 +508,12 @@ swaps IY's F2 (~2180 Hz) for the next pole down. The constants were fitted on Vo
 VoxProbe 4 section 5 and VoxProbe 8 section 10; held out, VoxProbe 4's AW IY P 0.949 -> 0.013, IY AW 0.805 -> 0.029.
 Nasals keep the 25 ms rule (MM IY, IY MM, NE IY: the chip moves in ~10 ms).
 
+**Nasals carry a noise part (measured, 0.5.3).** On all four takes of MM and NE the chip's consecutive pitch
+pulses match only 0.73-0.83 above 700 Hz (vowels 0.95-1.00; ours 0.94-0.97). Letting the formant sines run free
+across pulses scored worse on every nasal, so the difference is noise, not phase. NE NO NGE already had a noise
+band; 140 MM, 144 NGO, 145 LE and 146 LO now get one (2400 Hz, 1200 wide, level 3): MM 1.21 -> 1.01, NGO 1.09 ->
+1.02, LE 1.16 -> 1.09, LO 0.87 -> 0.86, phrases 513.9 -> 513.0.
+
 **Fricatives** are one plain segment: the noise band held, no transition.
 
 ### 6.3 Glides
@@ -530,7 +536,9 @@ in percent (F1 rising to it over the hold, from the first allophone's own), and
 `cl`, the point (percent of L) until which F1 holds while F2 and F3 move; F1 then
 moves with the rest to the end of the move. AXUW has ba 120, cl 75. The other
 fifteen glides keep the shared schedule (each was tested: holding F1 made them
-worse); 189 OWWW comes close.
+worse); 189 OWWW comes close. Since 0.5.3 F3 holds with F1 until `cl` (both units: AXUW's F3 stays
+near 2350 Hz until the late fall, where it had slid from AX's 2381 to UW's 2114 through the move;
+1.21 -> 1.18). Holding F2 too, or keeping F3 fixed throughout, scored worse.
 
 ### 6.4 Stops
 
@@ -547,6 +555,16 @@ closure ends not on silence but on the stop's own F1 at its own level A1 and
 sound level. BE, BO, DE, DO, GE and GO open on this voice bar 2-9 dB under the
 release (measured). The bar also carries the upper formants, weak: at 0.12 of the
 release's (both units, the bar alone: 6-10 dB more than F1's tail at 1.8-5 kHz).
+
+**The bar is partly noise (measured, 0.5.3).** On both units, above 700 Hz the part of the bar that changes from
+one pulse to the next carries nearly all of the bar's energy (within 0-3 dB of the whole, BE BO DE DO); below 700 Hz
+the bar is periodic. Consecutive pulses match one another only 0.40-0.59 above 700 Hz, where ours, all formants,
+matched 0.76-0.81. So 170 BE and 171 BO's bar drops F2 and F3 for a noise band (`LBAR_NF` 1800 Hz, `LBAR_NW`
+1400 Hz, `LBAR_NA` 6; BE 1.21 -> 1.14, BO 1.24 -> 1.20), and the alveolars DE DO ED OD keep their weak formants
+with a noise band beside them (`BAR_NF` 1000 Hz, `BAR_NW` 800, `BAR_NA` 4; DE 1.29 -> 1.24, DO 1.14 -> 1.09,
+OD 0.84 -> 0.79). The velars' bar is periodic on the chip (0.70-0.87) and stays as it was. Not done: the
+alveolars' formants replaced as the labials' are (Man Goes Down P1, whose DO follows a pause, 1.2-1.5 % further),
+and noise in EB OB (EB further). In BE IY the units disagree: unit A 3.0 % closer, unit B 3.2 % further.
 From silence the bar is there at once at its level, not ramped in; a stop may give
 its bar a fade-in of its own (`ba`, ms: 175 DO's bar is quiet for its first ~30 ms)
 and a level of its own against the release (`bl`, half-decibels). After the
@@ -596,7 +614,10 @@ neither applies: Man Goes Down's "down" (DO, Slow AYWW) keeps DO's closure, as b
 3-19 dB over the rest (VoxRecord solo takes, both units). A sound may carry an
 onset: its first `ob` ms play `og`/2 dB louder; in a stop or affricate the onset
 starts at the release, not the closure. A sound with an onset, from silence, starts
-on its own frame at full level, without the attack ramp.
+on its own frame at full level, without the attack ramp. Since 0.5.0 `og` is signed: a negative one is a quiet
+onset. 0.5.3 uses it on 156 NGO (15 ms 6 dB down, 1.15 -> 1.09) and 194 KE (5 ms 3 dB down, 0.84 -> 0.76); every
+other voiced stop and nasal was scanned (5-15 ms, -3 to -12 dB) and kept its own. 198 PE and 199 PO share one
+timing: a 15 ms closure with the low pulse at 25 ms (PE 1.11 -> 1.05, PO 1.09 -> 1.07).
 
 **JH** is a silent closure of 30 ms (not Speed-scaled), then the voiced
 fricative held.
@@ -1063,16 +1084,20 @@ The off half dips about 8 dB (× 0.4), not to silence. The gate period is in
 milliseconds and does not scale with Speed. It counts from the part's start:
 the off half is `tick mod G ≥ G/2`.
 
-**Noise sweep (S, measured on 238 C8 and 239 C9).** Over each gate period the
-noise band's centre climbs from 0.47 to 2.1 times its table value in the first
-40 % and falls back over the rest, 5 dB quieter at the top. With
-`p = (tick mod G) / G`:
+**Noise sweep (S, measured on 238 C8, both units; only C8 uses it).** Over each gate period the noise band's
+centre moves in straight lines (linear in Hz) from 0.5 to 1.85 times its table value and back, half the period
+each way, 5 dB quieter at the top. C8's period is 20 ms (its band runs about 800 to 2950 Hz, a full cycle every
+19.5 ms on both units). With `p = (tick mod G) / G`:
 
 ```
-s      = p / 0.4          for p < 0.4,  else 1 − (p − 0.4) / 0.6
-centre = fc · e^(0.75·(2s − 1))
+s      = p / 0.5          for p < 0.5,  else 1 − (p − 0.5) / 0.5
+centre = fc · (0.5 + 1.35·s)
 level  = 10^(−5·s / 20)
 ```
+
+Until 0.5.3 the centre moved geometrically (fc · e^(0.75·(2s − 1))), which curves on a linear frequency axis where
+the chip's track is straight, and C8's period was 21 ms; the two changes take it from 1.75 to 1.63. An earlier
+reading of an 8/12 ms rise and fall scores worse than half and half.
 
 On both units the band spans about 650 Hz to 2.4 kHz every 20 ms, the level
 peaking at the bottom (1.8: the range was 0.6, too narrow). The chip's own level
@@ -1604,8 +1629,9 @@ Where the library and the chip still differ, or the chip is not understood:
   so how their pulse tracks a low Pitch is not modelled right.
 - **254 M2's sidebands** (section 7.12): the ±262 Hz lines on every band are
   measured but not explained.
-- **238 C8 and 239 C9** (1.75, 1.43) are the furthest sounds. C8's sweep period is 20 ms, not the table's 21
-  (1.75 -> 1.65 alone); the rest of its gap is not yet explained.
+- **238 C8** (1.63 since 0.5.3) and **239 C9** (1.43) are the furthest sounds. C8's sweep, period and band match
+  the chip's track; its level ramp, closing tones, phase and band width were each checked and are not the gap,
+  and its noise shows no pulse structure above the hum. What remains is not yet explained.
 - **227 B7** waits on the bed rule (section 7.5). 237 C7 was fixed in 0.5.2 (its pulse-rate track).
 
 ---
@@ -1626,126 +1652,142 @@ code name  kind    ms  copy   level   F1   F2   F3   A1 A2 A3   noise Hz  bw Hz 
  128 IY    vowel   125    75    -2.5    272 2208 2544   28 29 18           -      -    -  
  129 IH    vowel   140    70    -0.5    352 1760 2448   28 30 16           -      -    -  
  130 EY    vowel   140    70    -0.5    544 1760 2368   29 25 14           -      -    -  
- 131 EH    vowel   140    75    +2.0    608 1664 2384   22 17 11           -      -    -  
+ 131 EH    vowel   140    70    +1.5    624 1664 2368   22 17 11           -      -    -  
  132 AY    vowel   155    70    +6.0    704 1664 2192   16 10  6           -      -    -  
  133 AX    vowel   135    75    -0.5    528 1504 2384   29 26 15           -      -    -  
- 134 UX    vowel   140    70    -0.5    624 1328 2352   30 26 16           -      -    -  
+ 134 UX    vowel   140    70    -1.0    608 1328 2352   30 23 15           -      -    -  
  135 OH    vowel   135    70    -0.5    704 1152 2368   28 23 15           -      -    -  
- 136 AW    vowel   135    75    -2.5    704  960 2448   30 30 13           -      -    -  
- 137 OW    vowel   125    70    -2.0    528  864 2336   22 29  7           -      -    -  
+ 136 AW    vowel   130    70    -2.5    688  960 2448   32 36 12           -      -    -  
+ 137 OW    vowel   125    70    -1.5    544  864 2368   20 27  7           -      -    -  
  138 UH    vowel   125    70    -0.5    448 1056 2256   19 24  7           -      -    -  
- 139 UW    vowel   120    75    -4.0    368 1056 2096   27 30  6           -      -    -  
- 140 MM    nasal   100    70    -4.0    272  768 1424   18  1  9           -      -    -  
- 141 NE    nasal   100    75    -8.5    272 1536 2512   28  9 15         896    400    3  
+ 139 UW    vowel   125    75    -4.0    368 1040 2112   29 30  6           -      -    -  
+ 140 MM    nasal   100    70    -4.0    272  768 1424   18  1  9        2400   1200    3  
+ 141 NE    nasal   100    75    -8.0    288 1552 2496   28  8 15         832    224    3  
  142 NO    nasal   105    70    -7.5    272 1136 2512   26  7 15         800    400    4  
- 143 NGE   nasal   100    70    -8.5    352  480 2240   30  1 19         992    496    4  
- 144 NGO   nasal    95    70    -6.5    368 1472 1904   27  8 14           -      -    -  
- 145 LE    nasal   115    70    -6.0    448  960 2640   24 29  6           -      -    -  
- 146 LO    nasal   110    70    -6.5    448  864 2448   26 30  6           -      -    -  
- 147 WW    nasal   110    70    -3.0    448  784 2096   16 25  2           -      -    -  
+ 143 NGE   nasal   100    50   -10.0    336  416 2272   29  2 14        1376    496    4  
+ 144 NGO   nasal    95    70    -6.5    368 1472 1904   27  8 14        2400   1200    3  
+ 145 LE    nasal   115    70    -6.0    448  960 2640   24 29  6        2400   1200    3  
+ 146 LO    nasal   110    70    -6.5    448  864 2448   26 30  6        2400   1200    3  
+ 147 WW    nasal   110    70    -3.0    448  784 2112   16 25  2           -      -    -  
  148 RR    nasal   125    75    +0.5    432 1312 1664   20 20  5           -      -    -  
- 149 IYRR  glide   250   240    +0.0                                       -      -    -  IY -> RR
- 150 EYRR  glide   255   230    +0.0                                       -      -    -  EY -> RR
+ 149 IYRR  glide   250   265    +0.0                                       -      -    -  IY -> RR
+ 150 EYRR  glide   250   195    +0.0                                       -      -    -  EY -> RR
  151 AXRR  glide   255   230    +0.0                                       -      -    -  AX -> RR
  152 AWRR  glide   255   235    +0.0                                       -      -    -  AW -> RR
- 153 OWRR  glide   225   215    +0.0                                       -      -    -  OW -> RR
+ 153 OWRR  glide   230   190    +0.0                                       -      -    -  OW -> RR
  154 EYIY  glide   225   185    +0.0                                       -      -    -  EY -> IY
- 155 OHIY  glide   265   250    +0.0                                       -      -    -  OH -> IY
- 156 OWIY  glide   270   290    +0.0                                       -      -    -  OW -> IY
- 157 OHIH  glide   240   210    +0.0                                       -      -    -  OH -> IH
+ 155 OHIY  glide   255   235    +0.0                                       -      -    -  OH -> IY
+ 156 OWIY  glide   270   300    +0.0                                       -      -    -  OW -> IY
+ 157 OHIH  glide   240   260    +0.0                                       -      -    -  OH -> IH
  158 IYEH  glide   225   190    +0.0                                       -      -    -  IY -> EH
- 159 EHLL  glide   185   170    +0.0                                       -      -    -  EH -> LE
- 160 IYUW  glide   235   240    +0.0                                       -      -    -  IY -> UW
- 161 AXUW  glide   215   185    +0.0                                       -      -    -  AX -> UW
+ 159 EHLL  glide   185   180    +0.0                                       -      -    -  EH -> LE
+ 160 IYUW  glide   230   230    +0.0                                       -      -    -  IY -> UW
+ 161 AXUW  glide   235   285    +0.0                                       -      -    -  AX -> UW
  162 IHWW  glide   265   255    +0.0                                       -      -    -  IH -> WW
- 163 AYWW  glide   260   240    +0.0                                       -      -    -  AY -> WW
- 164 OWWW  glide   220   175    +0.0                                       -      -    -  OW -> WW
- 165 JH    affr     55    80   -14.0   1968 3264 3904   28  5 24        2672    784   52  
+ 163 AYWW  glide   255   255    +0.0                                       -      -    -  AY -> WW
+ 164 OWWW  glide   215   175    +0.0                                       -      -    -  OW -> WW
+ 165 JH    affr     55    85   -13.0   1968 3664 4080   31  5 13        3088   1136   42  
  166 VV    vfric   105    70   -10.0    528 1520 2288   11 30 13        1536    336   30  
- 167 ZZ    vfric   105    70    -7.0    272 1472 2336   30 20 22        3984    816   28  
- 168 ZH    vfric    95    70   -10.0    432 1648 3072   29 27  3        2592    464   34  
+ 167 ZZ    vfric   105    65    -6.5    256 1472 2400   30 19 22        3936    800   30  
+ 168 ZH    vfric    90    85    -9.5    432 1680 3264   28 28  3        2624    480   36  
  169 DH    vfric    95    70   -11.5    288 1584 2336   28 30 10        2304    960   16  
- 170 BE    vstop    40    75    -2.0    320 1760 2224   30 29 10        2192   1040    7  
+ 170 BE    vstop    40    80    -3.0    320 1744 2192   30 29 10        2368    960    6  
  171 BO    vstop    50    70    -4.0    320 1392 2384   28 24 11        2288   2976    3  -> 832 1392 2384
- 172 EB    vstop    35    45   -12.5    352 1760 2176   28 25  8        1728    896   16  -> 288 1760 2176
+ 172 EB    vstop    35    60   -12.5    272 1792 2288   27 23 15        1504    656   18  -> 512 1840 2064
  173 OB    vstop    25    60    -1.5    592 1392 2352   18 17  7        2416    752    5  -> 272 1392 2352
- 174 DE    vstop    40    60    -4.5    272 1920 2640   30 23 13        1872   1568   11  
+ 174 DE    vstop    40    60    -4.5    272 1952 2624   30 25 15        1696    880   12  
  175 DO    vstop    30    55    -7.0    400 1488 2448   30 26 15        2832   1056    1  
  176 ED    vstop    40    45   -18.0    288 1936 2624   26 19  8        1424   1632   19  -> 256 1936 2624
- 177 OD    vstop    35    45   -15.0    272 1504 2432   23 17  8        1296   1456   12  -> 256 1504 2432
- 178 GE    vstop    35    65   -13.0    272 1856 2528   30  1  6        1936   1472   10  
- 179 GO    vstop    45    65   -10.0    272 1904 3216   30  5  1        1776    960    9  
- 180 EG    vstop    30    55    -3.5    272 2096 2864   31 26  1        2128   2336   20  
- 181 OG    vstop    25    55    -2.5    272 1200 1312   28  1 30        1504    496    6  
- 182 CH    affr     55    60   +22.0    672 1904 2784    0  0  0        2864    464    2  
- 183 HE    fric     70    65   -18.0      0    0    0    0  0  0        1712    912   12  
+ 177 OD    vstop    35    45   -15.5    288 1456 2416   25 16  8        1056   1488   13  -> 240 1616 2624
+ 178 GE    vstop    45    65   -13.0    272 1856 2528   30  1  6        1936   1472   10  
+ 179 GO    vstop    50    65    -9.5    240 1952 3120   35  6  1        1376   1648    9  
+ 180 EG    vstop    30    55    -4.0    272 2080 4080   32 29  0         896   1424   16  
+ 181 OG    vstop    25    55    -5.5    272 1200 1312   28  1 30        1504    496    6  
+ 182 CH    affr     60    55   +22.0    640 1824 2480    0  0  0        2880    592    2  
+ 183 HE    fric     75    60   -17.5      0    0    0    0  0  0        1696    544   18  
  184 HO    fric     70    90   -18.0      0    0    0    0  0  0        1392    560   18  
  185 WH    fric     70    80   -14.5      0    0    0    0  0  0         752    240   12  
  186 FF    fric     75    65    -6.0      0    0    0    0  0  0        3008   1376    9  
- 187 SE    fric     90    80   -23.5      0    0    0    0  0  0        3392    304  243  
- 188 SO    fric     95    35    +3.5      0    0    0    0  0  0        3312    256   15  
+ 187 SE    fric     95    90   -22.5      0    0    0    0  0  0        3392    288  235  
+ 188 SO    fric     95    35    +1.5      0    0    0    0  0  0        3312    256   15  
  189 SH    fric     65    55    -7.0      0    0    0    0  0  0        2784    368   46  
  190 TH    fric     45    45    +7.5      0    0    0    0  0  0        2336    960    2  
- 191 TT    stop     30    45   -12.0      0    0    0    0  0  0        3184    368   83  
- 192 TU    stop     80    65    +3.0      0    0    0    0  0  0        3184    416   14  
- 193 TS    stop     95   135    +2.5      0    0    0    0  0  0        3808    672   14  
- 194 KE    stop     25    55    -7.5      0    0    0    0  0  0        2016    416   57  
- 195 KO    stop     25    55    +1.5      0    0    0    0  0  0        1616    336   20  
- 196 EK    stop     15    55   +23.5      0    0    0    0  0  0        2000    368    1  
+ 191 TT    stop     35    60   -12.5      0    0    0    0  0  0        3280    464   55  
+ 192 TU    stop     85    75    +3.5      0    0    0    0  0  0        3248    400   15  
+ 193 TS    stop    115   135    +2.5      0    0    0    0  0  0        3808    672   14  
+ 194 KE    stop     25    55    -7.5      0    0    0    0  0  0        2016    384   53  
+ 195 KO    stop     25    50    +1.0      0    0    0    0  0  0        1520    512   20  
+ 196 EK    stop     15    55   +17.0      0    0    0    0  0  0        1760    288    1  
  197 OK    stop     15    45    +1.0      0    0    0    0  0  0        1824    560   46  
- 198 PE    stop     55    70   -30.5      0    0    0    0  0  0          64   2576   53  
- 199 PO    stop     55   110   -26.5      0    0    0    0  0  0          64   2496   28  
+ 198 PE    stop     60    65   -30.0      0    0    0    0  0  0          64   2672   59  
+ 199 PO    stop     60   110   -28.5      0    0    0    0  0  0          80   1360   41  
 
 Their own structure (1.8; fields left out are 0, "as the kind"; section 6 and Appendix C):
- 128 IY    rr 20 ms  aa 25 ms
+ 128 IY    rr 20 ms  aa 45 ms
  129 IH    aa 45 ms
+ 130 EY    aa 30 ms
+ 131 EH    rr 30 ms  aa 30 ms
  132 AY    aa 60 ms
- 133 AX    aa 25 ms
- 134 UX    aa 45 ms
- 137 OW    aa 20 ms
- 139 UW    aa 30 ms
+ 133 AX    aa 30 ms
+ 134 UX    rr 35 ms  aa 30 ms
+ 136 AW    rr 25 ms  aa 45 ms
+ 137 OW    rr 32 ms  aa 45 ms
+ 139 UW    rr 39 ms  aa 12 ms
  140 MM    rr 20 ms  aa 10 ms
- 141 NE    rr 10 ms
- 144 NGO   rr 10 ms  aa 5 ms
+ 141 NE    rr 10 ms  aa 18 ms
+ 143 NGE   rr 9 ms  aa 14 ms
+ 144 NGO   ob 15 ms  og -12.0 dB  rr 10 ms  aa 5 ms
  146 LO    rr 10 ms
  147 WW    rr 10 ms  aa 10 ms
- 159 EHLL  rr 25 ms  aa 28 ms
- 161 AXUW  cl 75 %  ba 120 %
- 165 JH    cl 35 ms  rr 10 ms  hp 32 Hz
+ 149 IYRR  rr 33 ms  aa 45 ms
+ 150 EYRR  rr 28 ms  aa 60 ms
+ 151 AXRR  aa 45 ms
+ 152 AWRR  aa 45 ms
+ 153 OWRR  rr 22 ms
+ 154 EYIY  aa 60 ms
+ 155 OHIY  rr 35 ms  aa 30 ms
+ 156 OWIY  rr 19 ms  aa 45 ms
+ 157 OHIH  rr 31 ms  aa 60 ms
+ 159 EHLL  rr 22 ms  aa 20 ms
+ 160 IYUW  rr 35 ms  aa 45 ms
+ 161 AXUW  cl 69 %  rr 34 ms  ba 121 %  aa 45 ms
+ 162 IHWW  aa 60 ms
+ 163 AYWW  rr 27 ms  aa 45 ms
+ 165 JH    rr 9 ms  hp 32 Hz
  166 VV    wf 16/256
- 167 ZZ    ob 5 ms  og +6.0 dB  aa 15 ms
- 168 ZH    ob 3 ms  wf 16/256  rr 10 ms  aa 30 ms
+ 167 ZZ    ob 4 ms  og +7.0 dB  aa 15 ms
+ 168 ZH    ob 3 ms  wf 14/256  rr 19 ms  aa 3 ms
  169 DH    ob 3 ms  og +2.0 dB  aa 10 ms
- 170 BE    ob 5 ms  og +2.0 dB  cl 34 ms  rl -2.0 dB  rr 30 ms  ba 8 ms  bl -8.0 dB  hp 528 Hz
- 171 BO    ob 5 ms  og +3.0 dB  cl 29 ms  rr 30 ms  bl -10.0 dB
- 172 EB    ob 6 ms  og +4.0 dB  cl 8 ms  bl -2.0 dB  hp 656 Hz
+ 170 BE    ob 6 ms  og +2.0 dB  cl 40 ms  rl -1.0 dB  rr 28 ms  ba 9 ms  bl -9.0 dB  hp 528 Hz
+ 171 BO    ob 5 ms  og +3.0 dB  cl 24 ms  rr 30 ms  bl -10.0 dB
+ 172 EB    ob 7 ms  og +5.0 dB  cl 6 ms  bl -2.0 dB
  173 OB    cl 4 ms
- 174 DE    ob 5 ms  og +1.0 dB  cl 28 ms  rl -5.0 dB  rr 10 ms  bl -4.0 dB  aa 5 ms  hp 528 Hz
+ 174 DE    ob 6 ms  og +1.0 dB  cl 29 ms  rl -4.5 dB  rr 22 ms  bl -5.0 dB  aa 3 ms
  175 DO    cl 44 ms  rr 20 ms  bl -4.0 dB  aa 10 ms
  176 ED    ob 5 ms  og +9.0 dB  cl 10 ms  ba 24 ms  hp 720 Hz
- 177 OD    ob 5 ms  og +6.0 dB  cl 8 ms  ba 16 ms  bl -2.0 dB
- 178 GE    ob 5 ms  og +3.0 dB  cl 13 ms  rr 10 ms  bl +2.0 dB  hp 800 Hz
- 179 GO    ob 5 ms  og +6.0 dB  cl 8 ms  rr 10 ms  ba 24 ms  bl -4.0 dB  hp 720 Hz
- 180 EG    ob 5 ms  og +4.0 dB  cl 11 ms  ba 32 ms  bl -4.0 dB  hp 784 Hz
+ 177 OD    ob 6 ms  og +6.0 dB  cl 8 ms  ba 16 ms  bl -5.0 dB
+ 178 GE    ob 5 ms  og +3.0 dB  cl 5 ms  rr 10 ms  bl +2.0 dB  hp 800 Hz
+ 179 GO    ob 5 ms  og +5.0 dB  cl 9 ms  rr 9 ms  ba 26 ms  bl -6.0 dB  hp 720 Hz
+ 180 EG    ob 6 ms  og +4.0 dB  cl 10 ms  ba 42 ms  bl -15.0 dB  hp 784 Hz
  181 OG    ob 5 ms  og +1.0 dB  cl 4 ms
- 182 CH    ob 5 ms  og +3.0 dB  wf 16/256  rr 10 ms  aa 5 ms  hp 784 Hz
- 183 HE    wf 48/256  th 24/64  hp 304 Hz
+ 182 CH    ob 4 ms  og +4.0 dB  wf 21/256  rr 9 ms  hp 784 Hz
+ 183 HE    wf 68/256  th 26/64  hp 304 Hz
  184 HO    ob 5 ms  og +9.0 dB  wf 16/256  aa 5 ms  hp 464 Hz
  185 WH    ob 5 ms  og +3.0 dB  wf 96/256  hp 208 Hz
  186 FF    ob 5 ms  og +6.0 dB  wf 48/256  rr 10 ms  aa 5 ms  hp 208 Hz
- 187 SE    wf 16/256  rr 10 ms  tc 544 Hz  th 112/64  aa 10 ms  hp 528 Hz
+ 187 SE    wf 19/256  tc 448 Hz  th 115/64  aa 11 ms  hp 528 Hz
  188 SO    tc 544 Hz  th 168/64  aa 25 ms  hp 336 Hz
  189 SH    ob 3 ms  og +3.5 dB  rr 10 ms  tc 672 Hz  th 80/64  aa 10 ms  hp 528 Hz
  190 TH    rr 10 ms  hp 80 Hz
- 191 TT    ob 10 ms  og +3.0 dB  cl 35 ms  wf 16/256  rr 10 ms  hp 464 Hz
- 192 TU    ob 5 ms  og +3.0 dB  cl 22 ms  wf 16/256  aa 5 ms
+ 191 TT    ob 16 ms  og +2.5 dB  cl 35 ms  wf 20/256  rr 11 ms  hp 464 Hz
+ 192 TU    ob 5 ms  og +4.0 dB  cl 23 ms  wf 16/256  aa 5 ms
  193 TS    ob 10 ms  og +0.5 dB  cl 26 ms  wf 16/256  rr 10 ms  hp 464 Hz  nd 128/256
- 194 KE    ob 5 ms  og +3.0 dB  cl 22 ms  hp 80 Hz
- 195 KO    cl 30 ms  aa 5 ms  hp 304 Hz
- 196 EK    ob 5 ms  og +6.0 dB  cl 25 ms  wf 48/256
+ 194 KE    ob 5 ms  og -6.0 dB  cl 22 ms  hp 80 Hz
+ 195 KO    cl 30 ms  aa 6 ms  hp 304 Hz
+ 196 EK    ob 5 ms  og +6.0 dB  cl 26 ms  wf 85/256  rr 6 ms
  197 OK    ob 5 ms  og +3.0 dB
- 198 PE    cl 35 ms  rr 10 ms  hp 32 Hz
- 199 PO    cl 5 ms  wf 48/256  rr 10 ms  aa 5 ms  hp 32 Hz
+ 198 PE    cl 15 ms  rr 13 ms  hp 32 Hz
+ 199 PO    cl 15 ms  wf 106/256  rr 9 ms  aa 5 ms  hp 32 Hz
 ```
 <!-- ALLOPHONES-END -->
 
@@ -1760,226 +1802,198 @@ where used. The DTMF pairs come from the code (7.8). Generated with Appendix A.
 <!-- EFFECTS-BEGIN -->
 ```
 200 R0
-  1     70 ms  Vo       +8.0 dB  416->640/3  784->800/17  128->416/1  pulse Pitch+167->+166 Hz
-  2     20 ms  F        -6.5 dB  640->1088/15  352->464/29
-  own: attack 5 ms
+  1     65 ms  -        +3.5 dB  800/29  432->544/7  208->288/1
+  2     15 ms  F        +3.0 dB  784->800/14->0  544->528/11->0  272->288/3->0
 201 R1
-  1     65 ms  Vo       +3.0 dB  704->768/2  1120->1072/29  3024->3504/6  pulse Pitch+284->+270 Hz
-  2     10 ms  F       -12.0 dB  1008->1312/30  624->720/30
-  own: release 10 ms
+  1     10 ms  -        -8.0 dB  1136->1088/11  688/3  3008->3024/4  ramp +18.5 dB
+  2     70 ms  -        +4.0 dB  1104/31  704->752/2  3088->3504/5
+  3      5 ms  F        +5.5 dB  1168->1072/19->0  736->752/4->0  3312->3568/18->0
 202 R2
-  1     80 ms  V        +3.0 dB  704->416/3->4  1664->976/5->12  1328->1264/27  ramp +1.0 dB
+  1     60 ms  V        +1.0 dB  624->368/2->3  1744->960/3->4  1312->1280/29->30  pulse Pitch+244->+107 Hz
+  2     10 ms  V        +1.0 dB  384->400/2->3  912->1024/2->3  1344->1248/30  pulse Pitch+107->+107 Hz
+  3     15 ms  V        -1.0 dB  384->368/2->3  1040->944/2  1296->1312/30  pulse Pitch+107->+107 Hz  ramp -36.5 dB
 203 R3
-  1     65 ms  Vo       +3.5 dB  640->496/5  1616/30  448->336/1  pulse Pitch+272->+283 Hz
-  2     20 ms  F        -7.0 dB  1952->1504/24  544->848/20  288->160/11
-  own: release 10 ms, click 6/256
-204 R4
-  1     80 ms  Vq       -1.5 dB  256->736/4  1488->1456/1  1904->1840/30  pulse Pitch+94->+367 Hz
+  1      5 ms  Vo       -3.0 dB  656->688/4  1616->1664/30  pulse Pitch+272->+273 Hz
+  2     60 ms  Vo       +3.0 dB  656->512/3  1584->1616/29  pulse Pitch+273->+283 Hz
+  3     10 ms  VoD      +3.5 dB  704->480/3  1712->1552/31  pulse Pitch+272->+283 Hz
+  4     15 ms  F        -8.5 dB  1968->1504/26  512->864/19  336->144/12  ramp -11.0 dB
   own: click 6/256
+204 R4
+  1     70 ms  VqE      +1.5 dB  240->688/3  1488->1536/2  1904->1888/31  pulse Pitch+89->+335 Hz
+  2     10 ms  VF       +3.0 dB  736->656/19  1520->1488/2  1888->1872/16  pulse Pitch+335->+362 Hz
+  own: click 3/256
 205 R5
-  1     80 ms  Vq       +8.0 dB  512->448/2  4000->1872/1  2192->2240/15  pulse Pitch+293->+317 Hz
+  1     60 ms  Vqo      +9.0 dB  464->448/2  2672->2688/1  2208->2192/12  pulse Pitch+293->+310 Hz
+  2     25 ms  VqFo     +9.0 dB  480->448/2  2704->2688/0  2256->2128/13  pulse Pitch+310->+317 Hz
+  own: attack 2 ms
 206 R6
-  1     80 ms  Vq       +1.0 dB  832->320/4  1392->1888/3  2528->2448/29  pulse Pitch+331->+52 Hz
-  own: release 25 ms
+  1     65 ms  Vqm      -2.0 dB  784->512/5  1456->1680/3  2496->2512/31  pulse Pitch+330->+109 Hz
+  2     25 ms  VqmF     -2.5 dB  528->384/4  1712->1744/4  2512->2544/29  pulse Pitch+109->+11 Hz
 207 R7
-  1     80 ms  Vi       +1.0 dB  176->256/1  768->480/6  2832->2800/24  pulse Pitch+109->+263 Hz
-  own: release 20 ms
+  1     75 ms  Vi       +1.5 dB  176->256/1  768->512/4  2800->2784/24  pulse Pitch+113->+267 Hz
+  2     20 ms  Vi       +2.0 dB  256->272/1  512->528/4  2768->2720/24  pulse Pitch+267->+267 Hz  ramp -23.5 dB
 208 R8
-  1     65 ms  V        +1.5 dB  736->640/4  2624->1744/4  3056->3136/29  pulse Pitch+261->+216 Hz
-  2     20 ms  V        +1.5 dB  640->576/5  pulse Pitch+216->+216 Hz
-  own: release 10 ms
+  1     75 ms  V        +0.0 dB  704->624/6->7  2848->1504/3->2  3072->3104/26->27  pulse Pitch+254->+237 Hz
+  2     15 ms  V        -1.0 dB  576->640/9->10  1632->1680/6  3136->3024/27  pulse Pitch+237->+237 Hz  ramp -27.5 dB
 209 R9
-  1     85 ms  V        -3.0 dB  672->608/5  1728->1328/2  3344->3520/29  pulse Pitch+262->+224 Hz
+  1     85 ms  V        -0.5 dB  704->624/5  1712->1392/3  3376->3424/29  pulse Pitch+258->+221 Hz
 210 A0
-  1    160 ms  Vo       -1.0 dB  240->256/23  1520->2496/10  3200->2752/11  pulse Pitch-26->+54 Hz  ramp +2.0 dB
-  2    150 ms  Vo       -1.0 dB  288->400/30  2304->3072/1  2752/3  pulse Pitch+50->+111 Hz  ramp +1.0 dB
-  3     40 ms  VF       -1.0 dB  416/17  pulse Pitch+77->+101 Hz
+  1    160 ms  Vo       -1.0 dB  128->272/31  1568->2464/10  3232->2752/11  pulse Pitch-28->+52 Hz  ramp +2.0 dB
+  2    130 ms  Vo       -0.5 dB  288->384/31  2416->3264/4  2752->2992/5  pulse Pitch+48->+109 Hz  ramp +0.5 dB
+  3     65 ms  VF       +2.5 dB  384->192/23  pulse Pitch+109->+60 Hz
   own: attack 5 ms
 211 A1
   1    450 ms  VA       +3.0 dB  176/15  240->1248/14  704->1248/17
   2    510 ms  VA       +3.0 dB  176/15  1232->1696/14  1408->3008/17
+  own: attack 2 ms
 212 A2
-  1    445 ms  VA       -2.5 dB  176->208/26  1696->1280/27  2928->1504/24
-  2    275 ms  VA       -2.5 dB  192/24  1264->656/30  1328->912/28
-  3    230 ms  VA       -4.5 dB  240->192/25  496->176/27  960->672/30
+  1    450 ms  VA       -2.5 dB  160->208/27  1664->1312/27  2912->1472/26
+  2    295 ms  VA       -3.0 dB  192/26  1312->624/26  1360->880/27
+  3    210 ms  VA       -4.0 dB  224->176/24->19  528->176/30->12  944->640/31
 213 A3
-  1    525 ms  P        -1.0 dB  432->1520/29  720->2576/27  1360->3536/29
+  1    520 ms  VA       -5.0 dB  512->1504/27  896->2464/27  1392->3488/26
 214 A4
-  1     15 ms  -        +0.5 dB  176->240/26  544->704/12  noise 1872 bw 3120 /23
-  2     75 ms  -        +4.5 dB  240->496/26  736->1584/14
-  3     30 ms  -        +7.0 dB  560->896/21  1616->2768/11  192/2
-  4     10 ms  -        +3.5 dB  944->1024/24  3296->3728/3->10  208/6
-  5      5 ms  -       +10.0 dB  1088/20  192/1
-  6     50 ms  X        +3.0 dB  1168->3856/30  192/5
-  7     75 ms  F        +7.0 dB  3920->3824/12
-  own: attack 10 ms
+  1     80 ms  -        +3.5 dB  208->480/31  624->1472/11
+  2     50 ms  -        +3.5 dB  496->1136/31  1520->3424/10
+  3     15 ms  -        +4.0 dB  1088->1728/27  3344->4016/6
+  4     15 ms  -        +2.5 dB  1728->2144/31  4064->3888/15
+  5     25 ms  -        +1.5 dB  2144->3920/31  4016/10
+  6     50 ms  -        +1.5 dB  3904/30  4064->4080/18  ramp -9.0 dB
+  7     10 ms  F        +0.5 dB  3952->3872/31->0  4080->3952/19->0
 215 A5
-  1     10 ms  -       -64.0 dB  no tones
-  2     15 ms  m        +4.0 dB  624->608/23->17  176/1
-  3     60 ms  m        +4.0 dB  608->544/17->18  176->160/1
-  4     10 ms  m        +4.0 dB  544->528/18->14  160->144/1
-  5     20 ms  m        +4.0 dB  528->512/14->20  144/1->7
-  6     20 ms  m        +4.0 dB  512->480/20->23  144->176/7->19
-  7     20 ms  m        +4.0 dB  480->464/23->22  176->208/19->8
-  8     20 ms  m        +4.0 dB  464->432/22->18  208->224/8->15
-  9     20 ms  m        +4.0 dB  432->416/18->28  224->256/15->10
-  10     20 ms  m        +4.0 dB  416->384/28->18  256/10->17
-  11     20 ms  m        +4.0 dB  384->336/18->26  256->288/17
-  12     20 ms  m        +4.0 dB  336->320/26->29  288->320/17->18
-  13     40 ms  m        +4.0 dB  320->272/29->18  320->384/18->15
-  14     20 ms  m        +4.0 dB  272->256/18->14  384->400/15->21
-  15     20 ms  m        +4.0 dB  256->224/14->12  400->432/21->20
-  16     20 ms  m        +4.0 dB  224->208/12->21  432->464/20->18
-  17     10 ms  m        +4.0 dB  208->192/21->15  464/18->16
-  18     10 ms  m        +4.0 dB  192->176/15->14  464->480/16->24
-  19     20 ms  m        +4.0 dB  176->160/14->8  480->496/24->19
-  20     10 ms  m        +4.0 dB  160/8->10  496->512/19
-  21     10 ms  m        +4.0 dB  160->144/10->14  512->528/19
-  22     20 ms  m        +4.0 dB  144->128/14->4  528->544/19->26
-  23     20 ms  m        +4.0 dB  128/4  544->576/26->22
-  24     20 ms  m        +4.0 dB  128->160/4  576->608/22->25
-  25     20 ms  m        +4.0 dB  160->176/4  608->624/25->20
-  26     20 ms  m        +4.0 dB  176->160/4  624/20->14
-  27     25 ms  m        +4.0 dB  160->96/4  624/14->18
-  28     10 ms  m        +4.0 dB  96->64/4->1  624/18->3
-  29     10 ms  -       -64.0 dB  no tones
+  1    320 ms  -        +1.0 dB  640->224/31  48->432/12->31
+  2    145 ms  -        +1.0 dB  432->608/31->26  208->64/30->23
+  3     20 ms  -        +0.0 dB  592->624/20->31  64->48/16->24
+  4     70 ms  E        -2.0 dB  608->624/31->5  48/27->2
 216 A6
-  1      5 ms  -       -64.0 dB  no tones
-  2     15 ms  m        +2.5 dB  288->320/29->17  368->800/9->7  368->864/21->27
-  3     40 ms  m        +2.5 dB  320->784/17->30  800->1840/7->9  864->2000/27->16
-  4      5 ms  m        +2.5 dB  784->800/30->27  1840->2000/9->4  2000/16->12
-  5     15 ms  m        +2.5 dB  800/27->23  2000/0  2000/12->9
-  6     40 ms  m        +2.5 dB  800/23  2000/0  2000/9->2
-  7      5 ms  m        +2.5 dB  800/23->24
-  8     50 ms  m        +2.5 dB  800/24->10
-  9     10 ms  -       -59.5 dB  no tones
-  own: click 6/256
+  1     60 ms  -        +2.5 dB  256->800/29  512->2064/19
+  2     55 ms  -        +1.5 dB  800->816/31  2048->1968/8->3
+  3     55 ms  -        +1.5 dB  800/31  1920->2048/3  ramp -11.0 dB
+  4      5 ms  F       -10.0 dB  816->784/31->0  2096->2016/3->0
 217 A7
-  1    140 ms  -        -5.0 dB  352->416/0->31  720->896/0->28  1088->1360/30->28  ramp -4.0 dB
-  2    185 ms  -        +0.0 dB  432->640/24->28  1008->1280/25->30  1376->1408/24->28  ramp -0.5 dB
-  3    220 ms  -        -0.5 dB  640->960/30->18  1456->1776/21->28  2480->1632/1  ramp +0.5 dB
-  4     35 ms  F        -9.5 dB  688->1184/23->28  2320->1536/30->28  ramp +3.0 dB
+  1      5 ms  m        +2.5 dB  416->400/17  752->704/16  1136/5
+  2    185 ms  m        +2.0 dB  400->496/15  752->1120/12  1168->1552/15
+  3     30 ms  m        +2.0 dB  480->528/22  1104->1200/24  1520->1632/3
+  4     30 ms  m        +3.5 dB  496->544/31  1216->1264/24  1536->1632/5  1616->1744/1
+  5    120 ms  m        +4.0 dB  560->720/19  1216->1520/21  1664->2240/2  1776->2192/1
+  6     70 ms  m        +4.0 dB  720->832/20  1504->1680/22  2208->2480/1  2208->2512/1
+  7     40 ms  m        +4.5 dB  784->912/15  1680->1792/16  2464->2624/1
+  8      5 ms  m        +5.0 dB  880->896/31  1792->1760/17
+  9     80 ms  m        +3.0 dB  880->976/13  1776->1856/12
+  10     15 ms  mF       +2.5 dB  976/27->0  1872->1840/24->0
   own: release 40 ms
 218 A8
-  1      5 ms  -       -64.0 dB  no tones
-  2     20 ms  m        +1.5 dB  192->320/17->11  208->512/3->14
-  3      5 ms  m        +1.5 dB  320->336/11->21  512->560/14->12
-  4     30 ms  m        +1.5 dB  336->496/21->30  560->1008/12->30
-  5     30 ms  m        +1.5 dB  496/30->12  1008/30->15
-  6      5 ms  m        +1.5 dB  496/12->15  1008/15->18
-  7      5 ms  m        +1.5 dB  496/15->11  1008/18->3
-  8     25 ms  m        +1.5 dB  496->208/11->1  1008->240/3->2
-  9     20 ms  -       -44.5 dB  no tones
-  10     20 ms  m        +1.5 dB  192->288/1->5  176->832/1->11
-  11     30 ms  m        +1.5 dB  288->432/5->25  832->1760/11->25
-  12     10 ms  m        +1.5 dB  432->496/25->24  1760->2000/25->30
-  13     10 ms  m        +1.5 dB  496/24->18  2000/30
-  14     15 ms  m        +1.5 dB  496/18->13  2000/30->16
-  15     35 ms  m        +1.5 dB  496/13->4  2000/16->6
-  16     10 ms  -       -64.0 dB  no tones
+  1     40 ms  -        -4.5 dB  256->512/21  624->944/7  ramp +11.5 dB
+  2     30 ms  -        +2.0 dB  512->496/23  992/23
+  3     40 ms  -        +2.0 dB  512->272/21  1024->992/19  ramp -12.5 dB
+  4     30 ms  -       -64.0 dB  no tones
+  5     55 ms  -        -5.5 dB  208->496/12  304->2048/14  ramp +13.5 dB
+  6     35 ms  -        +2.0 dB  496->512/18  2000/16
+  7     25 ms  -        +0.5 dB  496->512/27  2016/17  ramp -19.0 dB
+  8      5 ms  F        -9.0 dB  512->496/21->0  1984->1968/18->0
 219 A9
-  1     45 ms  -        +1.0 dB  2608/24  1296/26
-  2    195 ms  -        +1.0 dB  2608->1328/24  1296->96/26
-  3     70 ms  -        -2.0 dB  96/30  ramp -10.0 dB
+  1     45 ms  -        +1.5 dB  2592->2608/23  1344->1248/22
+  2    195 ms  -        +1.5 dB  2608->1312/26  1312->96/25
+  3     65 ms  -        -1.0 dB  96/31  noise 1216 bw 2432 /6  ramp -10.0 dB
   own: click 3/256 to 8000 Hz
 220 B0
-  1    120 ms  -        +4.0 dB  2592->2576/22
-  2     55 ms  F        +4.0 dB  2576/22
+  1    115 ms  -        +4.0 dB  2608->2592/21
+  2     55 ms  F        +3.5 dB  2592->2608/21
   own: attack 5 ms, release 5 ms, click 3/256 to 8000 Hz
 221 B1
-  1    145 ms  -       +11.0 dB  1424->3840/21  ramp -9.0 dB
-  2    110 ms  -        -2.5 dB  3904->1520/31  ramp +7.5 dB
-  3    135 ms  F       +13.5 dB  1408->1392/14  ramp +1.0 dB
+  1    145 ms  -       +10.0 dB  1392->3872/21  ramp -9.0 dB
+  2    115 ms  -        -2.0 dB  3920->1424/30  ramp +8.5 dB
+  3    125 ms  F       +13.5 dB  1408/13  ramp +1.0 dB
   own: click 12/256 to 800 Hz
 222 B2
-  1     10 ms  -       -64.0 dB  no tones
-  2    105 ms  m        +7.5 dB  1408/29->30
-  3     10 ms  m        +7.5 dB  1408/30  192/1->0
-  4     10 ms  m        +7.5 dB  1408->1984/30->28  192/0->1
-  5     10 ms  m        +7.5 dB  1984->2576/28->27  192/1->6
-  6     15 ms  m        +7.5 dB  2576->2448/27->18  192/6->5
-  7      0 ms  um       +7.5 dB  2448/18->10  192/5->2  1696/20->10  noise 2176 bw 2400 /30  pulse Pitch+400->+407 Hz
-  8     10 ms  um       +7.5 dB  2448/10->13  192/2  1696/10->23  noise 2240 bw 2144 /19  pulse Pitch+398->+409 Hz
-  9      5 ms  um       +7.5 dB  2448/13->18  192/2->3  1696/23->30  noise 1760 bw 2384 /19  pulse Pitch+405->+389 Hz
-  10      5 ms  m        +7.5 dB  2512/0  192/3->2  1696/30
-  11     35 ms  m        +7.5 dB  2512/0  192/2->5  1696/30->25
-  12     50 ms  m        +7.5 dB  2512/0  192->608/5->3  1696/25->26
-  13     15 ms  m        +7.5 dB  2512/0  608/3->1  1696/26->25
-  14     15 ms  m        +7.5 dB  2512/0  608/1->3  1696/25->24
-  15     55 ms  m        +7.5 dB  2512/0  608/3  1696/24->14
-  16     10 ms  m        +7.5 dB  2512/0  608/3->2  1696/14->11
-  17     30 ms  m        +7.5 dB  2512/0  608/2->0  1696/11->5
-  18      5 ms  m        +7.5 dB  2512/0  608/0  1696/5->8
-  19     10 ms  -       -64.0 dB  no tones
+  1    100 ms  -        +7.5 dB  1408/31
+  2     10 ms  -        +7.0 dB  1440->1408/31  208/2
+  3     20 ms  -        +8.5 dB  1312->2512/27->31  192/3
+  4     15 ms  -        +7.5 dB  2512->2544/30  208/3
+  5      5 ms  -        +5.5 dB  2560->1664/31->21  208->192/2
+  6     40 ms  -        +7.5 dB  1712/31  208/3
+  7     45 ms  -        +8.0 dB  1712/31  208->544/4->2
+  8     55 ms  -        +8.0 dB  1712/31  608/2
+  9     90 ms  -        +8.0 dB  1712/18  608->592/2  ramp -8.5 dB
+  10     10 ms  F        -0.5 dB  1712/15->0  608->592/2->0
 223 B3
-  1    105 ms  -        -0.5 dB  3120->3056/22  608->592/7
-  2      5 ms  -        -0.5 dB  3056->1392/22  592/7
-  3    140 ms  -        +1.0 dB  1392/30  592/6
-  4     55 ms  F        -1.0 dB  1408/28  608->592/6
+  1    105 ms  -        +3.0 dB  3088->3104/22  608->592/6
+  2      5 ms  -        +3.0 dB  3248->1408/21  576->624/8
+  3    140 ms  -        +3.0 dB  1392->1408/30  592/5
+  4     55 ms  F        +3.0 dB  1408->1392/28  592->608/4
   own: click 3/256 to 8000 Hz
 224 B4
-  1    145 ms  -        +0.0 dB  1824/31  1984->304/26
-  2    145 ms  -        +0.0 dB  1824/31  304->2000/26
-  3     80 ms  -        -3.0 dB  1824/31  2000/16
+  1    145 ms  -        +1.0 dB  1824->1808/31  2032->288/27
+  2    145 ms  -        +0.5 dB  1824/30  304->2000/26
+  3     80 ms  -        -2.0 dB  1888->1760/31  1952->2032/16
   own: release 40 ms
 225 B5
-  1    110 ms  -        +5.0 dB  3520->3488/18  960->0/19
-  2     50 ms  -        -5.0 dB  3408->3552/31
+  1      5 ms  -       -64.0 dB  no tones
+  2     90 ms  -        +5.5 dB  3488/18  1008->144/19
+  3     15 ms  -        +5.0 dB  3504->3520/18->10  160->0/19->9
+  4     55 ms  -        -4.0 dB  3504->3472/30  64/24
 226 B6
-  1     20 ms  -        +0.0 dB  3536->3568/30
-  2      5 ms  -        +2.5 dB  3984->1744/11
-  3     20 ms  -        +0.5 dB  1824/29
-  4      5 ms  -        -3.0 dB  2080->3856/25
-  5     10 ms  -        +9.0 dB  3680->3600/12
-  6      5 ms  -        -2.5 dB  3264->1312/30
-  7     15 ms  -        -1.5 dB  1792/28
-  8      5 ms  -        -8.0 dB  2560->2736/30
-  9      5 ms  -        -1.0 dB  3424->3936/30
-  10      5 ms  -        +3.0 dB  3104->1792/26
-  11     65 ms  F        +3.0 dB  1792/26
-  own: release 10 ms
+  1     20 ms  -        +0.0 dB  3536->3472/31  4080/9
+  2     20 ms  -        +1.0 dB  1824->1792/31
+  3     15 ms  -        -0.5 dB  3552->3424/28  4080/23
+  4     15 ms  -        +1.0 dB  1824->1792/31
+  5     10 ms  -        -0.5 dB  3424->3488/31  4080/20
+  6     35 ms  -        +1.0 dB  1808/31
+  7     50 ms  -        +1.5 dB  1808/31  ramp -30.5 dB
+  8      5 ms  F       -12.0 dB  1760->1856/23->0
 227 B7
-  1     40 ms  -        +5.5 dB  2848->2928/25
-  2     10 ms  F        +5.5 dB  2928/25
-  3      5 ms  -        -3.0 dB  no tones
-  4     60 ms  -        +1.0 dB  3952->3888/28
-  5     55 ms  F        +1.0 dB  3888/28
+  1      5 ms  -       -64.0 dB  no tones
+  2     45 ms  -        +4.5 dB  2880->2928/25
+  3      5 ms  F        +4.5 dB  2880->2864/23
+  4     10 ms  -        -3.5 dB  no tones
+  5     50 ms  -        +0.5 dB  3888/27
+  6     60 ms  F        +0.5 dB  3904->3920/27
 228 B8
-  1     40 ms  E        -1.5 dB  2208->2016/24
-  2    270 ms  E        +4.5 dB  2112->1264/17  4000->2560/15
-  own: click 3/256 to 8000 Hz
+  1     30 ms  -        +1.0 dB  2112->1952/31
+  2     40 ms  -        +1.0 dB  1984->1680/28  3936->3328/31
+  3     45 ms  -        +0.5 dB  1680->1520/27  3376->3008/31
+  4     80 ms  -        +1.5 dB  1488->1328/27  3008->2688/28
+  5    105 ms  -        +0.0 dB  1312->1280/26  2672->2592/24
+  6     10 ms  F        +0.5 dB  1328->1264/31->0  2592/31->0
 229 B9
-  1     60 ms  -        -9.5 dB  1824->1808/29  912->896/14  2736->2720/27
-  2     30 ms  VA       -9.0 dB  848->672/26
-  3     55 ms  VA       -6.5 dB  512->544/29  2512/30  3808->3824/30
-  4     30 ms  VA       -8.0 dB  528->576/29  448->416/15  592->624/24
-  5     95 ms  -        -7.0 dB  1776->1792/27  896/13  3552/30
-  6     15 ms  F        -7.5 dB  1776->1840/29
+  1     55 ms  -        -4.0 dB  912->896/15  1776->1840/31  2720/31
+  2     10 ms  VA       -6.5 dB  912->928/21
+  3     10 ms  VA       -6.5 dB  816->864/27
+  4     10 ms  VA       -8.5 dB  784->768/21
+  5     10 ms  VA       -6.0 dB  672->688/28
+  6     10 ms  VA       -5.5 dB  608->560/31
+  7     40 ms  VA       -3.5 dB  480->512/31  2512->2544/21  3600->3888/31  4080/31
+  8     10 ms  VA       -5.0 dB  560->576/28
+  9     10 ms  VA       -5.5 dB  608->624/31
+  10     10 ms  VA       -4.5 dB  752/31
+  11     95 ms  -        -3.5 dB  896->912/11  1792->1840/31  3440->3520/31  4080/15
+  12     10 ms  F        -5.0 dB  1856->1824/22
 230 C0
-  1     30 ms  -       -64.0 dB  no tones
-  2     65 ms  VAm      +7.0 dB  2064->800/27->18  2304/11->18  pulse Pitch-2->-1 Hz
-  3      5 ms  VAm      +7.0 dB  800->688/18->21  2304/18->10  pulse Pitch-10->-2 Hz
-  4     20 ms  VAm      +7.0 dB  688->448/21->28  2304/10  pulse Pitch-1->-14 Hz
-  5     15 ms  VAm      +7.0 dB  448->272/28->19  2304/10->15  pulse Pitch-13->-6 Hz
-  6     10 ms  VAm      +7.0 dB  272->224/19->23  2304/15->4  pulse Pitch-15->-16 Hz
-  7     10 ms  Vm       +7.0 dB  224->176/23->30  2304/4  pulse Pitch-27->-22 Hz
-  8      5 ms  Vm       +7.0 dB  176->160/30->4  pulse Pitch-10->-2 Hz
-  9     15 ms  Vm       +7.0 dB  160/4  pulse Pitch-18->-1 Hz
-  10     35 ms  Vm       +7.0 dB  160/4->2  pulse Pitch-20->-23 Hz
-  11     10 ms  Vm       +7.0 dB  160/2->4  pulse Pitch-21->-4 Hz
-  12     40 ms  -       -64.0 dB  no tones
+  1      5 ms  -       -64.0 dB  no tones
+  2     30 ms  VAm      +4.5 dB  2368->1648/31->25  2288->2080/13  pulse Pitch-3->-3 Hz
+  3     30 ms  VAm      +3.5 dB  1632->992/22  2240->2320/16  pulse Pitch-3->-2 Hz
+  4     30 ms  VAm      +4.0 dB  928->592/15  2272->2336/14  pulse Pitch-2->-10 Hz
+  5     25 ms  VAm      +2.5 dB  576->224/31  2288->2320/12  pulse Pitch-10->-17 Hz
+  6      5 ms  Vm      -64.0 dB  no tones
+  7     20 ms  Vm       +4.0 dB  176->96/23->3  2288->2336/4->1  pulse Pitch-23->-5 Hz
+  8     10 ms  Vm       +4.0 dB  80->96/4
+  9     20 ms  -        -5.5 dB  no tones  noise 496 bw 944 /4
+  10    105 ms  -       -10.5 dB  no tones  noise 512 bw 928 /2
+  11     25 ms  -       -64.0 dB  no tones
 231 C1
-  1     35 ms  VA      +11.5 dB  656->2128/8  pulse Pitch+39->+177 Hz
-  2     30 ms  VA       +2.0 dB  480->848/27  2064->2144/20  1968->2208/18  pulse Pitch+177->+373 Hz
-  3     75 ms  VA       +3.0 dB  1184->1696/21  2416->1520/23  pulse Pitch+374->+244 Hz
-  4    160 ms  VAF      +2.0 dB  1616->592/8  1984->1280/5  1872->3056/25  pulse Pitch+226->-11 Hz
+  1     40 ms  VA      +10.5 dB  656->2000/9  pulse Pitch+40->+178 Hz
+  2     30 ms  VA       +0.0 dB  480->848/26  2048->2176/19  2096->2224/19  pulse Pitch+178->+373 Hz
+  3     70 ms  VA       +1.5 dB  1216->1776/20  2384->1632/25  pulse Pitch+374->+245 Hz
+  4    155 ms  VAF      +0.0 dB  1584->624/8  2016->1312/6  1856->2992/25  pulse Pitch+226->-10 Hz
   own: attack 20 ms, release 10 ms
 232 C2
-  1     80 ms  VA       -2.5 dB  528->592/29  880->1200/24  2336->1632/28  pulse Pitch-21->-24 Hz
-  2     20 ms  VA       -8.0 dB  544/28  1280->1216/7  1824->1552/11  pulse Pitch-18->-24 Hz
-  3     20 ms  VA      -20.5 dB  464->720/12  1072->1568/9  1312->1024/28  pulse Pitch-17->-23 Hz
-  4     35 ms  -        -6.5 dB  3824->3008/10  noise 2496 bw 1120 /9
-  5     55 ms  VAF      +2.0 dB  3376->2880/28  1376->1168/1  1536->1936/1  pulse Pitch-18->-21 Hz
+  1     15 ms  VAm      -6.5 dB  496->528/8  928->1056/22  2352->1904/21  pulse Pitch-22->-22 Hz  ramp +6.0 dB
+  2     25 ms  VAm      -2.0 dB  512->528/14  896->1088/30  2304->1968/26  pulse Pitch-22->-22 Hz
+  3     60 ms  VAm      -1.5 dB  496->624/20  1152->1136/18  1856->1616/18  pulse Pitch-22->-22 Hz
+  4     30 ms  VAm      -1.5 dB  592->576/20  1120->1152/16  1632->1664/7  pulse Pitch-22->-22 Hz  ramp -8.5 dB
+  5     25 ms  -       -64.0 dB  no tones
+  6     45 ms  VA       -2.0 dB  3328->3232/31  4080/3  pulse Pitch-22->-22 Hz
+  7     10 ms  VAF      -3.0 dB  3248->3264/31->0  4080/19->0  pulse Pitch-22->-22 Hz
 233 C3
   1     30 ms  -       -64.0 dB  no tones
   2     25 ms  Vm       +6.5 dB  3168->3200/14->3  pulse Pitch-17->-31 Hz
@@ -1991,99 +2005,114 @@ where used. The DTMF pairs come from the code (7.8). Generated with Appendix A.
   8     15 ms  m        +6.5 dB  4000/1
   9     40 ms  -       -61.0 dB  no tones
 234 C4
-  1     75 ms  V        +0.0 dB  976->944/28  2752->3792/2  1808->2384/2
-  2     50 ms  V        -1.0 dB  1808->2096/30  2832->2400/2
-  3     90 ms  V        -4.0 dB  2912->3088/29
+  1     75 ms  VAm      +7.0 dB  912->992/2->19  pulse Pitch-2->-2 Hz
+  2     40 ms  VAm      +6.0 dB  992->976/19->4  1904->1936/4->15  pulse Pitch-2->-2 Hz
+  3     20 ms  VAm      +5.5 dB  1936->1888/13  pulse Pitch-2->-2 Hz
+  4     30 ms  VAm      +5.0 dB  1888/12->3  2928->3024/11->18  pulse Pitch-2->-2 Hz
+  5     50 ms  VAm      +5.5 dB  3040->3024/12  pulse Pitch-2->-2 Hz
+  6      5 ms  VAmF     +6.0 dB  3040->2912/4->0  pulse Pitch-2->-2 Hz
   own: attack 5 ms
 235 C5
-  1     50 ms  -        -7.5 dB  2912->2576/19  672->736/4
-  2     20 ms  -        +4.5 dB  832->736/6  752->944/4  2496->1040/4->2
-  3    105 ms  -        -5.0 dB  288->304/16  656->448/17  960->576/15
-  4    190 ms  VD       +8.0 dB  320->192/19
+  1     45 ms  -        +0.5 dB  2688->2720/17  752->784/3
+  2     25 ms  -        +4.0 dB  2592->1008/13->0  768->720/11  384->368/6
+  3    140 ms  -        +1.0 dB  704->288/24  896->672/12->2  352->288/26
+  4    125 ms  Vm       +7.0 dB  304->176/12  ramp -7.0 dB
 236 C6
-  1     25 ms  -       -64.0 dB  no tones
-  2     25 ms  VAm      +7.0 dB  2016/1->4  pulse Pitch-21->-13 Hz
-  3     30 ms  VAm      +7.0 dB  2016->1888/4->17  pulse Pitch-7->+42 Hz
-  4     10 ms  VAm      +7.0 dB  1888->1664/17->11  2800/2->4  pulse Pitch-16->+37 Hz
-  5     20 ms  VAm      +7.0 dB  1664->944/11->10  2800->2928/4->3  pulse Pitch+51->+61 Hz
-  6     30 ms  VAm      +7.0 dB  944->912/10->14  2928->2192/3->20  pulse Pitch+40->+39 Hz
-  7     10 ms  VAm      +7.0 dB  912/14->1  2192->1936/20->21  pulse Pitch+32->+40 Hz
-  8     20 ms  VAm      +7.0 dB  912/1->4  1936->2544/21->25  pulse Pitch+43->+5 Hz
-  9      5 ms  VAm      +7.0 dB  912/4  2544->2576/25->21  pulse Pitch+39->+2 Hz
-  10     15 ms  VAm      +7.0 dB  912/4->17  2576->2928/21->17  pulse Pitch+38->-8 Hz
-  11     25 ms  VAm      +7.0 dB  912->1584/17  2928/17->16  pulse Pitch+42->+3 Hz
-  12     15 ms  VAm      +7.0 dB  1584->2064/17->30  pulse Pitch-15->-37 Hz
-  13     25 ms  VAm      +7.0 dB  2064/30->15  pulse Pitch-19->-25 Hz
-  14     30 ms  VAm      +7.0 dB  2064/15->2  pulse Pitch-12->-33 Hz
-  15     50 ms  -       -64.0 dB  no tones
+  1     35 ms  VAm      +4.0 dB  1968->2064/9  pulse Pitch-21->-21 Hz  ramp +7.5 dB
+  2     30 ms  VAm      +5.0 dB  2112->960/25  2880->2784/6  pulse Pitch-21->+42 Hz
+  3     40 ms  VAm      +7.0 dB  928->960/8  2928->2016/14  pulse Pitch+42->+42 Hz
+  4     35 ms  VAm      +6.0 dB  960->1008/6  2096->2048/20  pulse Pitch+42->+42 Hz
+  5     30 ms  VAm      +6.5 dB  944->2000/23  2112->2848/8  pulse Pitch+42->-21 Hz
+  6     55 ms  VAm      +5.5 dB  2064->2048/15  pulse Pitch-23->-23 Hz
+  7     10 ms  VAmF     +4.0 dB  2064->2080/22->0  2880->2864/5->0  pulse Pitch-23->-23 Hz
   own: click 6/256
 237 C7
-  1     45 ms  V        +2.5 dB  544/19  pulse Pitch-13->+4 Hz
-  2     50 ms  V        +3.5 dB  656->2960/22  pulse Pitch+5->-6 Hz
-  3     40 ms  V        +4.0 dB  480->2624/30  pulse Pitch+6->+38 Hz
-  4     50 ms  V        +7.0 dB  720->2128/24  pulse Pitch+45->+93 Hz
-  5     45 ms  V        +2.5 dB  592->1536/29  pulse Pitch+90->+126 Hz
-  6     40 ms  V        +4.5 dB  384->1104/22  pulse Pitch+120->+148 Hz
-  7     15 ms  V        +8.0 dB  1184->528/21  pulse Pitch+173->+150 Hz
-  8     85 ms  V        -2.0 dB  464->416/23  pulse Pitch+166->-6 Hz
+  1     35 ms  V        +2.0 dB  528->512/17  pulse Pitch+0->-5 Hz
+  2     50 ms  V        +2.5 dB  416->2704/23  pulse Pitch+2->-8 Hz
+  3      5 ms  V        +1.5 dB  2752->1872/20  pulse Pitch+19->+15 Hz
+  4     40 ms  V        +3.5 dB  464->2208/28  pulse Pitch+24->+71 Hz
+  5     10 ms  V        +4.0 dB  2224->1472/23  pulse Pitch+76->+42 Hz
+  6     45 ms  V        +7.5 dB  576->2144/17  pulse Pitch+59->+60 Hz
+  7      5 ms  V        +8.0 dB  2048->1520/14  pulse Pitch+57->+86 Hz
+  8     30 ms  V        +1.5 dB  624->1568/31  pulse Pitch+104->+108 Hz
+  9     15 ms  V        +2.0 dB  1584->544/31  pulse Pitch+102->+102 Hz
+  10     25 ms  V        +5.0 dB  416->1168/19  pulse Pitch+93->+99 Hz
+  11     10 ms  V        +6.0 dB  1248->448/25  pulse Pitch+93->+90 Hz
+  12     85 ms  V        -2.0 dB  464->480/31  pulse Pitch+104->+41 Hz
+  13     10 ms  VF       -0.5 dB  448->480/20->0  pulse Pitch+48->+45 Hz
   own: attack 20 ms
 238 C8
-  1     90 ms  S        -5.5 dB  no tones  noise 1952 bw 288 /233  gate 20 ms  ramp -0.5 dB
+  1     90 ms  S        +8.0 dB  no tones  noise 1600 bw 48 /40  gate 20 ms  ramp +5.0 dB
+  2      5 ms  m        -3.5 dB  3216/17->20  2480->2384/13->16
   own: attack 5 ms
 239 C9
-  1     75 ms  S        -4.5 dB  no tones  noise 1712 bw 240 /194  gate 20 ms
-  own: attack 5 ms
+  1     10 ms  m        +7.0 dB  560->3296/14
+  2     10 ms  m        +8.0 dB  3088->688/31
+  3     10 ms  m        +6.0 dB  752->2800/20
+  4     10 ms  m        +7.0 dB  2880->592/31
+  5     10 ms  m        +9.0 dB  624->2160/18
+  6     10 ms  m       +10.0 dB  2320->592/31
+  7      5 ms  m        +5.5 dB  576->2064/20
+  8      5 ms  m        +5.5 dB  2032->1984/6
+  9     10 ms  mF       +5.5 dB  1968->2128/12->0
+  own: release 30 ms
 240 D0
-  1    100 ms  -        +1.0 dB  DTMF pair/31+31
-  2     55 ms  F        +1.0 dB  DTMF pair/31+31
+  1     90 ms  -        +1.0 dB  DTMF pair/31+31
+  2     65 ms  F        +0.5 dB  DTMF pair/31+31
+  own: attack 2 ms
 241 D1
-  1    100 ms  -        +0.5 dB  DTMF pair/31+31
-  2     55 ms  F        +0.5 dB  DTMF pair/31+31
+  1    105 ms  -        +0.0 dB  DTMF pair/31+31
+  2     50 ms  F        +0.0 dB  DTMF pair/31+31
   own: release 10 ms
 242 D2
   1    100 ms  -        +0.5 dB  DTMF pair/31+31
-  2     55 ms  F        +0.5 dB  DTMF pair/31+31
+  2     55 ms  F        +0.5 dB  DTMF pair/31+31  ramp -3.5 dB
   own: release 10 ms
 243 D3
   1    100 ms  -        +0.5 dB  DTMF pair/31+31
-  2     55 ms  F        +0.5 dB  DTMF pair/31+31
+  2     60 ms  F        +0.0 dB  DTMF pair/31+31
 244 D4
-  1    100 ms  -        +0.5 dB  DTMF pair/31+31
-  2     55 ms  F        +0.5 dB  DTMF pair/31+31
+  1     85 ms  -        +0.5 dB  DTMF pair/31+31
+  2     70 ms  F        +1.0 dB  DTMF pair/31+31
   own: release 10 ms
 245 D5
-  1    100 ms  -        +0.5 dB  DTMF pair/31+31
-  2     55 ms  F        +0.5 dB  DTMF pair/31+31
+  1     95 ms  -        +1.0 dB  DTMF pair/31+31
+  2     65 ms  F        +0.5 dB  DTMF pair/31+31
 246 D6
   1    100 ms  -        +0.5 dB  DTMF pair/31+31
   2     55 ms  F        +0.5 dB  DTMF pair/31+31
 247 D7
-  1    100 ms  -        +0.5 dB  DTMF pair/31+31
-  2     55 ms  F        +0.5 dB  DTMF pair/31+31
+  1     90 ms  -        +1.0 dB  DTMF pair/31+31
+  2     65 ms  F        +0.5 dB  DTMF pair/31+31
 248 D8
-  1    100 ms  -        +1.0 dB  DTMF pair/31+31
-  2     55 ms  F        +1.0 dB  DTMF pair/31+31
+  1    110 ms  -        +1.0 dB  DTMF pair/31+31
+  2     45 ms  F        +0.5 dB  DTMF pair/31+31
   own: release 10 ms
 249 D9
-  1    100 ms  -        +1.0 dB  DTMF pair/31+31
-  2     55 ms  F        +1.0 dB  DTMF pair/31+31
+  1     95 ms  -        +0.5 dB  DTMF pair/31+31
+  2     60 ms  F        +0.5 dB  0/2
 250 D10
-  1    100 ms  -        +0.5 dB  DTMF pair/31+31
-  2     55 ms  F        +0.5 dB  DTMF pair/31+31
+  1     50 ms  -        +1.0 dB  DTMF pair/31+31
+  2     50 ms  -        +0.5 dB  DTMF pair/31+31
+  3     55 ms  F        -0.5 dB  DTMF pair/31+31
   own: release 10 ms
 251 D11
-  1    100 ms  -        +1.0 dB  DTMF pair/31+31
-  2     55 ms  F        +1.0 dB  DTMF pair/31+31
+  1    100 ms  -        +0.5 dB  0/1
+  2     55 ms  F        +0.0 dB  DTMF pair/31+31  ramp -2.5 dB
   own: release 10 ms
 252 M0
-  1   1190 ms  DW      +11.5 dB  1840->1856/17  noise 1632 bw 208 /5
-  own: attack 5 ms
+  1     10 ms  W       +12.5 dB  1744->1776/18  noise 1792 bw 224 /6
+  2    295 ms  W       +10.0 dB  1808->1856/16  noise 1648 bw 208 /6
+  3   1055 ms  DW       +8.5 dB  1904->1696/16  noise 1584 bw 224 /6
 253 M1
-  1    305 ms  D       +14.5 dB  no tones  noise 2016 bw 1424 /47
+  1      0 ms  -       -64.0 dB  no tones
+  2     40 ms  -       +19.5 dB  no tones  noise 1920 bw 1344 /30
+  3    260 ms  -       +19.5 dB  no tones  noise 1680 bw 1168 /30  ramp -23.5 dB
   own: click 64/256 to 320 Hz
 254 M2
-  1    255 ms  VA       -4.0 dB  496->992/27  1728->2192/25  2928->3456/30
-  2    260 ms  VA       -5.0 dB  976->448/30  2224->1664/30  3440->2880/27
+  1      5 ms  -       -64.0 dB  no tones
+  2    245 ms  VA       -3.5 dB  496->992/25  1696->2208/26  2880->3408/30
+  3    270 ms  VA       -4.0 dB  1008->464/28  2224->1664/30  3408->2832/26
   own: attack 2 ms, release 15 ms
 ```
 <!-- EFFECTS-END -->
@@ -2170,6 +2199,9 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.21  2026-11-16   library 0.5.3: 238 C8's noise sweep linear in Hz and its period 20 ms (7.6; 1.75 -> 1.63); the
+                   voiced stops' bar partly noise and nasals' noise part (6.2, 6.4); AXUW's F3 hold (6.3); NGO KE
+                   quiet onsets, PE PO timing (6.4)
 1.20  2026-11-16   library 0.5.2: 237 C7's pulse-rate track; the noise checked for a repeated sequence (none: an
                    apparent match across takes was the recordings' hum, section 5); C8's sweep period 20 ms
 1.19  2026-11-16   library 0.5.1: the plain vowels' first-period and 72-tick-fall rules per vowel (6.11); IH AY OH back

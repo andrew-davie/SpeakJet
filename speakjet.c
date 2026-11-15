@@ -104,6 +104,12 @@
 #define NASAL_ATTACK 25.0 /* a nasal's attack, ms (the vowels': T.attack) */
 #ifndef BAR_UP
 #define BAR_UP 0.12 /* a voiced stop's bar: its upper formants at this fraction of the release's */
+#define BAR_NF 1000.0f /* 0.5.3: an alveolar's bar is partly noise: a band, Hz (both units: DE DO's bar pulses match one another 0.40-0.59 above 700 Hz, ours 0.76-0.81) */
+#define BAR_NW 800.0f  /* its width, Hz */
+#define BAR_NA 4.0f    /* its level (the velars' bar is periodic on the chip) */
+#define LBAR_NF 1800.0f /* 0.5.3: BE BO's bar above F1 is noise, not weak formants: a band, Hz (both units: above 700 Hz the part that differs pulse to pulse is within 0-3 dB of the whole) */
+#define LBAR_NW 1400.0f /* its width, Hz */
+#define LBAR_NA 6.0f    /* its level */
 #endif
 #ifndef BAR_CLICK
 #define BAR_CLICK 0.0 /* and the click it opens on, ms */
@@ -1045,6 +1051,17 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
     gone.f[2] = tgt.f[2];
     gone.a[1] = (float)(tgt.a[1] * BAR_UP);
     gone.a[2] = (float)(tgt.a[2] * BAR_UP);
+    if (a - allophones >= 46 && a - allophones <= 49) { /* DE DO ED OD */
+      gone.nf = BAR_NF;
+      gone.nw = BAR_NW;
+      gone.na = BAR_NA;
+    }
+    if (a - allophones == 42 || a - allophones == 43) { /* BE BO: noise in place of F2 F3 */
+      gone.a[1] = gone.a[2] = 0.0f;
+      gone.nf = LBAR_NF;
+      gone.nw = LBAR_NW;
+      gone.na = LBAR_NA;
+    }
   }
   /* from silence, a voiced stop's bar is there at once, at its level (both units, the VoxRecord solo takes lined up on
    * the release: BE BO DE DO GE GO's bar 2-11 dB under the peak through the closure, not a fade up from nothing) */
@@ -1490,6 +1507,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
       m.nw = tgt.nw + (tgt2.nw - tgt.nw) * fr;
       m.na = tgt.na + (tgt2.na - tgt.na) * fr;
       m.f[0] = tgt.f[0];
+      m.f[2] = tgt.f[2]; /* 0.5.3: F3 holds with F1 (161 AXUW, both units: F3 ~2350 Hz until the late fall; 1.21 -> 1.18) */
       add_segment(sj, k1, tgt, m, true);
       add_segment(sj, move - k1, m, tgt2, true);
     } else
@@ -2237,7 +2255,7 @@ static double tick(sj_chip *sj) {
      * off half scores better than a dip alone) */
     if ((s->flags & FX_NSWEEP) && s->gate > 0) {
       const double p = (double)(sj->tick % s->gate) / s->gate, sw = p < 0.5 ? p / 0.5 : 1.0 - (p - 0.5) / 0.5; /* 0.5.0: the chip climbs for 50% of the cycle (C8 C9, 4 takes) */
-      nf *= sj_exp((2.0 * sw - 1.0) * 0.75); /* both units, C8 and C9: up in 8 ms, down in 12, by 2.1x either side of the centre (2026-11-06: the chip spans ~650 Hz - 2.4 kHz) */
+      nf *= 0.5 + 1.35 * sw; /* 0.5.3: linear in Hz, 0.5 to 1.85 times the centre (238 C8, both units: the band's track is straight lines, ~800 to ~2950 Hz, where the exponential sweep curved) */
       lvl = sj_exp(-5.0 * sw / 20.0 * M_LN10); /* and 5 dB quieter at the top, beyond what the output stage takes (2026-11-06: 15 dB, the chip's own figure, scored worse on spectrum, E and P) */
     }
     /* white noise through a two-pole resonance at nf with bandwidth nw (the

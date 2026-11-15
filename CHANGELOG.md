@@ -7,6 +7,36 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
+### 0.5.3 (2026-11-16; technical manual 1.21)
+
+Allophones mean X 0.93 -> 0.92 (0.4.3: 1.07), effects 0.97, joins 514 -> 513 (0.4.3: 1437). Two new mechanisms: nasals
+and voiced stops' bars carry a noise part, as the chip's do.
+
+- **BE and BO's bar above F1 is noise**, not weak formants (1800 Hz, 1400 wide, level 6, F2 F3 off in the bar): on both
+  units above 700 Hz the part of the bar that differs pulse to pulse carries nearly all of it. BE 1.21 -> 1.14,
+  BO 1.24 -> 1.20; phrases 513.0 -> 512.7 (BE EH -4.8 %; BE IY -3.0 % on unit A, +3.2 % on unit B: the units disagree).
+- **An alveolar stop's bar is partly noise** (DE DO ED OD: 1000 Hz, 800 wide, level 4): on both units their bar's pulses
+  match one another only 0.40-0.59 above 700 Hz (ours 0.76-0.81). DE 1.29 -> 1.24, DO 1.14 -> 1.09, OD 0.84 -> 0.79,
+  ED 0.81 -> 0.80; phrases unchanged (513.0, the largest move +0.24 %). Labial bars stay without it (it cost BE IY
+  4-11 %); the velars' bar is periodic on the chip.
+- **Nasals carry a noise part**: 140 MM, 144 NGO, 145 LE and 146 LO get the band NE NO NGE already had (2400 Hz,
+  1200 wide, level 3). On the chip a nasal's pulses differ one to the next above 700 Hz (consecutive-pulse match
+  0.73-0.83 on all four takes of MM and NE, ours 0.94-0.97). MM 1.21 -> 1.01, NGO 1.09 -> 1.02, LE 1.16 -> 1.09,
+  LO 0.87 -> 0.86; phrases 513.9 -> 513.0.
+- **198 PE and 199 PO** share one timing: a 15 ms closure and the low pulse at 25 ms (PE's were 38 and 50, PO's 8 and
+  28; the chip's noise starts ~10 ms before ours did). PE 1.11 -> 1.05, PO 1.09 -> 1.07, no phrase changes.
+- **161 AXUW**: F3 holds with F1 until the late fall (the chip keeps ~2350 Hz), where it slid from AX's to UW's
+  through the move. X 1.21 -> 1.18, no phrase changes.
+- **194 KE** starts quieter: its first 5 ms 3 dB down instead of 1.5 dB up (og 3 -> -6), X 0.84 -> 0.76, no phrase changes.
+- **156 NGO** starts quiet: its first 15 ms 6 dB down (ob 15, og -12; the chip's lead-in), X 1.15 -> 1.09, no phrase
+  changes. The Go library's onset-frame rule now matches C's (any sound with an onset, not only voiced fricatives).
+- **238 C8's noise sweep** moves linearly in Hz, not geometrically: the chip's band runs in straight lines between
+  about 800 and 2950 Hz on both units, where the old sweep curved. Its period is 20 ms, not 21 (the chip's cycle is
+  19.5 ms on both units). 1.75 -> 1.63 (0.4.3: 1.89). Only C8 uses the sweep; no other sound changes.
+- **Docs**: the manual's Appendix A and B regenerated from the tables (they had drifted); the README's Man Goes Down
+  phrase 2 length corrected to 1705 ms (it read 1690), phrase 4 dropped from that table (the recordings' labels end
+  before its final EK burst); 136 AW and 158 IYEH are 0.01-0.02 further than 0.4.3, where the summary said none.
+
 ### 0.5.2 (2026-11-16; technical manual 1.20)
 
 - **237 C7's pulse rate** follows the chip's track: Pitch 88 for its first section, then rising, where its fitted
