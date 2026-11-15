@@ -135,5 +135,5 @@ code  sound   0.4.3  0.5.1   change
 254   M2      0.81   0.72    -11 %
 
 allophones (72)  mean 1.07 -> 0.93
-effects (55)     mean 1.23 -> 0.98
+effects (55)     mean 1.22 -> 0.98   (1.23 if taken from the rounded figures above)
 ```
