@@ -193,8 +193,10 @@ the glides' copies run 185–290 ms. JH's copy is 80 ms, ZH's 70.
 30 (`attack`, `release`); an unvoiced fricative switches in 3 ms, a nasal rises in
 25, and a sound may have its own (`aa`, `rr`). Since 0.5.0 every vowel and glide has its own attack, 20–60 ms
 (technical manual 6.11), shortened in proportion to the pitch period above Pitch 88 and never lengthened below; the
-plain vowels' first voicing period from silence is 12 ticks longer (not IH OH) and EY UX UH AW's pulse falls over 72
-ticks, not 58 (0.5.1, per vowel);
+plain vowels' first voicing period from silence is 12 ticks longer (not IH OH; it lands on the silent opening, so
+nothing audible changes), and every vowel's pulse falls over 58 ticks (0.5.1's 72 on EY UX UH AW was undone in 0.5.4,
+when the score was corrected; the attacks were re-fitted then too); AW fades in over 20 ms (not 45) before an unvoiced sound or LE
+and fades over 35 ms after a sound; TT before a vowel is 3 dB louder; a true nasal after a sound moves in 5 ms;
 198 PE and 199 PO's low pulse swells in over 10 ms. An effect's tone starts within
 1–3 ms on both units (`fx_attack` 1 ms, `fx_release` 25), many on a 5 ms click,
 and an effect may have its own attack, release and click (the `fxs` table), and
@@ -303,6 +305,13 @@ signal alone, set to the steady tones, scores far worse on the effects: the
 bed belongs to the effects' playback, not the output stage. Why the chip
 makes it is not known. Each effect may scale it (fxs `bs`, percent, 0 = 100; `bscale`): A5 A8 B0 B2 do, from a floor survey against both
 units (technical manual 7.5).
+Beside it, since 0.5.0, a bed proportional to the signal itself, peak-held over 20 ms (`bedhold`, 0.024): low tones
+(A5 A0 A8 R0) need it. In 0.5.4 it doubles under a voiced part that pulses only some of its tones (`vbed`: not `A`,
+not smoothed): the robots' chip valleys between harmonics sit 10-15 dB over ours (technical manual 7.5).
+
+**Lengths by neighbour (0.5.4).** Two sounds' lengths depend on a neighbour, from the phrase items: IY straight after
+a sound runs 5 ms shorter than from silence, and LE before a sound 5 ms longer than alone; their solo takes keep the
+table lengths (technical manual 6.1).
 
 ## Commands
 

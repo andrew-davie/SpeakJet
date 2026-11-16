@@ -7,6 +7,142 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
+### 0.5.4 (2026-11-17; technical manual 1.23)
+
+- **A plain vowel's long voicing period is its second, not a delay before its first pulse** (both units: AW's pulses -23, -7, -1 dB with gaps 10.7, 12.3, 11.4 ms; EH 11.5, 12.9, 11.8): all 12 plain vowels better, X 0.906 -> 0.883; IH and OH no longer left out. Phrases 315.0 -> 316.4 (20 items better; 4 worse, a vowel straight after BE or NE).
+- **IH re-fitted on the region score** (the faults the gallery shows): regions 8 -> 11, X 0.93 -> 0.86.
+- **EH re-fitted on the region score** (the faults the gallery shows): regions 6 -> 4, X 0.81 -> 0.81.
+- **NGE re-fitted on the region score** (the faults the gallery shows): regions 6 -> 5, X 0.78 -> 0.77.
+- **OW re-fitted on the region score** (the faults the gallery shows): regions 7 -> 2, X 0.88 -> 0.85.
+- **UW re-fitted on the region score** (the faults the gallery shows): regions 8 -> 5, X 1.02 -> 0.99.
+- **OWIY re-fitted on the region score** (the faults the gallery shows): regions 8 -> 3, X 0.85 -> 0.81.
+- **BE re-fitted on the region score** (the faults the gallery shows): regions 8 -> 6, X 1.04 -> 1.01.
+- **C6 re-fitted on the region score** (the faults the gallery shows): regions 54 -> 46, X 1.11 -> 1.08.
+- **C7 re-fitted on the region score** (the faults the gallery shows): regions 59 -> 46, X 1.06 -> 1.03.
+- **C2 re-fitted on the region score** (the faults the gallery shows): regions 61 -> 43, X 0.86 -> 0.84.
+- **A1 re-fitted on the region score** (the faults the gallery shows): regions 65 -> 30, X 0.59 -> 0.59.
+- **B2 re-fitted on the region score** (the faults the gallery shows): regions 80 -> 70, X 1.04 -> 1.03.
+- **B4 re-fitted on the region score** (the faults the gallery shows): regions 39 -> 32, X 0.97 -> 0.96.
+- **The effects' noise bed doubles under a voiced part that pulses only some tones** (the robots: the chip's valleys between harmonics sit 10-15 dB over ours, not growing with the harmonic - a floor, not jitter): all 55 effects X sum 51.25 -> 51.07, regions 2064 -> 2043; R3 R4 R5 R7 R8 R9 C7 better, none worse beyond 0.006. Under every voiced part it was worse (A1 A2 A3 M2 C0 C2 C4 C3).
+- **LE before another sound runs 5 ms longer than alone**: its solo takes want 110 ms, the phrase items 115 (88 items 312.0 -> 309.4, none worse).
+- **D5 re-fitted on the region score** (the faults the gallery shows): regions 11 -> 8, X 0.77 -> 0.76.
+- **EK re-fitted on the region score** (the faults the gallery shows): regions 12 -> 8, X 0.79 -> 0.73.
+- **D4 re-fitted on the region score** (the faults the gallery shows): regions 12 -> 9, X 0.80 -> 0.80.
+- **IYUW re-fitted on the region score** (the faults the gallery shows): regions 63 -> 3, X 1.19 -> 0.92.
+- **GO re-fitted on the region score** (the faults the gallery shows): regions 13 -> 6, X 1.00 -> 0.96.
+- **AX re-fitted on the region score** (the faults the gallery shows): regions 14 -> 4, X 1.00 -> 0.97.
+- **EG re-fitted on the region score** (the faults the gallery shows): regions 14 -> 12, X 0.83 -> 0.81.
+- **IY straight after another sound runs 5 ms shorter than from silence**: its solo takes want 130 ms, the phrase items 125 (88 items 321.5 -> 311.3, 7 better, none worse).
+The re-evaluation release: every release since 0.1.0 scored the same way found the score itself at fault. X could place a
+voiced sound one voice period off (the same sound scored 0.90 or 1.14 by a 1 ms change of its fade), and phrases that
+open on a hiss were measured with the hiss outside their window (SE P1 AW: 15641 -> 129). With both fixed, several 0.5.x
+choices turned out wrong and are undone or re-fitted below. Against 0.4.3, scored the corrected way: allophones 0.98 ->
+0.89, effects 1.20 -> 0.95, joins 481 -> 306 (the published 1437 -> 513 was the faulty measure).
+
+- **KO re-fitted on the region score** (the faults the gallery shows): regions 15 -> 11, X 0.80 -> 0.79.
+- **OD re-fitted on the region score** (the faults the gallery shows): regions 18 -> 16, X 0.79 -> 0.77.
+- **WH re-fitted on the region score** (the faults the gallery shows): regions 19 -> 16, X 0.75 -> 0.73.
+- **HO re-fitted on the region score** (the faults the gallery shows): regions 19 -> 15, X 0.86 -> 0.71.
+- **FF re-fitted on the region score** (the faults the gallery shows): regions 20 -> 16, X 0.79 -> 0.77.
+- **LE re-fitted on the region score** (the faults the gallery shows): regions 20 -> 3, X 0.96 -> 0.93.
+- **TH re-fitted on the region score** (the faults the gallery shows): regions 20 -> 6, X 0.74 -> 0.73.
+- **PO re-fitted on the region score** (the faults the gallery shows): regions 20 -> 12, X 1.07 -> 1.04.
+- **DE re-fitted on the region score** (the faults the gallery shows): regions 21 -> 15, X 1.20 -> 1.19.
+- **IY re-fitted on the region score** (the faults the gallery shows): regions 22 -> 5, X 0.89 -> 0.88.
+- **SE re-fitted on the region score** (the faults the gallery shows): regions 27 -> 22, X 0.93 -> 0.93.
+- **ED re-fitted on the region score** (the faults the gallery shows): regions 22 -> 15, X 0.79 -> 0.78.
+- **SO re-fitted on the region score** (the faults the gallery shows): regions 24 -> 24, X 0.72 -> 0.71.
+- **EB re-fitted on the region score** (the faults the gallery shows): regions 24 -> 19, X 1.11 -> 1.05.
+- **DO re-fitted on the region score** (the faults the gallery shows): regions 26 -> 20, X 1.09 -> 1.09.
+- **SO re-fitted on the region score** (the faults the gallery shows): regions 31 -> 25, X 0.72 -> 0.72.
+- **OB re-fitted on the region score** (the faults the gallery shows): regions 33 -> 27, X 1.08 -> 1.02.
+- **R9 re-fitted on the region score** (the faults the gallery shows): regions 51 -> 42, X 1.09 -> 1.08.
+- **R7 re-fitted on the region score** (the faults the gallery shows): regions 64 -> 57, X 1.40 -> 1.37.
+- **B2 re-fitted on the region score** (the faults the gallery shows): regions 94 -> 80, X 1.04 -> 1.04.
+- **A0: its pulse rate falls faster at the end** (the user's note: every line slopes down sharply at 300-340 ms): regions 72 -> 67, X 0.97 -> 0.98.
+- **A7: its lines start lower and bend up** (the user's note; lines 6.38 -> 2.78): regions 138 -> 129, X 0.99 -> 0.99.
+- **C7 re-fitted on the region score** (the faults the gallery shows): regions 89 -> 56, X 1.07 -> 1.08.
+- **R7 re-fitted on the region score** (the faults the gallery shows): regions 79 -> 65, X 1.39 -> 1.39.
+- **C4 re-fitted on the region score** (the faults the gallery shows): regions 43 -> 28, X 1.10 -> 1.00.
+- **C3 re-fitted on the region score** (the faults the gallery shows): regions 49 -> 31, X 0.83 -> 0.76.
+- **IH re-fitted on the region score** (the faults the gallery shows): regions 48 -> 8, X 0.99 -> 0.93.
+- **SE re-fitted on the region score** (the faults the gallery shows): regions 34 -> 27, X 0.97 -> 0.93.
+- **SE re-fitted on the region score** (the faults the gallery shows): regions 45 -> 34, X 0.96 -> 0.97.
+- **GE re-fitted on the region score** (the faults the gallery shows): regions 19 -> 8, X 0.96 -> 0.91.
+- **D7 re-fitted on the region score** (the faults the gallery shows): regions 25 -> 20, X 0.70 -> 0.70.
+- **A6 re-fitted on the region score** (the faults the gallery shows): regions 26 -> 16, X 0.94 -> 0.88.
+- **A6 re-fitted on the region score** (the faults the gallery shows): regions 32 -> 26, X 0.95 -> 0.94.
+- **AY re-fitted on the region score** (the faults the gallery shows): regions 33 -> 16, X 1.01 -> 0.99.
+- **NGO re-fitted on the region score** (the faults the gallery shows): regions 36 -> 20, X 1.02 -> 0.98.
+- **AXUW re-fitted on the region score** (the faults the gallery shows): regions 38 -> 20, X 1.17 -> 1.17.
+- **C9 re-fitted on the region score** (the faults the gallery shows): regions 34 -> 22, X 1.39 -> 1.40.
+- **JH re-fitted on the region score** (the faults the gallery shows): regions 49 -> 23, X 0.91 -> 0.83.
+- **A5 re-fitted on the region score** (the faults the gallery shows): regions 52 -> 34, X 0.62 -> 0.62.
+- **TS re-fitted on the region score** (the faults the gallery shows): regions 52 -> 25, X 0.93 -> 0.90.
+- **AXRR re-fitted on the region score** (the faults the gallery shows): regions 54 -> 9, X 0.79 -> 0.77.
+- **C5 re-fitted on the region score** (the faults the gallery shows): regions 178 -> 143, X 0.95 -> 0.96.
+- **C1 re-fitted on the region score** (the faults the gallery shows): regions 56 -> 47, X 0.95 -> 0.94.
+- **B9 re-fitted on the region score** (the faults the gallery shows): regions 87 -> 45, X 1.10 -> 1.00.
+- **IYEH re-fitted on the region score** (the faults the gallery shows): regions 68 -> 5, X 0.95 -> 0.95.
+- **C6 re-fitted on the region score** (the faults the gallery shows): regions 75 -> 54, X 1.11 -> 1.11.
+- **C0 re-fitted on the region score** (the faults the gallery shows): regions 70 -> 40, X 1.07 -> 1.05.
+- **C0 re-fitted on the region score** (the faults the gallery shows): regions 95 -> 69, X 1.09 -> 1.07.
+- **M0 re-fitted on the region score** (the faults the gallery shows): regions 99 -> 48, X 0.92 -> 0.83.
+- **PE: its low pulse decays over 50 ms (was 35)**: regions 10 -> 10, X 1.07 -> 1.05.
+- **C2 re-fitted on the region score** (the faults the gallery shows): regions 110 -> 62, X 0.92 -> 0.86.
+- **136 AW fades out over 35 ms** (its own takes: 0.92 -> 0.90), **25 after a pause, a slowed sound, LE or AYWW**
+  (the chip ends it sharper there: Slow NE AW, Slow AY AW, AYWW AW, LE AW 19-30 % closer on at least one unit; the two
+  units disagree on TT P1 AW, AW P1 AW, SE P1 AW). **EH** takes the default fade-in (0.84 -> 0.81), **AYWW** 60 ms
+  (1.01 -> 0.97).
+- **The effects' output through a 40 Hz high-pass**: on all four takes nothing sounds under ~50 Hz, where B2 A0 C7 R5 R7
+  were 15-22 dB up (the AtariVox's output stage). Effects' mean X unchanged.
+- **218 A8's lines as the chip draws them**: both rising tones start from ~150 Hz, not 210-260, and the first sound's
+  upper line bends down to ~520 Hz at its end. Regions 157 -> 117, X 1.08 -> 1.05.
+- **217 A7's parts smoothed**: a 5 ms part at full level and level jumps between parts drew broadband stripes the chip
+  hasn't; its opening burst 8 dB quieter. Regions 190 -> 143, X 1.00 -> 0.99.
+- **235 C5 re-fitted on the region score**, its second part's low tone dropped (not on the chip there): regions 200 -> 169,
+  X 0.96 -> 0.96.
+- **214 A4 is pulsed at 65 Hz from 105 to ~190 ms**: on all four takes a low block (energy ~130 Hz, stripes every 15.3 ms)
+  runs under the sweep there; a voiced 130 Hz formant at 65 Hz (Pitch-23) beside the plain sweeping tones (flag o), its
+  second part split at 105 ms. Regions 278 -> 65, X 0.97 -> 0.99.
+- **252 M0's noise through its resonance twice**, the band twice as wide: the chip's band falls away steeply each side,
+  where one stage left a dark block under 1 kHz (by picture); X 0.93 -> 0.92.
+- **PE and PO's low pulse swells in over 25 ms, not 10, and PO's pulse runs at 62 Hz, not 53 (it fell a cycle behind the chip's by 60 ms), from 12 ms after a 4 ms closure, with a 45 ms decay**, judged by picture:
+  X barely sees the band (under the recordings' hum). On the chip the pulse starts ~15 ms after the noise and builds to its
+  deepest at 40-60 ms; ours started at ~30 ms and peaked at once.
+- **199 PO back on its own timing** (closure 8 ms, low pulse at 28): 0.5.3's shared PE/PO timing was chosen on the
+  slipping alignment; aligned on the whole sound PO is 1.10 with it, 1.06 without. PE keeps the 15/25 (1.05 against 1.10).
+- **Release fades (rr) re-fitted on the same alignment**: BE 1.12 -> 1.04, TS 0.99 -> 0.93, LO 0.86 -> 0.80, AYWW 1.06 -> 1.01;
+  no phrase changes. AW's (35 better alone) moves its phrases both ways (-55 % to +44 %) and stays.
+- **Fade-ins (aa) re-fitted on an alignment that can't slip a pitch period** (0.5.0's were chosen on one that could):
+  IY 0.94 -> 0.89, IH 0.91 -> 0.87, OW 0.91 -> 0.88, IYRR 0.79 -> 0.71, EYRR 0.86 -> 0.78, AWRR 0.89 -> 0.82, EYIY 0.91 -> 0.84, OWIY 0.87 -> 0.84, OHIH 0.91 -> 0.81, IYEH 1.05 -> 1.01, IYUW 0.96 -> 0.92. Phrases 313.2 -> 311.9, none further. AYWW and EH keep theirs (their phrases got worse).
+- **158 IYEH 10 % longer** (225 -> 247.5 ms: 1.01 -> 0.97) and **134 UX 2 dB louder** (0.96 -> 0.94); phrases within 2 %.
+- **221 B1, 224 B4, 225 B5, 230 C0, 252 M0, 254 M2, one part each**: B1 0.97 -> 0.94, B4 0.99 -> 0.96, B5 0.91 -> 0.87,
+  C0 1.13 -> 1.10, M0 0.97 -> 0.93, M2 0.62 -> 0.60.
+- **202 R2, 205 R5, 211 A1, one part each**: R2's first part 2 dB louder (1.04 -> 1.01), R5's second part 10 % shorter
+  (1.15 -> 1.13), A1's first part 2 dB quieter (0.62 -> 0.60).
+- **206 R6, 207 R7, 239 C9, one part each**: R6's first part 2 dB louder (1.30 -> 1.26), R7's first part 10 % shorter
+  (1.42 -> 1.39), C9's first part 10 % longer (1.42 -> 1.40); further either way scored worse.
+- **171 BO's bar 2 dB louder** (bl -10 -> -6): 1.20 -> 1.18; no phrase changes. **B0** fades out over 10 ms
+  (0.79 -> 0.77).
+- **Effects' own fade-ins and fade-outs re-fitted on the corrected score**: a robot sound voiced from its first part
+  (R2-R4, R6-R9) fades in over 5 ms (R2 1.08 -> 1.04, R4 1.20 -> 1.16, R6 1.34 -> 1.30, R8 1.21 -> 1.18); B5 B8 B9 R8
+  fade out over 35 ms (B5 0.96 -> 0.91, B8 0.95 -> 0.91); B0 starts at once (0.88 -> 0.79); D0 fades out over 10 ms
+  (0.91 -> 0.86); D8 fades in over 2 (0.80 -> 0.78). No effect further.
+- **The 58-tick voicing fall for every vowel again.** 0.5.1 gave EY UX UH AW a 72-tick fall; X then chose it on an
+  alignment that can lock a voiced sound a pitch period off. Aligned on the whole sound: AW 1.07 -> 0.92, UH 1.04 -> 0.92,
+  EY 1.04 -> 0.93, UX 1.03 -> 0.96, nothing else changes; phrases 321.7 -> 313.2, none further.
+- **A true nasal after a sound moves in 5 ms, not 25** (MM NE NO NGE NGO): on both units the vowel's F1 is gone from
+  the nasal at once; ours carried AW's ~700 Hz 10-29 dB into MM. AW MM -23..-26 %, IY MM -13 %, Man Goes Down P1 -8..-10 %;
+  phrase cost 328.5 -> 321.7, nothing further. LE LO WW RR (stored with the nasals) keep 25 ms.
+- **187 TT before a vowel is 3 dB louder** (pauses and controls between allowed): on both units the burst sits at
+  -24..-29 dB against the vowel, ours at -30..-34. TT alone unchanged; phrase cost 378.9 -> 328.5 (TT P4 AW -78 % on
+  unit B, Slow TT AW -56 % and -27 %); TT AW +4 % on unit A where unit B's is -20 %.
+- **136 AW starts fast before an unvoiced sound or LE** (a 20 ms fade-in, where its own 45 ms and the 35 ms default
+  applied; AW LE 17-31 % and AW SE 16 % closer on top of the figures here): on both units AW TT and AW LE are 7-18 dB louder than ours
+  at 400-800 Hz over AW's first 20-40 ms, where AW's 45 ms fade-in held it down; before a vowel, RR or MM the fade-in
+  fits. AW TT -39 %, AW LE -14 % and -19 %, phrase cost 385.0 -> 378.9 (no lag fit), nothing further than +2 %.
+
 ### 0.5.3 (2026-11-16; technical manual 1.21)
 
 Allophones mean X 0.93 -> 0.92 (0.4.3: 1.07), effects 0.97, joins 514 -> 513 (0.4.3: 1437). Two new mechanisms: nasals

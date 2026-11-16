@@ -60,7 +60,7 @@
  * arithmetic assumes 8000: its tones come out Fs/8000 sharp on both units, and
  * the voicing period is floor(8000 / Pitch) + 1 ticks */
 #define RATE 8026.0
-#define LP_RISE 10.0 /* ms: the low pulse's rise (PE PO) */
+#define LP_RISE 25.0 /* ms: the low pulse's rise (PE PO; 0.5.4: 25, by picture on both: the chip's low band builds to its deepest ~25 ms after it starts) */
 #define NOMINAL 8000.0
 #ifndef NHP_FC
 #define NHP_FC 400.0 /* an allophone's noise high pass, Hz */
@@ -124,6 +124,7 @@
 #define FX_BED_POLE 0.5 /* 0.5.0 */
 #endif
 #ifndef FX_DIST2
+#define FX_OUT_HP 40.0 /* Hz: 0.5.4, the effects' output high-pass */
 #define FX_DIST2 0.07 /* 0.5.0: the effects' output stage, second order (fitted on the effects, 2026-11-14) */
 #endif
 #ifndef GLIDE_BED
@@ -275,6 +276,7 @@ struct sj_chip {
   /* the controls */
   uint8_t volume, speed, pitch, bend, repeat;
   bool fast, slow, stress, relax;
+  bool prev_slow; int prev_code; /* the sound before: slowed, and which */
   bool joined;        /* the last sound ran straight into the next: no ramps at that join */
   bool after_pause;    /* a pause code played since the last sound */
   bool last_nge;       /* the last sound played was NGE */
@@ -321,13 +323,17 @@ struct sj_chip {
   double vbuzz; double bzbuf[1024]; int bzpos, bzclk; /* FX_BUZZ: the source's recent past, for the comb; ticks to the next click */
   int neq; double eqc[3][5], eqz[3][2]; /* the playing effect's peaking filters (fxeq): b0 b1 b2 a1 a2, and their state */
   double nz[2]; /* the noise resonator's two delays */
+  double nz2[2]; /* 0.5.4: its second stage (M0) */
+  double fxhpz;   /* 0.5.4: the effects' output high-pass state */
   double nhp[4]; /* an allophone's noise high pass: input and output of each of its two stages */
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   bool vstarted; /* 0.5.0 */
+  int vcount; /* 0.5.4: voicing periods since the voice started */
   bool aplain; /* 0.5.0: the playing allophone is a plain vowel (IY..UW) */
   double wander; /* an FX_WANDER part's slow pitch drift, a fraction */
   double vprev; /* the output's last tick */
   double bed; /* the output's change per tick, smoothed, for the effects' bed */
+  bool vbed;      /* 0.5.4: a voiced effect part (not all-tones, not smoothed) is playing: the bed doubles */
   double bedhold; /* the signal's magnitude, peak-held (decay 0.02 s): the bed follows it, not the instant (227 B7's quiet passage holds -30 dB on the chip) */
   double bscale; /* the playing effect's own bed scale (fxs bs; 1: the common) */
   double bedk; /* 0.5.0: this tick's bed against the fades (0: 1) */
@@ -431,6 +437,7 @@ static void reset_controls(sj_chip *sj) {
   sj->bend = SJ_DEFAULT_BEND;
   sj->repeat = 0;
   sj->fast = sj->slow = sj->stress = sj->relax = false;
+  sj->prev_slow = false; sj->prev_code = -1;
 }
 
 void sj_power_on(sj_chip *sj) {
@@ -1038,8 +1045,19 @@ static frame allo_frame(const allophone *a, bool second, double bend) {
  * stop hums through it on its first formant */
 static int next_sound(const sj_chip *sj, int i);
 static bool slow_before_next(const sj_chip *sj, int i);
+static int peek(const sj_chip *sj, int i);
 static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, double bend) {
-  const frame tgt = allo_frame(a, false, bend);
+  frame tgt = allo_frame(a, false, bend);
+  float tt_g = 1.0f;
+  /* 0.5.4: TT before a vowel, pauses and controls between allowed, is 3 dB louder (both units: VoxProbe 4 and 8, TT AW
+   * TT P4 AW Slow TT AW, the burst at -24..-29 dB against the vowel where ours was -30..-34; TT alone unchanged) */
+  if (a - allophones == 63) {
+    int i = sj->executing, c = -1;
+    while (i < sj->count) { c = peek(sj, i); if (c >= 128) break; if (c <= 6 || c == 7 || c == 8) { i++; c = -1; continue; } if (c == 20 || c == 21 || c == 22 || c == 23 || c == 26) { i += 2; c = -1; continue; } break; }
+    if (c >= 128 && c <= 199 && (allophones[c - 128].kind == K_VOWEL || allophones[c - 128].kind == K_GLIDE))
+      tt_g = 1.4125375f; /* +3 dB */
+  }
+  tgt.lv *= tt_g;
   frame bar = from, gone = silent_frame();
   if (a->kind == K_VSTOP) {
     gone.f[0] = tgt.f[0];
@@ -1168,8 +1186,11 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
     sj->ramp_seg = sj->nseg;
     add_segment(sj, TICKS(NASAL_RAMP), low, tgt, true);
     add_segment(sj, ticks - TICKS(NASAL_RAMP), tgt, allo_frame(a, true, bend), true);
-  } else
-    add_segment(sj, ticks, tgt, allo_frame(a, true, bend), a->kind == K_VSTOP);
+  } else {
+    frame t2 = allo_frame(a, true, bend);
+    t2.lv *= tt_g;
+    add_segment(sj, ticks, tgt, t2, a->kind == K_VSTOP);
+  }
   return closure + ticks;
 }
 
@@ -1178,11 +1199,11 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
  * copies run on seamlessly, measured on ZZ x10 and EYIY x5). a stop's copy is
  * the stop again, closure and release (VoxProbe 4 and 7, both units: the 12
  * voiced stops repeated 2 to 5 times, each copy a gap then a burst) */
-static int copy_segments(sj_chip *sj, const allophone *a) {
+static int copy_segments(sj_chip *sj, const allophone *a, bool slowed) {
   const double bend = bend_hz(sj);
   const frame tgt = allo_frame(a, false, bend);
   sj->nseg = 0;
-  const int ticks = TICKS((a->cp * MS_STEP + T.copy_extra) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->speed > 115 && !sj->slow ? speed_step(sj) : speed_factor(sj, false)));
+  const int ticks = TICKS((a->cp * MS_STEP + T.copy_extra) * ((a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->speed > 115 && !sj->slow ? speed_step(sj) : speed_factor(sj, false)) * (slowed ? 1.29 : 1.0)); /* a slowed vowel joined after itself (see play's again) */
   if (a->kind == K_STOP || a->kind == K_VSTOP) {
     /* the copy opens on a closure, then the release; cp is the whole copy, measured from one copy's onset to the next.
      * the closure is silent (VoxProbe 4 and 7, both units: GE, GO and the final stops dip 27-35 dB between copies,
@@ -1409,7 +1430,9 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   case K_VOWEL:
   case K_NASAL:
   case K_VFRIC: {
-    int tr = TICKS(T.transition);
+    /* 0.5.4: a true nasal (MM NE NO NGE NGO) after a sound takes 5 ms to move, not 25 (VoxProbe 4, both units: AW MM and
+     * IY MM, the vowel's F1 gone from the nasal at once on the chip; ours carried AW's ~700 Hz 10-29 dB into MM) */
+    int tr = TICKS(a - allophones >= 12 && a - allophones <= 16 && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f ? 5.0 : T.transition);
     /* 0.5.0: a voiced fricative after a pause opens with 40 ms of its noise alone before the voicing (Man Goes Down P2's
      * EYIY P4 DH, both units: ~30 ms of faint frication before the voicing, 10 alone) */
     if (a->kind == K_VFRIC && sj->after_pause) {
@@ -1539,6 +1562,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   sj->last_nge = a - allophones == 15;
   sj->after_velar = a - allophones == 50; sj->after_vstop = a->kind == K_VSTOP; sj->after_velar2 = a - allophones == 50 || a - allophones == 51;
   sj->after_kvelar = a - allophones == 66;
+  const bool was_pause = sj->after_pause;
   sj->after_pause = false;
   const bool nasal_ramp = sj->ramp_seg >= 0;
   /* an unvoiced fricative starts and stops at once (HE HO WH FF SE SO SH TH, both units, background allowed for: rise
@@ -1558,7 +1582,13 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     sj->attack = 0; /* a sound with an onset starts at once, the onset at full level */
   if (a->kind == K_VSTOP && a->ba && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f)
     sj->attack = TICKS(a->ba); /* the bar fades in (both units: 175 DO's bar quiet for its first ~30 ms) */
-  if (a->aa)
+  /* 0.5.4: AW starts fast before an unvoiced sound or LE (both units, VoxProbe 4: AW TT and AW LE 7-18 dB under the
+   * chip at 400-800 Hz over AW's first 20-40 ms with its 45 ms fade-in; before a vowel, RR or MM the fade-in fits) */
+  const int nx = next_sound(sj, sj->executing);
+  const bool aw_fast = sj->aidx == 8 && nx >= 128 && nx <= 199 && (allophones[nx - 128].kind == K_FRIC || allophones[nx - 128].kind == K_STOP || allophones[nx - 128].kind == K_AFFR || nx == 145);
+  if (aw_fast)
+    sj->attack = TICKS(20.0); /* 0.5.4: a 20 ms fade-in, not its own 45 or the 35 ms default (AW LE 17-31 %, AW SE 16 % closer; 0 split the units: AW LE -81 % on B, +89 % on A) */
+  if (a->aa && !aw_fast)
     sj->attack = TICKS(a->aa * (sj->pitch > 88 ? 88.0 / sj->pitch : 1.0)); /* 0.5.0: shortened above Pitch 88 only, never lengthened below it (Man Goes Down P2's IYUW at Pitch 40 is full from its first pulse) */ /* a sound's own fade-in, in pitch periods: aa ms at Pitch 88 (0.5.0, VoxProbe 7 'pitch 150 then AW/IY/OW', both units: 5-17 % closer with the ramp shortened by 88/150; the structure loop's aa: e.g. 185 WH starting ~5 ms early) */
   if ((a->kind == K_STOP || a->kind == K_VSTOP || a->kind == K_AFFR) && sj->nseg > 1)
     for (int k = 0; k < sj->nseg - 1; k++)
@@ -1595,6 +1625,16 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     sj->seg[sj->nseg - 1].to.na *= a->nd / 256.0f;
   if (a->rr)
     sj->release = TICKS(a->rr); /* a sound's own fade-out (SE, SO: the chip fades over most of the sound) */
+  /* 0.5.4: AW's own fade-out is 35 ms (its solo takes); after a pause, a slowed sound, LE or AYWW the chip ends it over 25
+   * (Slow NE AW, Slow AY AW, AYWW AW, LE AW, TT P1 AW: 13-30 % closer on at least one unit) */
+  if (sj->aidx == 8 && (was_pause || sj->prev_slow || sj->prev_code == 145 || sj->prev_code == 163))
+    sj->release = TICKS(25.0);
+  /* 0.5.4: IY straight after another sound runs 5 ms shorter than from silence (its solo takes want 130 ms; in the phrase
+   * items 125: 88 items 321.5 -> 311.3, 7 better, none worse; 10 ms overshoots) */
+  if (sj->aidx == 0 && !was_pause && sj->prev_code >= 128 && sj->nseg > 0 && sj->seg[sj->nseg - 1].ticks > TICKS(5.0)) {
+    sj->seg[sj->nseg - 1].ticks -= TICKS(5.0);
+    sj->stotal -= TICKS(5.0);
+  }
   /* the copies of a Repeat follow on; the level ramps once, over the whole */
   sj->copies = sj->repeat > 1 ? sj->repeat - 1 : 0;
   sj->copy_of = (int)(a - allophones);
@@ -1602,7 +1642,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     const int nseg = sj->nseg, total = sj->stotal;
     segment saved[MAX_SEGMENTS];
     memcpy(saved, sj->seg, sizeof saved);
-    sj->stotal = total + sj->copies * copy_segments(sj, a);
+    sj->stotal = total + sj->copies * copy_segments(sj, a, false);
     memcpy(sj->seg, saved, sizeof saved);
     sj->nseg = nseg;
   }
@@ -1695,14 +1735,16 @@ static void next_command(sj_chip *sj) {
        * it (VoxProbe 12, 2026-11-05, both units, 2600 and Stella: AY AY 208 ms, AW AW AW 255, UX UX UX 260 - what
        * Repeat 2 / 3 makes, 214 / 268 / 259 - not two whole sounds, 272 / 316 / 329; a Pitch or Speed between the
        * copies doesn't change it: AW Pitch 88 AW Pitch 88 AW 256) */
-      /* a Slow on the second breaks it: two whole sounds (2026-11-08, VoxProbe 13 section 10, all four takes: AW Slow SE
-       * Slow SE UX 464 ms, 435 as a copy) */
-      const bool again = sj->joined && sj->copy_of == code - 128 && sj->repeat <= 1 && !sj->slow;
+      /* a Slow on the second breaks it, two whole sounds (2026-11-08, VoxProbe 13 section 10, all four takes: AW Slow SE
+       * Slow SE UX 464 ms, 435 as a copy), except on a vowel: that stays a copy, stretched as a slowed vowel (2026-11-16,
+       * VoxProbe 15 section 4, all four takes: AW AW Pitch n Slow AW AW 20-35 ms over AW AW Pitch n AW AW; as two whole
+       * sounds ours read +105) */
+      const bool again = sj->joined && sj->copy_of == code - 128 && sj->repeat <= 1 && (!sj->slow || allophones[code - 128].kind == K_VOWEL);
       const bool prev_nasal = sj->last_nasal;
       const bool prev_kind_vowel = sj->last.a[0] > 0.0f && !sj->last_nasal;
       play_allophone(sj, &allophones[code - 128]);
       if (again) {
-        sj->stotal = copy_segments(sj, &allophones[code - 128]);
+        sj->stotal = copy_segments(sj, &allophones[code - 128], sj->slow);
         sj->cur = 0;
         sj->tick = 0;
       }
@@ -1756,6 +1798,12 @@ static void next_command(sj_chip *sj) {
       }
       if (next >= 0 && sj->nseg > 0) {
         segment *l = &sj->seg[sj->nseg - 1];
+        /* 0.5.4: LE before another sound runs 5 ms longer than alone (its solo takes want 110 ms, the phrase items 115:
+         * 88 items 312.0 -> 309.4, none worse) */
+        if (code == 145 && next < 200) {
+          l->ticks += TICKS(5.0);
+          sj->stotal += TICKS(5.0);
+        }
         /* ASSUMPTION (2026-11-08, VoxProbe 13 AW Slow TT AW, both units by picture: aspiration ~50 ms where ours had ~25,
          * the AW after it 30-40 ms later than ours; Slow TT alone doesn't change, NE Slow TT IHWW is already long): a
          * slowed unvoiced stop after a sound other than a nasal, followed at once by a voiced sound, releases 40 ms
@@ -1928,8 +1976,10 @@ static void next_command(sj_chip *sj) {
 /* the sound has ended: retire its command, clear the one-shot modifiers */
 static void finish_sound(sj_chip *sj) {
   const int code = peek(sj, 0);
-  if (code >= 128)
+  if (code >= 128) {
+    sj->prev_slow = sj->slow; sj->prev_code = code;
     sj->fast = sj->slow = sj->stress = sj->relax = false;
+  }
   sj->head = (sj->head + sj->executing + sj->ahead) % SJ_BUFFER_SIZE;
   sj->count -= sj->executing + sj->ahead;
   sj->executing = 0;
@@ -2013,7 +2063,7 @@ static double output_stage(sj_chip *sj, double v, bool voice) {
         sj->bed += FX_BED_POLE * (v - sj->vbuzz - sj->vprev - sj->bed);
         v += FX_SLEW * sj->bscale * 2.0 * r * sj->bed * (sj->bedk > 0.0 ? sj->bedk : 1.0);
         sj->bedk = 0.0;
-        sj->bedhold = fabs(v) > sj->bedhold ? fabs(v) : sj->bedhold * 0.993770; v += 0.024 * 2.0 * r * sj->bedhold; /* a bed with the signal itself, not its slope (low tones: A5 A0 A8 R0); held 20 ms (227 B7) */
+        sj->bedhold = fabs(v) > sj->bedhold ? fabs(v) : sj->bedhold * 0.993770; v += (sj->vbed ? 0.048 : 0.024) * 2.0 * r * sj->bedhold; /* 0.5.4: doubled under a voiced part that pulses only some tones (the robots: the chip's valleys between harmonics 10-15 dB over ours; all 55 effects X sum 51.25 -> 51.07, regions 2064 -> 2043, R3 R4 R5 R7 R8 R9 C7 better, none worse beyond 0.006); a bed with the signal itself, not its slope (low tones: A5 A0 A8 R0); held 20 ms (227 B7) */
       } else {
         sj->bed += BED_POLE * (v - sj->vbuzz - sj->vprev - sj->bed);
         v += SLEW * sj->bscale * 2.0 * r * sj->bed;
@@ -2179,7 +2229,14 @@ static double tick(sj_chip *sj) {
           sj->period++;
         }
       sj->ptick = sj->period;
-      if (!sj->vstarted && !sj->effect && sj->aplain && sj->aidx != 1 && sj->aidx != 7) sj->ptick += 12; /* 0.5.1: not IH OH */ /* 0.5.0: the first voicing period after silence is longer (every vowel, 4 takes: pulses at 4 16 28 40) */
+      /* 0.5.4: a plain vowel's long period is its second after the voice starts, not a delay before the first (both units:
+       * pulses -23, -7, -1 dB, gaps 10.7 12.3 11.4 ms on AW, 11.5 12.9 11.8 on EH; the 12 ticks there take all 12 plain
+       * vowels' X 0.906 -> 0.883, every one better, IH and OH included) */
+      if (!sj->vstarted)
+        sj->vcount = 0;
+      if (!sj->effect && sj->aplain && ++sj->vcount == 3)
+        sj->ptick += 12;
+      /* (0.5.0-0.5.3: the 12 ticks delayed the first pulse; 0.5.1 left out IH OH) */
       sj->vstarted = true;
     }
     /* an effect's third tone is a plain tone beside the voice */
@@ -2195,7 +2252,7 @@ static double tick(sj_chip *sj) {
     case FX_TRI: env = x; break; /* VoxProbe 7, both units: a rising ramp, then straight back to nothing */
     case FX_SQUARE: env = x < 0.5 ? 1.0 : 0.0; break;
     default:
-      env = age < T.env_rise ? (double)age / T.env_rise : 1.0 - (double)(age - T.env_rise) / (!sj->effect && sj->aplain && (sj->aidx == 2 || sj->aidx == 6 || sj->aidx == 10 || sj->aidx == 8) ? 72.0 : T.env_fall) /* 0.5.1: the 72-tick fall on EY UX UH AW only, 58 on the other plain vowels (per vowel, X over every allophone: 11 closer, none worse) */; /* 0.5.0: a plain vowel's voicing falls over 72 ticks (11 vowels closer, nothing else changes) */
+      env = age < T.env_rise ? (double)age / T.env_rise : 1.0 - (double)(age - T.env_rise) / T.env_fall; /* 0.5.4: the 58-tick fall for every vowel again; 0.5.1's 72-tick fall on EY UX UH AW was chosen on X's period-locked alignment (aligned on the whole sound: AW 1.07 -> 0.92, UH 1.04 -> 0.92, EY 1.04 -> 0.93, UX 1.03 -> 0.96; phrases 321.7 -> 313.2) */
       if (env < 0.0)
         env = 0.0;
     }
@@ -2228,6 +2285,7 @@ static double tick(sj_chip *sj) {
   } else {
     sj->ptick = 0;
     sj->vstarted = false;
+    sj->vcount = 0;
     sj->venv = 1.0;
     /* FX_WANDER: 252 M0's tone drifts about +-1.5 % over tens of ms on both units: white noise through a one-pole low-pass */
     sj->wander += (WANDER_DEPTH / (0.57735 * sqrt(WANDER_RATE / 2.0)) * rndj(sj) - sj->wander) * WANDER_RATE; /* the input scaled so the drift's rms is WANDER_DEPTH */
@@ -2288,9 +2346,17 @@ static double tick(sj_chip *sj) {
       sj->bzpos++;
       ex = (ex - 0.6 * old) * 0.8574929257125441 * 0.25; /* 1 / sqrt(1 + 0.6^2): notches dim, not black (user, C2); x0.25: the bands sit 12 dB under a noise band of the same byte, so the low levels the chip needs have fine steps (B7's were pinned at byte 2, still too bright) */
     }
-    const double y = g * ex + 2.0 * r * c * sj->nz[0] - r2 * sj->nz[1];
+    double y = g * ex + 2.0 * r * c * sj->nz[0] - r2 * sj->nz[1];
     sj->nz[1] = sj->nz[0];
     sj->nz[0] = y;
+    /* 0.5.4: a wandering part's noise (252 M0) through the resonance twice: the chip's band falls away steeply each side
+     * (by picture, both units: nothing of it under 1 kHz, where one stage put a dark block; X 0.93 -> 0.92 with the band x2) */
+    if (sj->effect && (s->flags & FX_WANDER)) {
+      const double y2 = g * y + 2.0 * r * c * sj->nz2[0] - r2 * sj->nz2[1];
+      sj->nz2[1] = sj->nz2[0];
+      sj->nz2[0] = y2;
+      y = y2;
+    }
     if (s->flags & FX_ALL)
       lvl *= sj->venv; /* both units: C0 and M2 are silent between their pulses */
     /* an allophone's noise is high-passed twice at NHP_FC (every unvoiced fricative, both units, the VoxRecord solo
@@ -2364,14 +2430,22 @@ static double tick(sj_chip *sj) {
     sj->eqz[k][1] = c[2] * v - c[4] * y;
     v = y;
   }
+  sj->vbed = (s->flags & FX_VOICED) && !(s->flags & (FX_ALL | FX_SMOOTH));
   v = output_stage(sj, v, s->voiced && !(s->flags & (FX_VOICED | FX_PULSED)));
+  /* 0.5.4: the effects' output through a 40 Hz high-pass after the output stage (B2 A0 C7 R5 R7, all four takes: nothing under ~50 Hz on the
+   * chip where ours was 15-22 dB up - the AtariVox's output stage; effects' mean X unchanged) */
+  if (sj->effect) {
+    const double k = exp(-2.0 * M_PI * FX_OUT_HP / RATE);
+    sj->fxhpz = k * sj->fxhpz + (1.0 - k) * v;
+    v -= sj->fxhpz;
+  }
 
   if (++sj->tick >= s->ticks) {
     sj->tick = 0;
     if (++sj->cur >= sj->nseg) {
       if (sj->copies > 0) {
         sj->copies--;
-        copy_segments(sj, &allophones[sj->copy_of]);
+        copy_segments(sj, &allophones[sj->copy_of], false);
         sj->cur = 0;
       } else
         finish_sound(sj);

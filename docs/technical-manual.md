@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.21, 2026-11-16.** The version rises with every change to what is known about the chip (new
+**Version 1.23, 2026-11-17.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -291,6 +291,11 @@ is the manual's Pitch 88: it is one of the twelve, which is why the default runs
 pulse. The gaps between harmonics sit 30-60 dB under them. The chip's voice has
 no jitter and no noise floor of its own.
 
+**The long period (library 0.5.4, 1.23).** After silence a plain vowel's second period is 12 ticks (1.5 ms) long, not
+its first: VoxProbe 15's solo takes (both units) give pulses at -23, -7, -1 dB with gaps 10.7, 12.3, 11.4 ms on AW and
+11.5, 12.9, 11.8 on EH; the faint first pulse is why the earlier 4 / 16 / 28 / 40 ms reading took the long period for a
+delayed start. All 12 plain vowels, IH and OH included: X 0.906 -> 0.883, every one better.
+
 ### 4.2 The pulse
 
 At the start of each period the formant oscillators restart at phase zero, and
@@ -472,6 +477,14 @@ Slow also lengthens the voiced stops by 4/3, Fast does not shorten them.
 *Open: under Slow, 155 AY runs about 20 ms longer than 4/3 gives; VoxProbe 13
 section 5 measures what part of a vowel Slow scales.*
 
+**Two sounds whose length depends on a neighbour (library 0.5.4, 1.23).** Against the 88 phrase items of VoxProbes 4, 7
+and 8 (both units), two sounds play a length in connected speech that their solo takes contradict, by one 5 ms step of
+the tables. 128 IY straight after another sound (not after a pause) runs 5 ms shorter than from silence: its solo takes
+want 130 ms (regions 5.4 against 14.7 at 125), the phrase items 125 (mean cost 321.5 -> 311.3, 7 items better, none
+worse; 10 ms overshoots). 145 LE before another sound runs 5 ms longer than alone: solo 110 ms, the phrase items 115
+(312.0 -> 309.4, none worse; after a sound instead: 311.5). A general rule (every sound, or every vowel, 4-7 ms shorter
+before a sound) was mixed and is not used, nor 132 AY shorter before a sound (the two units disagree).
+
 ### 6.2 Moving between sounds
 
 **Transition (measured).** The voice moves to each new sound's frame over
@@ -506,7 +519,12 @@ Small moves therefore look like the old rule; large ones (front against back vow
 before the boundary. An earlier reading that F1 and F2 move at different times was a tracker fault: LPC at 8 kHz
 swaps IY's F2 (~2180 Hz) for the next pole down. The constants were fitted on VoxProbe 13 section 5 together with
 VoxProbe 4 section 5 and VoxProbe 8 section 10; held out, VoxProbe 4's AW IY P 0.949 -> 0.013, IY AW 0.805 -> 0.029.
-Nasals keep the 25 ms rule (MM IY, IY MM, NE IY: the chip moves in ~10 ms).
+Nasals keep the 25 ms rule from silence (MM IY, IY MM, NE IY: the chip moves in ~10 ms). **After a sound a true nasal
+(MM NE NO NGE NGO) moves in 5 ms** (0.5.4; AW MM, IY MM: the vowel's F1 gone from the nasal at once on the chip; LE LO
+WW RR keep 25). **AW** starts with a 20 ms fade-in, not its own 45, before an unvoiced sound or LE (AW TT, AW LE: 7-18 dB louder
+in its first 20-40 ms on the chip), and fades out over 35 ms, or 25 after a pause, a slowed sound, LE or AYWW (AY AW, IY AW, NE AW 27-55 %
+closer; Slow NE AW, AYWW AW 19-30 %). **TT before a vowel**, pauses between allowed, is 3 dB louder than alone
+(TT P4 AW, Slow TT AW: the burst at -24..-29 dB against the vowel, ours -30..-34).
 
 **Nasals carry a noise part (measured, 0.5.3).** On all four takes of MM and NE the chip's consecutive pitch
 pulses match only 0.73-0.83 above 700 Hz (vowels 0.95-1.00; ours 0.94-0.97). Letting the formant sines run free
@@ -618,6 +636,10 @@ on its own frame at full level, without the attack ramp. Since 0.5.0 `og` is sig
 onset. 0.5.3 uses it on 156 NGO (15 ms 6 dB down, 1.15 -> 1.09) and 194 KE (5 ms 3 dB down, 0.84 -> 0.76); every
 other voiced stop and nasal was scanned (5-15 ms, -3 to -12 dB) and kept its own. 198 PE and 199 PO share one
 timing: a 15 ms closure with the low pulse at 25 ms (PE 1.11 -> 1.05, PO 1.09 -> 1.07).
+187 SE carries the same low pulse (library 0.5.4, 1.23): under 100 Hz its four takes show one damped swing of the same
+shape, sign and timing (+ at 3-11 ms, - at 15-19 ms after the onset), a deterministic column, not noise. Fitted to the
+waveform (the takes' median, -5..60 ms): 40, 50 Hz, from 3 ms, 14 ms decay, phase 0 (waveform error 0.89 -> 0.51;
+regions 26.9 -> 21.9). 189 SO's takes split two and two and 190 SH's disagree in sign, so neither carries one.
 
 **JH** is a silent closure of 30 ms (not Speed-scaled), then the voiced
 fricative held.
@@ -917,6 +939,13 @@ What the allophones gained, each measured on both units:
   EY UX UH AW's pulse falls over 72 ticks, not 58 (section 4.2). Library 0.5.0 applied both to all twelve plain vowels;
   measured per vowel on the corrected measure (1.19), each suits some vowels and hurts others: OH with 0.4.3's entry and
   neither rule scores 0.88, with both 1.15. 0.5.1 applies them per vowel (11 allophones closer, none further).
+  **Corrected in 0.5.4 (12.6):** that per-vowel choice, and the per-vowel attacks above, were made on a measure that could
+  place a voiced sound a voice period off. On the corrected measure the 72-tick fall is worse for all four vowels and is
+  gone (AW 1.07 -> 0.92, UH 1.04 -> 0.92, EY 1.04 -> 0.93, UX 1.03 -> 0.96); eleven attacks were re-fitted (OHIH 60 -> 0
+  ms default, EYRR 60 -> default, IYRR 45 -> 10, AWRR 45 -> 60, EYIY 60 -> 20, IY 45 -> default, IYUW 45 -> default,
+  IH -> 60, IYEH -> 60, OW 45 -> default, OWIY 45 -> default); BE TS LO AYWW's fade-outs too. The first period's 12
+  ticks fall on the silent opening transition, before the first pulse that is heard, so they change nothing audible;
+  moving them onto the first heard pulse scored worse, and they are left as they are.
 - **PE and PO's low pulse swells in over 10 ms.**
 - **Joins.** A vowel or glide after a voiced stop other than GE GO opens at its own level and amplitudes while its
   formants still glide from the stop's release (Man Goes Down's DO AYWW: the vowel at full level straight after the
@@ -1071,6 +1100,13 @@ does nothing for the high tones. So the library gives each effect its own scale 
 100), set where E and P both improve: 215 A5 151, 218 A8 160, 220 B0 81, 222 B2 77. Tried and left at 100 (worse):
 R2, A6, A7, B4, B5, B7. 218 A8's floor sits 16 dB under the chip's and barely moves with the bed: something else
 makes it on the chip (open).
+
+**Under a voiced part (library 0.5.4, 1.23).** Under a voiced effect part that pulses only some of its tones (not
+`A`, not smoothed `m`) the signal-held bed doubles (0.024 -> 0.048). The robots' chip spectra sit 10-15 dB over ours
+in the valleys between harmonics (205 R5 at h1-h2), the gap not growing with the harmonic, so a floor and not jitter.
+Over all 55 effects: X sum 51.25 -> 51.07, regions 2064 -> 2043; 203 R3, 204 R4, 205 R5, 207 R7, 208 R8, 209 R9 and
+237 C7 better, 202 R2 +0.006. Under every voiced part it was worse (the `A` and `m` effects: 211 A1, 212 A2, 213 A3,
+254 M2, 230 C0, 232 C2, 234 C4, 233 C3), and at four times the bed everything was worse.
 
 **Level wobble.** Plain effect tones also carry a slow wobble in level:
 white noise through a one-pole low-pass (coefficient 0.05, spread to about
@@ -1549,6 +1585,26 @@ spectrum as a guard.
   phrase cost (a lined-up band-by-time difference) prefers 12 ms on every pair that starts with AW. The phrase cost
   aligns by correlation, which a slow onset pulls; it is now also run at the lag where its own cost is least.
 
+### 12.6 The score corrected (library 0.5.4, 1.22)
+
+Every release from 0.1.0 was scored the same way to find where the library had gone backwards. That found the score
+itself at fault, twice:
+
+- **X could place a voiced sound a voice period off.** Its shift search ran in 4 ms steps; two placements a period
+  apart both look good to a periodic sound, and a 1 ms change of AW's fade-out moved its score from 0.90 to 1.14 with
+  the sound unchanged (at its onset both scored 1.47). Scoring at the onset alone is no better: a quiet start moves the
+  onset (NGO 1.15 -> 1.54). X now places the render by its whole level over time, 300 Hz up, smoothed over 30 ms so a
+  period-long slip can't win, then finds the pulse phase within half a period in 0.25 ms steps. The fades 25, 29 and
+  30 ms score 0.916, 0.900 and 0.898.
+- **Phrases that open on a hiss were measured with the hiss outside their window.** The recordings' labels start at
+  the vowel (the cutter misses a quiet hiss), so the render's hiss had nothing to match: VoxProbe 8's SE P1 AW cost
+  15641 on unit A, 129 with the window started 250 ms earlier. Every version's phrase figure was inflated, the old
+  ones most: 0.4.3's 1437 is 481 measured properly.
+
+Lessons: score every release against every earlier one, not only the last; a choice made on a faulty measure is redone
+when the measure is fixed, not kept for its history. A real take scored as ours is the check on what 1.0 means:
+the original AtariVox's takes score about 1.0, the AtariVox+'s 1.2-2.4.
+
 ## 13. Known gaps and open questions
 
 Where the library and the chip still differ, or the chip is not understood:
@@ -1629,9 +1685,12 @@ Where the library and the chip still differ, or the chip is not understood:
   so how their pulse tracks a low Pitch is not modelled right.
 - **254 M2's sidebands** (section 7.12): the ±262 Hz lines on every band are
   measured but not explained.
-- **238 C8** (1.63 since 0.5.3) and **239 C9** (1.43) are the furthest sounds. C8's sweep, period and band match
+- **238 C8** (1.60 on the corrected measure) and **239 C9** (1.42) are the furthest sounds. C8's sweep, period and band match
   the chip's track; its level ramp, closing tones, phase and band width were each checked and are not the gap,
   and its noise shows no pulse structure above the hum. What remains is not yet explained.
+- **AW after a pause** starts ~15 ms late and its first pulses too soft (NE P4 AW, SE P4 AW, AW P1 AW, behind 0.4.3 by
+  18-54 %); VoxProbe 15 section 5 records it. **AW before LE** opens on a first pulse ~4 dB weak where the chip's is full.
+  **207 R7 and 233 C3** were closer in 0.1.0 (1.34, 0.75 against 1.43, 0.82).
 - **227 B7** waits on the bed rule (section 7.5). 237 C7 was fixed in 0.5.2 (its pulse-rate track).
 
 ---
@@ -1723,42 +1782,43 @@ code name  kind    ms  copy   level   F1   F2   F3   A1 A2 A3   noise Hz  bw Hz 
  199 PO    stop     60   110   -28.5      0    0    0    0  0  0          80   1360   41  
 
 Their own structure (1.8; fields left out are 0, "as the kind"; section 6 and Appendix C):
- 128 IY    rr 20 ms  aa 45 ms
- 129 IH    aa 45 ms
+ 128 IY    rr 20 ms
+ 129 IH    aa 60 ms
  130 EY    aa 30 ms
  131 EH    rr 30 ms  aa 30 ms
  132 AY    aa 60 ms
  133 AX    aa 30 ms
  134 UX    rr 35 ms  aa 30 ms
  136 AW    rr 25 ms  aa 45 ms
- 137 OW    rr 32 ms  aa 45 ms
+ 137 OW    rr 32 ms
  139 UW    rr 39 ms  aa 12 ms
  140 MM    rr 20 ms  aa 10 ms
  141 NE    rr 10 ms  aa 18 ms
  143 NGE   rr 9 ms  aa 14 ms
  144 NGO   ob 15 ms  og -12.0 dB  rr 10 ms  aa 5 ms
- 146 LO    rr 10 ms
+ 146 LO    rr 25 ms
  147 WW    rr 10 ms  aa 10 ms
- 149 IYRR  rr 33 ms  aa 45 ms
- 150 EYRR  rr 28 ms  aa 60 ms
+ 149 IYRR  rr 33 ms  aa 10 ms
+ 150 EYRR  rr 28 ms
  151 AXRR  aa 45 ms
- 152 AWRR  aa 45 ms
+ 152 AWRR  aa 60 ms
  153 OWRR  rr 22 ms
- 154 EYIY  aa 60 ms
+ 154 EYIY  aa 20 ms
  155 OHIY  rr 35 ms  aa 30 ms
- 156 OWIY  rr 19 ms  aa 45 ms
- 157 OHIH  rr 31 ms  aa 60 ms
+ 156 OWIY  rr 19 ms
+ 157 OHIH  rr 31 ms
+ 158 IYEH  aa 60 ms
  159 EHLL  rr 22 ms  aa 20 ms
- 160 IYUW  rr 35 ms  aa 45 ms
+ 160 IYUW  rr 35 ms
  161 AXUW  cl 69 %  rr 34 ms  ba 121 %  aa 45 ms
  162 IHWW  aa 60 ms
- 163 AYWW  rr 27 ms  aa 45 ms
+ 163 AYWW  rr 10 ms  aa 45 ms
  165 JH    rr 9 ms  hp 32 Hz
  166 VV    wf 16/256
  167 ZZ    ob 4 ms  og +7.0 dB  aa 15 ms
  168 ZH    ob 3 ms  wf 14/256  rr 19 ms  aa 3 ms
  169 DH    ob 3 ms  og +2.0 dB  aa 10 ms
- 170 BE    ob 6 ms  og +2.0 dB  cl 40 ms  rl -1.0 dB  rr 28 ms  ba 9 ms  bl -9.0 dB  hp 528 Hz
+ 170 BE    ob 6 ms  og +2.0 dB  cl 40 ms  rl -1.0 dB  rr 10 ms  ba 9 ms  bl -9.0 dB  hp 528 Hz
  171 BO    ob 5 ms  og +3.0 dB  cl 24 ms  rr 30 ms  bl -10.0 dB
  172 EB    ob 7 ms  og +5.0 dB  cl 6 ms  bl -2.0 dB
  173 OB    cl 4 ms
@@ -1781,13 +1841,13 @@ Their own structure (1.8; fields left out are 0, "as the kind"; section 6 and Ap
  190 TH    rr 10 ms  hp 80 Hz
  191 TT    ob 16 ms  og +2.5 dB  cl 35 ms  wf 20/256  rr 11 ms  hp 464 Hz
  192 TU    ob 5 ms  og +4.0 dB  cl 23 ms  wf 16/256  aa 5 ms
- 193 TS    ob 10 ms  og +0.5 dB  cl 26 ms  wf 16/256  rr 10 ms  hp 464 Hz  nd 128/256
+ 193 TS    ob 10 ms  og +0.5 dB  cl 26 ms  wf 16/256  rr 45 ms  hp 464 Hz  nd 128/256
  194 KE    ob 5 ms  og -6.0 dB  cl 22 ms  hp 80 Hz
  195 KO    cl 30 ms  aa 6 ms  hp 304 Hz
  196 EK    ob 5 ms  og +6.0 dB  cl 26 ms  wf 85/256  rr 6 ms
  197 OK    ob 5 ms  og +3.0 dB
  198 PE    cl 15 ms  rr 13 ms  hp 32 Hz
- 199 PO    cl 15 ms  wf 106/256  rr 9 ms  aa 5 ms  hp 32 Hz
+ 199 PO    cl 8 ms  wf 106/256  rr 9 ms  aa 5 ms  hp 32 Hz
 ```
 <!-- ALLOPHONES-END -->
 
@@ -2199,6 +2259,11 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
+1.23  2026-11-17   library 0.5.4: IY after a sound and LE before one take their phrase lengths (6.1); a plain vowel's long
+                   voicing period is its second (4.1); 187 SE's
+                   deterministic low pulse (6.4); the bed doubled under a voiced part pulsing only some tones (7.5)
+1.22  2026-11-16   library 0.5.4: the score corrected (12.6); 0.5.1's 72-tick fall removed and attacks re-fitted
+                   (6.11); AW TT nasal joins, TT before a vowel, AW's fade (6.2, 6.4)
 1.21  2026-11-16   library 0.5.3: 238 C8's noise sweep linear in Hz and its period 20 ms (7.6; 1.75 -> 1.63); the
                    voiced stops' bar partly noise and nasals' noise part (6.2, 6.4); AXUW's F3 hold (6.3); NGO KE
                    quiet onsets, PE PO timing (6.4)

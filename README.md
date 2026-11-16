@@ -102,7 +102,8 @@ Every allophone and sound effect is scored against the chip's own recordings:
 four takes of each sound alone, two from each of two real AtariVoxes (an
 original AtariVox and an AtariVox+). The score, X, compares spectrograms at six
 resolutions, from 1.3 ms to 43 ms windows, with each take's background noise
-taken off, and finds the best alignment within 12 ms of the sound's start. It
+taken off. Our render is placed by its whole level over time (smoothed over
+30 ms, so it can't slip by a voice period), then by its pulse phase. It
 is calibrated on the chip itself: the four takes are scored against each other,
 and a sound's distance is divided by that spread; lower is closer. Checked by
 scoring each real take as if it were ours against the other three: unit B's
@@ -111,22 +112,26 @@ take has the noisiest background and is the outlier, and VoxProbe 15 records a
 replacement). So **X near 1.0 is about as close as unit B's own recordings are
 to each other**.
 
-0.5.3 against 0.4.3, both scored the same way on the same recordings:
+0.5.4 against 0.4.3, both scored the same way on the same recordings:
 
 ```
-                                      0.4.3   0.5.3
-allophones (72), mean X                1.07    0.92   66 closer, 2 further (136 AW +0.02, 158 IYEH +0.01)
-sound effects (55), mean X             1.22    0.97   55 closer, none further
-joins (88 recorded pairs and phrases)  1437     513   mean cost; 56 closer by 5 %+, 14 further by 15 %+
+                                      0.4.3   0.5.4
+allophones (72), mean X                0.98    0.89   59 closer, 7 further by 0.01-0.02
+sound effects (55), mean X             1.20    0.95   55 closer, none further
+joins (88 recorded pairs and phrases)   481     306   mean cost; 62 closer by 5 %+, 12 further by 15 %+
 lengths 15 ms or more off (88 items)     24      14
 ```
+
+(0.5.4 corrected two measuring faults, so these replace the figures published with 0.5.0-0.5.3: X could
+place a voiced sound one voice period off, and phrases that open on a hiss were measured with the hiss
+outside their window. Both versions above are scored with the corrected measures.)
 
 The joins are VoxProbe 4, 7 and 8's two-sound pairs and Man Goes Down's
 phrases, on both units, scored by a lined-up time-frequency difference. Man
 Goes Down's phrase lengths, against the two chips:
 
 ```
-              unit A   unit B   0.4.3   0.5.3
+              unit A   unit B   0.4.3   0.5.4
 phrase 1        1483     1490    1475    1491 ms
 phrase 2        1676     1671    1683    1705 ms
 ```
@@ -134,15 +139,17 @@ phrase 2        1676     1671    1683    1705 ms
 (Phrase 4 is left out: the recordings' labels end before its final EK burst, so the chips' figures miss
 it and ours, now louder there, include it.)
 
-Biggest gains: 235 C5 -45 %, 253 M1 -43 %, 159 EHLL -36 %, 223 B3 -36 %,
-213 A3 and 228 B8 -35 %. Every sound's score is in [`docs/scores.md`](docs/scores.md).
+Biggest gains: 213 A3, 235 C5 and 253 M1 -43 %, 223 B3 and 228 B8 -35 %,
+215 A5 -32 %. Every sound's score is in [`docs/scores.md`](docs/scores.md).
 
 What is still known to be off (`docs/technical-manual.md` section 13 has the
 detail):
 
-- The furthest sounds are effects: 238 C8 (1.63), 207 R7 (1.44), 239 C9
-  (1.43) and 206 R6 (1.34); then 174 DE (1.24) and 171 BO (1.20). The voiced
-  stops' bar is now part noise, as on the chip, but their release still differs.
+- The furthest sounds are effects: 238 C8 (1.60), 207 R7 (1.43), 239 C9
+  (1.42) and 206 R6 (1.30); then 171 BO and 174 DE (1.20). 207 R7 and 233 C3
+  were closer in 0.1.0, a different engine.
+- AW after a pause starts about 15 ms late and too softly, and AW before LE
+  starts with a weak first pulse; VoxProbe 15 records the first.
 - A Pitch command inside a phrase takes effect one to five sounds late on the
   chip; the library applies it at the next sound. Man Goes Down's phrase 2 runs
   long mostly because of this.
@@ -263,7 +270,7 @@ which the Gopher2600 emulator uses for its AtariVox.
 | `tools/text2speakjet/` | Text to SpeakJet codes, with its dictionaries and tests |
 | `samples/` | Sample phrases, their codes and WAVs |
 | `docs/design.md` | How the emulation works, and every measurement behind it |
-| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.3 |
+| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.4 |
 | `docs/technical-manual.md` | The SpeakJet itself, as measured: hardware, synthesizer, voice, allophones, stops, Repeat, effects, commands, and what is still unknown |
 | `docs/reference/` | The SpeakJet User's Manual, and the PhraseALator dictionary text2speakjet uses |
 | `CHANGELOG.md` | What changed, with the measurements behind each change |
