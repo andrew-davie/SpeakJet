@@ -329,6 +329,9 @@ struct sj_chip {
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   bool vstarted; /* 0.5.0 */
   int vcount; /* 0.5.4: voicing periods since the voice started */
+  bool vafter; /* 0.5.4: this sound follows a voiced stop or a nasal: no long period */
+  frame prepause; bool ppok; /* 0.5.4: the last sound's frame before a short pause, and whether it carries over */
+  bool paused; /* 0.5.4: a pause since the last sound */
   bool aplain; /* 0.5.0: the playing allophone is a plain vowel (IY..UW) */
   double wander; /* an FX_WANDER part's slow pitch drift, a fraction */
   double vprev; /* the output's last tick */
@@ -1246,6 +1249,13 @@ static frame from_frame(const sj_chip *sj, frame tgt) {
    * on its own frame; ours swept a dark line from ~6 kHz down into TT's closure and UX's onset) */
   if (sj->last.a[0] > 0 || sj->last.a[1] > 0 || sj->last.a[2] > 0)
     return sj->last;
+  if (sj->ppok)
+    for (int q = 0; q < 3; q++)
+      tgt.f[q] = sj->prepause.f[q];
+  /* 0.5.4: straight after SE or TT (no pause) a sound's F2 starts at the alveolar locus, 1600 Hz (both units, SE AW: AW opens on a
+   * ~1.5 kHz line for 15 ms; phrase items 282.1 -> 267.6, none worse; across a P1 it was worse) */
+  if (!sj->paused && (sj->prev_code == 187 || sj->prev_code == 191))
+    tgt.f[1] = 1600.0f;
   tgt.a[0] = tgt.a[1] = tgt.a[2] = 0.0f;
   tgt.na = 0.0f;
   return tgt;
@@ -1563,6 +1573,9 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   sj->after_velar = a - allophones == 50; sj->after_vstop = a->kind == K_VSTOP; sj->after_velar2 = a - allophones == 50 || a - allophones == 51;
   sj->after_kvelar = a - allophones == 66;
   const bool was_pause = sj->after_pause;
+  /* 0.5.4: a vowel straight after a voiced stop or a nasal has no long second period (the phrase items: 316.4 -> 313.0,
+   * BE IY, BE EH, Slow NE AW better, none worse); after silence, a pause or an unvoiced sound it has */
+  sj->vafter = !was_pause && sj->prev_code >= 128 && (allophones[sj->prev_code - 128].kind == K_VSTOP || (sj->prev_code >= 140 && sj->prev_code <= 144));
   sj->after_pause = false;
   const bool nasal_ramp = sj->ramp_seg >= 0;
   /* an unvoiced fricative starts and stops at once (HE HO WH FF SE SO SH TH, both units, background allowed for: rise
@@ -1589,7 +1602,11 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   if (aw_fast)
     sj->attack = TICKS(20.0); /* 0.5.4: a 20 ms fade-in, not its own 45 or the 35 ms default (AW LE 17-31 %, AW SE 16 % closer; 0 split the units: AW LE -81 % on B, +89 % on A) */
   if (a->aa && !aw_fast)
-    sj->attack = TICKS(a->aa * (sj->pitch > 88 ? 88.0 / sj->pitch : 1.0)); /* 0.5.0: shortened above Pitch 88 only, never lengthened below it (Man Goes Down P2's IYUW at Pitch 40 is full from its first pulse) */ /* a sound's own fade-in, in pitch periods: aa ms at Pitch 88 (0.5.0, VoxProbe 7 'pitch 150 then AW/IY/OW', both units: 5-17 % closer with the ramp shortened by 88/150; the structure loop's aa: e.g. 185 WH starting ~5 ms early) */
+    sj->attack = TICKS(a->aa * (sj->pitch > 88 ? 88.0 / sj->pitch : 1.0));
+  /* 0.5.4: a slowed nasal comes in almost at once (both units, Slow NE AW: its first 30 ms 11-21 dB over ours in the low band;
+   * phrase items 265.7 -> 264.0, none worse; on every nasal NE AW was worse) */
+  if (sj->slow && sj->aidx >= 12 && sj->aidx <= 16)
+    sj->attack = (int)(sj->attack * 0.15); /* 0.5.0: shortened above Pitch 88 only, never lengthened below it (Man Goes Down P2's IYUW at Pitch 40 is full from its first pulse) */ /* a sound's own fade-in, in pitch periods: aa ms at Pitch 88 (0.5.0, VoxProbe 7 'pitch 150 then AW/IY/OW', both units: 5-17 % closer with the ramp shortened by 88/150; the structure loop's aa: e.g. 185 WH starting ~5 ms early) */
   if ((a->kind == K_STOP || a->kind == K_VSTOP || a->kind == K_AFFR) && sj->nseg > 1)
     for (int k = 0; k < sj->nseg - 1; k++)
       sj->onset_from += sj->seg[k].ticks; /* the release: everything before its segment */
@@ -1629,6 +1646,13 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
    * (Slow NE AW, Slow AY AW, AYWW AW, LE AW, TT P1 AW: 13-30 % closer on at least one unit) */
   if (sj->aidx == 8 && (was_pause || sj->prev_slow || sj->prev_code == 145 || sj->prev_code == 163))
     sj->release = TICKS(25.0);
+  /* 0.5.4: AW straight before a short pause (P4-P6) ends over 10 ms (both units, AW P4 AW: the first AW ends sharply at 115 ms,
+   * ours tapered to 122; phrase items 267.6 -> 265.7, none worse) */
+  {
+    const int c0 = peek(sj, sj->executing);
+    if (sj->aidx == 8 && c0 >= 4 && c0 <= 6)
+      sj->release = TICKS(10.0);
+  }
   /* 0.5.4: IY straight after another sound runs 5 ms shorter than from silence (its solo takes want 130 ms; in the phrase
    * items 125: 88 items 321.5 -> 311.3, 7 better, none worse; 10 ms overshoots) */
   if (sj->aidx == 0 && !was_pause && sj->prev_code >= 128 && sj->nseg > 0 && sj->seg[sj->nseg - 1].ticks > TICKS(5.0)) {
@@ -1649,6 +1673,15 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
 }
 
 static void play_pause(sj_chip *sj, double ms) {
+  /* 0.5.4: across a short pause (under 70 ms: P4, P5) the next sound starts from the last one's formants (both units, NE P4
+   * AW: the AW opens on NE's ~1.5 kHz F2 with its F1 band 15-20 ms late; phrase items 300.7 -> 297.7, none worse; across
+   * P1 NE P1 AW was worse) */
+  sj->paused = true;
+  sj->ppok = false;
+  if (ms < 70.0 && sj->last.a[0] + sj->last.a[1] + sj->last.a[2] > 0.0f) {
+    sj->prepause = sj->last;
+    sj->ppok = true;
+  }
   sj->nseg = 0;
   add_segment(sj, TICKS(ms), silent_frame(), silent_frame(), false);
   start(sj, false);
@@ -1798,6 +1831,32 @@ static void next_command(sj_chip *sj) {
       }
       if (next >= 0 && sj->nseg > 0) {
         segment *l = &sj->seg[sj->nseg - 1];
+        /* 0.5.4: a vowel or glide with F2 under 1500 Hz ends 15 ms sooner into a nasal (both units, AW MM: ours 15-20 ms long, AW's
+         * F2 held into MM; phrase items 291.5 -> 282.1, none worse; IY MM, F2 far from MM's, was worse with any cut) */
+        if (next >= 140 && next <= 144 && sj->seg[sj->nseg - 1].to.f[1] < 1500.0f && (allophones[code - 128].kind == K_VOWEL || allophones[code - 128].kind == K_GLIDE) && sj->stotal > TICKS(15.0) + TICKS(20.0)) {
+          trim_tail(sj, TICKS(15.0));
+          l = &sj->seg[sj->nseg - 1];
+        }
+        /* 0.5.4: an unslowed nasal before a vowel or glide hands over 5 ms sooner (both units, MM AW: AW 10-15 ms earlier on the
+         * chip; phrase items 297.7 -> 291.5, none worse; 10 ms and a slowed nasal were worse) */
+        if (code >= 140 && code <= 144 && !sj->slow && next < 200 && (allophones[next - 128].kind == K_VOWEL || allophones[next - 128].kind == K_GLIDE) && l->ticks > TICKS(5.0) + 2) {
+          l->ticks -= TICKS(5.0);
+          sj->stotal -= TICKS(5.0);
+        }
+        /* 0.5.4: a vowel or glide into TT moves F2 to 1600 Hz over its last 20 ms (both units, AW TT: in AW's last 25 ms the
+         * 856-1525 Hz band empties 12-21 dB under ours and 1525-1922 fills - F2 climbing to the alveolar locus; phrase items
+         * 309.6 -> 305.4, none worse; running the vowel on as well was worse) */
+        /* 0.5.4: an unslowed TT before a vowel or glide releases 10 ms longer (both units, TT AW: the chip's item 135-170 ms
+         * against ours 115; phrase items 305.4 -> 300.7, none worse; 20 ms and shorter were worse; a slowed TT keeps its own +15) */
+        if (code == 191 && !sj->slow && next < 200 && (allophones[next - 128].kind == K_VOWEL || allophones[next - 128].kind == K_GLIDE)) {
+          l->ticks += TICKS(10.0);
+          sj->stotal += TICKS(10.0);
+        }
+        if (next == 191 && (allophones[code - 128].kind == K_VOWEL || allophones[code - 128].kind == K_GLIDE) && sj->stotal > TICKS(20.0) + 2) {
+          split_at(sj, sj->stotal - TICKS(20.0));
+          l = &sj->seg[sj->nseg - 1];
+          l->to.f[1] = 1600.0f;
+        }
         /* 0.5.4: LE before another sound runs 5 ms longer than alone (its solo takes want 110 ms, the phrase items 115:
          * 88 items 312.0 -> 309.4, none worse) */
         if (code == 145 && next < 200) {
@@ -1977,7 +2036,7 @@ static void next_command(sj_chip *sj) {
 static void finish_sound(sj_chip *sj) {
   const int code = peek(sj, 0);
   if (code >= 128) {
-    sj->prev_slow = sj->slow; sj->prev_code = code;
+    sj->prev_slow = sj->slow; sj->prev_code = code; sj->ppok = false; sj->paused = false;
     sj->fast = sj->slow = sj->stress = sj->relax = false;
   }
   sj->head = (sj->head + sj->executing + sj->ahead) % SJ_BUFFER_SIZE;
@@ -2048,12 +2107,19 @@ static double output_stage(sj_chip *sj, double v, bool voice) {
   v += d2 * v * v + T.dist3 * v * v * v;
   if (T.quant > 0)
     v = floor(v * T.quant + 0.5) / T.quant;
-  /* the output noise floor: white under the effects' tones; none under the
-   * voice (T.floor 0, the chip's voice is exactly periodic) */
+  /* the output noise floor: white under the effects' tones; under the voice the signal-held floor only (T.floor 0, the
+   * chip's voice is exactly periodic) */
   {
     const double r = rnd(sj);
-    if (voice)
+    if (voice) {
       v *= 1.0 + T.floor * 2.0 * (r - sj->lastr);
+      /* 0.5.4: a noise floor with the signal itself, peak-held 20 ms, under voiced speech too (the user, from the gallery:
+       * AX UX's spectra meet the chip's at the harmonic peaks and fall far under it between them; measured 5-19 dB deeper
+       * valleys at h8; 0.024 as the effects': 72 allophones X 0.867 -> 0.848, 45 better, LO +0.017; phrases 313.0 -> 311.4,
+       * none worse. The voice itself stays exactly periodic) */
+      sj->bedhold = fabs(v) > sj->bedhold ? fabs(v) : sj->bedhold * 0.993770;
+      v += 0.024 * 2.0 * r * sj->bedhold;
+    }
     else {
       /* the effects' bed (both units): timing error, proportional to the
        * signal's change per tick smoothed by one pole - it grows with the
@@ -2234,8 +2300,24 @@ static double tick(sj_chip *sj) {
        * vowels' X 0.906 -> 0.883, every one better, IH and OH included) */
       if (!sj->vstarted)
         sj->vcount = 0;
-      if (!sj->effect && sj->aplain && ++sj->vcount == 3)
+      if (!sj->effect && sj->aplain && !sj->vafter && ++sj->vcount == 3)
         sj->ptick += 12;
+      /* 0.5.4: a vowel or glide ending into silence slows its last periods: each new period in the last 25 ms runs up to 14
+       * ticks long, in proportion (both units, OH: ... 11.48 11.96 13.25 ms as it fades; the user: OH AX UX's spectra meet
+       * the chip's at the harmonic peaks and sink far under it between them - the fall smears the upper harmonics). 72
+       * allophones X 0.848 -> 0.840 (OH 0.799 -> 0.746, AX 0.913 -> 0.880), AYWW +0.026; phrases 311.4 -> 309.8. Not AW,
+       * whose fade has its own rules (with it, every phrase ending on AW was worse) */
+      /* and the liquids LE LO WW RR (X 0.757 -> 0.737 on RR, its valleys 3.7 -> -0.6 dB; phrases unchanged).
+       * AW only alone - from silence with nothing after it (its solo takes: X 0.853 -> 0.820, the valleys 3.7 -> 2.1 dB over
+       * the chip's; at a phrase's end or before a pause its fade has its own rules and the fall made every such item worse) */
+      int nleft = 0;
+      for (int q = sj->executing; q < sj->count; q++) {
+        const int c = peek(sj, q);
+        if (c >= 128 && c <= 254)
+          nleft++;
+      }
+      if (!sj->effect && !sj->joined && (sj->aidx != 8 || (nleft == 0 && sj->prev_code < 128)) && (allophones[sj->aidx].kind == K_VOWEL || allophones[sj->aidx].kind == K_GLIDE || (sj->aidx >= 17 && sj->aidx <= 20)) && sj->stotal - sj->stick < TICKS(25.0))
+        sj->ptick += (int)(14.0 * (1.0 - (double)(sj->stotal - sj->stick) / TICKS(25.0)) + 0.5);
       /* (0.5.0-0.5.3: the 12 ticks delayed the first pulse; 0.5.1 left out IH OH) */
       sj->vstarted = true;
     }

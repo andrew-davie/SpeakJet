@@ -296,6 +296,18 @@ its first: VoxProbe 15's solo takes (both units) give pulses at -23, -7, -1 dB w
 11.5, 12.9, 11.8 on EH; the faint first pulse is why the earlier 4 / 16 / 28 / 40 ms reading took the long period for a
 delayed start. All 12 plain vowels, IH and OH included: X 0.906 -> 0.883, every one better.
 
+**The floor under the voice (library 0.5.4, 1.23).** The chip's vowel spectra meet ours at the harmonic peaks but sit
+5-19 dB higher in the valleys between them (h8; AX UX AW IY, both units), without growing with the harmonic: a noise
+floor, not jitter. The library adds the effects' signal-held floor (white noise times the signal's magnitude held 20 ms,
+0.024) under voiced speech: 72 allophones X 0.867 -> 0.848, phrases 313.0 -> 311.4.
+
+**The fall at the end (library 0.5.4, 1.23).** Fading into silence, the chip's vowel slows: OH's last periods on both units
+run 11.48, 11.96, 13.25 ms (and 11.56, 12.56). Held steady, ours kept every harmonic sharp, and the whole-sound spectrum
+sank 7-12 dB under the chip's between harmonics (OH AX UX, from 400 Hz up). The library lengthens each new period in a
+vowel's or glide's last 25 ms by up to 14 ticks, in proportion to how far into those 25 ms it starts, when nothing joins
+on: 72 allophones X 0.848 -> 0.840, OH 0.799 -> 0.746, phrases 311.4 -> 309.8. AW is left out: its fade has its own
+rules, and with it every phrase ending on AW was worse.
+
 ### 4.2 The pulse
 
 At the start of each period the formant oscillators restart at phase zero, and
@@ -533,6 +545,18 @@ band; 140 MM, 144 NGO, 145 LE and 146 LO now get one (2400 Hz, 1200 wide, level 
 1.02, LE 1.16 -> 1.09, LO 0.87 -> 0.86, phrases 513.9 -> 513.0.
 
 **Fricatives** are one plain segment: the noise band held, no transition.
+
+**Joins measured against a real unit (library 0.5.4, 1.23).** The phrase items' cost has a yardstick now: each unit's
+recording scored against the other unit's, mean 143.9 over the 88 items (the library 309.6 before these rules, 264.0 after).
+Into TT a vowel's F2 climbs to the alveolar locus (1600 Hz) over its last 20 ms (AW TT: 856-1525 Hz emptied 12-21 dB and
+1525-1922 filled in AW's last 25 ms); out of SE or TT, with no pause between, a sound's F2 starts there (SE AW opens on a
+~1.5 kHz line for 15 ms). An unslowed TT before a vowel releases 10 ms longer. Across a pause under 70 ms the next sound
+starts from the last one's formants (NE P4 AW opens on NE's F2, its F1 band 15-20 ms late; across P1 it doesn't). An unslowed
+nasal hands over to a vowel 5 ms sooner (MM AW); a vowel with F2 under 1500 Hz ends 15 ms sooner into a nasal (AW MM; IY
+MM wants no cut). AW before a short pause fades over 10 ms (AW P4 AW: the first AW ends sharply); a slowed nasal comes in
+almost at once (Slow NE AW). Rejected on the same items: a vowel run-on before TT, a shorter TT aspiration, voicing under
+TT's aspiration, longer pauses after a stop (the units disagree), the vowel's end fall before an unvoiced sound or after one
+for AW, an AW F2 rise at every end, a shorter glide hold under Slow, Bend's effect changed.
 
 ### 6.3 Glides
 
@@ -2259,7 +2283,7 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 ```
-1.23  2026-11-17   library 0.5.4: IY after a sound and LE before one take their phrase lengths (6.1); a plain vowel's long
+1.23  2026-11-17   library 0.5.4: joins against a real unit (6.2); IY after a sound and LE before one take their phrase lengths (6.1); a plain vowel's long
                    voicing period is its second (4.1); 187 SE's
                    deterministic low pulse (6.4); the bed doubled under a voiced part pulsing only some tones (7.5)
 1.22  2026-11-16   library 0.5.4: the score corrected (12.6); 0.5.1's 72-tick fall removed and attacks re-fitted

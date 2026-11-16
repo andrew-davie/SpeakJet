@@ -309,6 +309,17 @@ Beside it, since 0.5.0, a bed proportional to the signal itself, peak-held over 
 (A5 A0 A8 R0) need it. In 0.5.4 it doubles under a voiced part that pulses only some of its tones (`vbed`: not `A`,
 not smoothed): the robots' chip valleys between harmonics sit 10-15 dB over ours (technical manual 7.5).
 
+**The voice in 0.5.4.** After silence, a pause or an unvoiced sound a plain vowel's second voicing period is 12 ticks long
+(`vcount`; 0.5.0-0.5.3 delayed the first pulse instead), but not straight after a voiced stop or nasal (`vafter`). Voiced
+speech carries the signal-held noise floor (0.024, as the effects'). A vowel, glide or liquid fading into silence slows its
+last periods, up to 14 ticks each over its last 25 ms; AW only when alone. All three fill the valleys between harmonics that
+0.5.3 left too deep (technical manual 4.1).
+
+**Joins in 0.5.4.** Measured against a real unit (each unit's phrases against the other's): the alveolar locus (F2 to 1600
+Hz into TT, from 1600 Hz out of SE or TT), formants kept across a pause under 70 ms (`prepause`), a nasal handing over to
+a vowel 5 ms sooner, a low-F2 vowel ending 15 ms sooner into a nasal, AW's 10 ms fade before a short pause, a slowed
+nasal's attack almost at once, TT's release 10 ms longer before a vowel (technical manual 6.2).
+
 **Lengths by neighbour (0.5.4).** Two sounds' lengths depend on a neighbour, from the phrase items: IY straight after
 a sound runs 5 ms shorter than from silence, and LE before a sound 5 ms longer than alone; their solo takes keep the
 table lengths (technical manual 6.1).
@@ -392,8 +403,8 @@ chip says "Ready"; the phrase is unmeasured), baud rate and detune; Wait, the
 port commands and the EEPROM phrases;
 the demo mode; the Stress and Relax commands; the mixer's limit of 63 on the
 three oscillators' volumes (`clip` 0); the output's second harmonic under the speech sounds (`dist2`, `dist3` 0;
-the effects carry a second-order term of 0.07 since 0.5.0); when a Pitch command takes effect inside a phrase (one to
-five sounds late on Man Goes Down, applied at the next sound here; technical manual 9.1). Known to be off:
+the effects carry a second-order term of 0.07 since 0.5.0); why Man Goes Down's pitch sounds late (VoxProbe
+15: a Pitch command takes effect at the next sound on both units, as here; technical manual 9.1). Known to be off:
 the effects' bed (above), and the nasals' pulse: at Pitch 40 NGE's first
 formant dies away more slowly than the library's and its skirt ripples every
 300 Hz, NGO's falls sooner and then beats, while LO matches the chip to a

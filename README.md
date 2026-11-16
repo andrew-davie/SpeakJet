@@ -116,15 +116,18 @@ to each other**.
 
 ```
                                       0.4.3   0.5.4
-allophones (72), mean X                0.98    0.89   59 closer, 7 further by 0.01-0.02
-sound effects (55), mean X             1.20    0.95   55 closer, none further
-joins (88 recorded pairs and phrases)   481     306   mean cost; 62 closer by 5 %+, 12 further by 15 %+
-lengths 15 ms or more off (88 items)     24      14
+allophones (72), mean X                0.98    0.84   72 closer, none further
+sound effects (55), mean X             1.20    0.93   55 closer, none further
+joins (88 recorded pairs and phrases)   481     264   mean cost; 68 closer by 5 %+, 8 further by 15 %+
+lengths 15 ms or more off (88 items)     24      13
 ```
 
 (0.5.4 corrected two measuring faults, so these replace the figures published with 0.5.0-0.5.3: X could
 place a voiced sound one voice period off, and phrases that open on a hiss were measured with the hiss
 outside their window. Both versions above are scored with the corrected measures.)
+For the joins there is a yardstick too: each unit's recordings of the 88 items scored against the other
+unit's give a mean cost of 144 (median 138). 0.5.4's 264 (median 185) is closer than 0.4.3's 481 but not
+yet at a real unit's distance; Man Goes Down's phrases carry most of the rest.
 
 The joins are VoxProbe 4, 7 and 8's two-sound pairs and Man Goes Down's
 phrases, on both units, scored by a lined-up time-frequency difference. Man
@@ -132,27 +135,27 @@ Goes Down's phrase lengths, against the two chips:
 
 ```
               unit A   unit B   0.4.3   0.5.4
-phrase 1        1483     1490    1475    1491 ms
-phrase 2        1676     1671    1683    1705 ms
+phrase 1        1483     1490    1475    1482 ms
+phrase 2        1676     1671    1683    1707 ms
 ```
 
 (Phrase 4 is left out: the recordings' labels end before its final EK burst, so the chips' figures miss
 it and ours, now louder there, include it.)
 
-Biggest gains: 213 A3, 235 C5 and 253 M1 -43 %, 223 B3 and 228 B8 -35 %,
-215 A5 -32 %. Every sound's score is in [`docs/scores.md`](docs/scores.md).
+Biggest gains: 213 A3 and 253 M1 -43 %, 235 C5 -40 %, 228 B8 -38 %, 220 B0 -37 %,
+223 B3 -35 %. Every sound's score is in [`docs/scores.md`](docs/scores.md).
 
 What is still known to be off (`docs/technical-manual.md` section 13 has the
 detail):
 
-- The furthest sounds are effects: 238 C8 (1.60), 207 R7 (1.43), 239 C9
-  (1.42) and 206 R6 (1.30); then 171 BO and 174 DE (1.20). 207 R7 and 233 C3
+- The furthest sounds are effects: 238 C8 (1.57), 239 C9 (1.40), 207 R7
+  (1.35) and 206 R6 (1.26); then 201 R1 (1.21), 174 DE (1.18) and 171 BO (1.17). 207 R7 and 233 C3
   were closer in 0.1.0, a different engine.
-- AW after a pause starts about 15 ms late and too softly, and AW before LE
-  starts with a weak first pulse; VoxProbe 15 records the first.
-- A Pitch command inside a phrase takes effect one to five sounds late on the
-  chip; the library applies it at the next sound. Man Goes Down's phrase 2 runs
-  long mostly because of this.
+- AW before LE starts with a weak first pulse. (VoxProbe 15: AW's attack after a
+  pause rises as the library's does.)
+- A Pitch command takes effect at the next sound on both units (VoxProbe 15), as
+  in the library; Man Goes Down's "late" pitch is not a plain delay, and its
+  phrase 2 still runs about 30 ms long (open).
 - After an unvoiced stop or hiss the chip's level dies away over about 100 ms;
   the library's stops within a few.
 - Bend below zero: the chip folds a tone bent under about 50-90 Hz to near
