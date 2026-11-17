@@ -329,6 +329,7 @@ struct sj_chip {
   bool vstarted; /* 0.5.0 */
   int vcount; /* 0.5.4: voicing periods since the voice started */
   bool vafter; /* 0.5.4: this sound follows a voiced stop or a nasal: no long period */
+  float fhold[3]; /* mechanism: where the formants are, held through hisses and pauses (0: not set) */
   frame prepause; bool ppok; /* 0.5.4: the last sound's frame before a short pause, and whether it carries over */
   bool paused; /* 0.5.4: a pause since the last sound */
   bool aplain; /* 0.5.0: the playing allophone is a plain vowel (IY..UW) */
@@ -440,6 +441,7 @@ static void reset_controls(sj_chip *sj) {
   sj->repeat = 0;
   sj->fast = sj->slow = sj->stress = sj->relax = false;
   sj->prev_slow = false; sj->prev_code = -1;
+  sj->fhold[0] = sj->fhold[1] = sj->fhold[2] = 0.0f;
 }
 
 void sj_power_on(sj_chip *sj) {
@@ -1248,18 +1250,14 @@ static frame from_frame(const sj_chip *sj, frame tgt) {
    * on its own frame; ours swept a dark line from ~6 kHz down into TT's closure and UX's onset) */
   if (sj->last.a[0] > 0 || sj->last.a[1] > 0 || sj->last.a[2] > 0)
     return sj->last;
-  if (sj->ppok)
-    for (int q = 0; q < 3; q++)
-      tgt.f[q] = sj->prepause.f[q];
-  /* 0.5.4: straight after SE or TT (no pause) a sound's F2 starts at the alveolar locus, 1600 Hz (both units, SE AW: AW opens on a
-   * ~1.5 kHz line for 15 ms; phrase items 282.1 -> 267.6, none worse; across a P1 it was worse) */
-  /* 0.5.5: and F1 at 400 Hz at most (both units, SE AW: AW's first ~12 ms on a low F1 under the 1.5 kHz line; all 12 SE/TT
-   * into a vowel items closer, phrase items 247.5 -> 235.3, none worse; 300: 236.5, 500: 237.6) */
-  if (!sj->paused && (sj->prev_code == 187 || sj->prev_code == 191)) {
-    tgt.f[1] = 1600.0f;
-    if (tgt.f[0] > 400.0f)
-      tgt.f[0] = 400.0f;
-  }
+  /* the formants never jump: they start where the last voiced sound left them, held through a hiss and a pause under
+   * 70 ms; SE and TT set them to the alveolar locus, F1 400 F2 1600 Hz (both units: SE AW's vowel opens on a low F1 under a
+   * 1.5 kHz line, NE P4 AW's on NE's F2). Replaces 0.5.4's carry across a short pause and the SE/TT start rule: phrase
+   * items 231.9 -> 225.3, none worse; SE P4 AW and TT P4 AW, which no rule reached, 16-40 % closer. Held across P1 as
+   * well it was worse (SE P1 AW, TT P1 AW +57-140 %), so a pause of 70 ms or more clears them */
+  for (int q = 0; q < 3; q++)
+    if (sj->fhold[q] > 0.0f)
+      tgt.f[q] = sj->fhold[q];
   tgt.a[0] = tgt.a[1] = tgt.a[2] = 0.0f;
   tgt.na = 0.0f;
   return tgt;
@@ -1577,6 +1575,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   }
   start(sj, false);
   sj->last_nasal = a - allophones >= 12 && a - allophones <= 16;
+  if (a - allophones == 59 || a - allophones == 63) { sj->fhold[0] = 400.0f; sj->fhold[1] = 1600.0f; } /* SE, TT: the alveolar locus */
   sj->last_nge = a - allophones == 15;
   sj->after_velar = a - allophones == 50; sj->after_vstop = a->kind == K_VSTOP; sj->after_velar2 = a - allophones == 50 || a - allophones == 51;
   sj->after_kvelar = a - allophones == 66;
@@ -1696,6 +1695,8 @@ static void play_pause(sj_chip *sj, double ms) {
    * P1 NE P1 AW was worse) */
   sj->paused = true;
   sj->ppok = false;
+  if (ms >= 70.0)
+    sj->fhold[0] = sj->fhold[1] = sj->fhold[2] = 0.0f;
   if (ms < 70.0 && sj->last.a[0] + sj->last.a[1] + sj->last.a[2] > 0.0f) {
     sj->prepause = sj->last;
     sj->ppok = true;
@@ -2281,6 +2282,8 @@ static double tick(sj_chip *sj) {
   } else
     for (int k = 0; k < NTONE; k++) sj->xa[k] = f.a[k];
   sj->last = f;
+  if (f.a[0] + f.a[1] + f.a[2] > 0.0f)
+    for (int q = 0; q < 3; q++) sj->fhold[q] = f.f[q];
 
   double v = 0.0;
 
