@@ -1,12 +1,12 @@
 # Accuracy by sound
 
-X for every sound, 0.4.3 against 0.5.4, both scored the same way on the same recordings (four
+X for every sound, 0.4.3 against 0.5.5, both scored the same way on the same recordings (four
 takes per sound, two from each of two AtariVoxes; 1.0 is about as close as the original
 AtariVox's own takes are to each other, lower is closer; each render placed by its whole level over time, then its pulse phase). See the README for how X is
 measured.
 
 ```
-code  sound   0.4.3  0.5.4   change
+code  sound   0.4.3  0.5.5   change
 128   IY       0.88   0.78    -12 %
 129   IH       0.90   0.79    -12 %
 130   EY       1.05   0.81    -23 %
@@ -104,8 +104,8 @@ code  sound   0.4.3  0.5.4   change
 222   B2       1.33   1.03    -22 %
 223   B3       1.32   0.86    -35 %
 224   B4       1.23   0.96    -22 %
-225   B5       1.20   0.88    -27 %
-226   B6       1.55   1.06    -31 %
+225   B5       1.20   0.86    -28 %
+226   B6       1.55   1.02    -34 %
 227   B7       1.25   0.92    -27 %
 228   B8       1.46   0.91    -38 %
 229   B9       1.53   1.00    -34 %

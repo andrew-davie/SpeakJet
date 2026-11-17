@@ -112,10 +112,11 @@ take has the noisiest background and is the outlier, and VoxProbe 15 records a
 replacement). So **X near 1.0 is about as close as unit B's own recordings are
 to each other**.
 
-0.5.4 against 0.4.3, both scored the same way on the same recordings:
+0.5.5 against 0.4.3, both scored the same way on the same recordings (the solo sounds are those of 0.5.4;
+the effects' tone switches and B6, C2 and A4's tables changed in 0.5.5):
 
 ```
-                                      0.4.3   0.5.4
+                                      0.4.3   0.5.5
 allophones (72), mean X                0.98    0.84   72 closer, none further
 sound effects (55), mean X             1.20    0.93   55 closer, none further
 joins (VoxProbe 16, 76 items; 0.5.5)    4.57    4.07   dB mean band error, 0.5.4 -> 0.5.5; unit against unit 2.77
