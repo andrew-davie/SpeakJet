@@ -32,7 +32,8 @@ a valley):
   41.52 -> 41.53, none worse by 0.01).
 - **B6's 4.5 kHz tones were the 3.5 kHz tone's DAC image** (the two lines sum to the 8026 Hz rate on every take; our output
   images too): removed, its tones held at the chip's 1803 / 3504 Hz, the high parts 3 dB up, its bed 150. B6 1.046 -> 1.016,
-  its lines 1.78 -> 1.24. B9 C2 A4 also carry tones above 4013 Hz (to do).
+  its lines 1.78 -> 1.24. C2's two and A4's two (parts 6 and 7) were images too (they pair with a tone of their part at
+  the rate): removed, C2 0.837 -> 0.836, A4 0.991 -> 0.994. B9's two pair with nothing (real tones near the band edge): kept.
 
 The join rules first found (two now replaced by the held formants and the glide rate, above):
 
