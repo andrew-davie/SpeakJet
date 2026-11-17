@@ -1895,7 +1895,9 @@ static void next_command(sj_chip *sj) {
          * release 195 -> 175 against 175) */
         if (next == 191 && !(code >= 140 && code <= 144) && !slow_before_next(sj, n))
           cut = 0;
-        if ((code == 141 || code == 142) && (next == 194 || next == 195 || next == 198 || next == 199 || next == 170 || next == 171))
+        /* KE KO only (2026-11-18, VoxProbe 13, both units: NE BO OW 250 ms, NO BO OW 257, NE PO OW 290, where no overlap gave
+         * 280 / 290 / 315; NE KO OW 290 as the chip) */
+        if ((code == 141 || code == 142) && (next == 194 || next == 195))
           cut = 0;
         if (code == 199 && prev_kind_vowel && next <= 199 && allophones[next - 128].kind != K_STOP && allophones[next - 128].kind != K_FRIC)
           cut = TICKS(20.0);

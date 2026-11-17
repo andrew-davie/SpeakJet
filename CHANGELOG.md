@@ -21,6 +21,10 @@ v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
   12.3 -> 8.3 ms rms; VoxProbe 13's pairs (section 5) 9.6 -> 8.6 ms mean error; VoxProbe 16 3.949 -> 3.849 dB; move timing
   unchanged (12.2 ms). Reference samples regenerated.
 
+- **NE and NO overlap BE BO PE PO as other sounds do**; only KE and KO keep the no-overlap join (VoxProbe 13, both units: NE BO
+  OW 250 ms, NO BO OW 257, NE PO OW 290; ours were 280 / 290 / 315, now 255 / 255 / 300; NE KO OW 290 unchanged). VoxProbe
+  13's stop items (section 6) 8.9 -> 6.8 ms mean error, worst +32 -> +18; nothing else moves. Reference samples regenerated.
+
 ### 0.5.5 (2026-11-18; technical manual 1.24)
 
 Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule

@@ -731,8 +731,8 @@ against 1690/1685 (was 1725). Fitted on those two; the VoxProbe 16 band judge is
 **Still open (section 13).** Slow on a vowel joined after a sound at Speed 108 runs ~35 ms shorter on the chip than
 x1.29 x the Speed factor (MM Slow AY 285 against 320, Slow AY Slow NE 320 against 355). Letting it ignore Speed fits both
 but takes phrase 1 to 1440 against the chip's 1490 and the band judge 3.947 -> 3.993, so it is not adopted; a
-voiced stop after a pause (phrase 2's TT P1 BE: a 20 ms bar 25 ms in, then 95 ms of quiet); PO after a nasal (VoxProbe 13:
-a longer closure, a shorter release); AY IY and AW IH AW 30-35 ms long.
+voiced stop after a pause (phrase 2's TT P1 BE: a 20 ms bar 25 ms in, then 95 ms of quiet); PO after a nasal (VoxProbe 13's
+NE PO OW, its length now 300 against 285/295: the closure still 25 ms long, the release short); AY IY and AW IH AW 30-35 ms long.
 
 "Followed at once" looks past any modifier and setting bytes between the two
 sounds: Fast, Slow, Stress, Relax, Wait, Volume, Speed, Pitch, Bend and
@@ -1695,8 +1695,9 @@ every join; where their lengths differ (unit B's solo nasals read 35-45 ms long)
 x1.29 x the Speed factor (Man Goes Down's MM Slow AY 285 ms against the library's 320), where isolated slowed pairs at
 Speed 114 fit within 10 ms; at 118 it is fixed provisionally by the vowels' Speed step (section 6.5). A voiced stop after a pause
 (phrase 2's TT P1 BE, both units): a 20 ms bar 25 ms after the hiss, 95 ms of quiet, then the vowel; the library plays
-72 ms of silence then the bar and release as from silence. PO after a nasal (VoxProbe 13's NE PO OW): a longer closure and
-a shorter release than ours. AY IY and AW IH AW 30-35 ms long. IY SE: the vowel ends ~15 ms early on ours (a smaller cut
+72 ms of silence then the bar and release as from silence. PO after a nasal (VoxProbe 13's NE PO OW): 300 ms against
+285/295 since NE and NO overlap BO and PO (1.25; NE BO OW 280 -> 255, NO BO OW 290 -> 255); the chip's closure is still
+~25 ms shorter and its release longer than ours. AY IY and AW IH AW 30-35 ms long. IY SE: the vowel ends ~15 ms early on ours (a smaller cut
 helps it and hurts phrase 4). IYUW after P4 at Pitch 40 (phrase 2's end): the chip's voicing ~20 ms before ours, not in the
 onset itself.
 
