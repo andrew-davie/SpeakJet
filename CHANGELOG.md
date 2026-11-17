@@ -7,6 +7,23 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
+### 0.5.5 (unreleased)
+
+Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule
+tested on every item, none worse; solo sounds unchanged.
+
+- **Straight after SE or TT a sound's F1 starts at 400 Hz at most**, beside 0.5.4's F2 at 1600 (both units, SE AW: the
+  vowel's first ~12 ms on a low F1 under the 1.5 kHz line). All 12 SE/TT-into-a-vowel items closer; 247.5 -> 235.3.
+- **A slowed nasal before a vowel or glide runs 10 ms longer** (Slow NE AW: 222 -> 109 and 317 -> 135); 235.3 -> 231.9.
+- **A vowel after a short pause (P4, P5) fades in over 20 ms at most** (NE P4 AW: 305 -> 241, 355 -> 277; AW P4 AW
+  closer); 249.4 -> 247.5.
+- **A slowed vowel after a nasal moves over 60 ms, and into a nasal moves F1 to the nasal's over its last 60 ms** (Man
+  Goes Down P1's MM Slow AY Slow NE, both units: F1 arcs where ours stepped; P1 548 -> 462, 620 -> 531); 251.4 -> 249.4.
+- **A vowel straight after MM runs 10 ms shorter** (MM AW: the chip's AW 110 ms, ours 125; after NE any cut was
+  worse); 258.1 -> 251.4.
+- **No run-on for a slowed glide before a Slow** (0.4.x's 25 ms for Man Goes Down P4: with 0.5.4's rules ours ran ~15 ms
+  long there and in VoxProbe 13's Slow IYUW Slow SE; P4 943 -> 594 and 801 -> 626); 264.0 -> 258.1.
+
 ### 0.5.4 (2026-11-17; technical manual 1.23)
 
 - **Connected speech, measured against a real unit** (each unit's phrase recordings scored against the other's: 143.9 on the 88 phrase items, where the library stood at 309.6). Join rules, each tested on every item with none worse: a vowel or glide into TT moves F2 to the alveolar locus (1600 Hz) over its last 20 ms; an unslowed TT before a vowel releases 10 ms longer; straight after SE or TT a sound's F2 starts at 1600 Hz; across a pause under 70 ms the next sound starts from the last one's formants; an unslowed nasal hands over to a vowel 5 ms sooner; a vowel with F2 under 1500 Hz ends 15 ms sooner into a nasal; AW before P4-P6 fades over 10 ms; a slowed nasal comes in almost at once. Phrase items 309.6 -> 264.0; every solo sound unchanged.
