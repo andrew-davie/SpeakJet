@@ -35,6 +35,26 @@ a valley):
   its lines 1.78 -> 1.24. C2's two and A4's two (parts 6 and 7) were images too (they pair with a tone of their part at
   the rate): removed, C2 0.837 -> 0.836, A4 0.991 -> 0.994. B9's two pair with nothing (real tones near the band edge): kept.
 
+**Joins rebuilt from VoxProbe 16** (2026-11-18, six takes of every join class alone and Man Goes Down with each control
+stripped). The rules fitted to Man Goes Down through the 88-item phrase cost were compensating for each other (a correct
+nasal overlap scored worse against them), so they are gone and the phrase cost is retired as a gate; the judges are
+VoxProbe 16's own items, timing by F1/F2 tracks and levels in 16 bands on both units:
+
+- **Removed** (each fitted on phrases, not on a recorded join): IY 5 ms shorter after a sound, LE 5 ms longer before one, a
+  vowel 10 ms shorter after MM, a nasal 5 ms shorter and a slowed nasal 10 ms longer before a vowel, a low-F2 vowel 15 ms
+  shorter into a nasal, a slowed vowel's F1 move into a nasal, TT 10 ms longer before a vowel, AW's 25 and 10 ms releases,
+  a vowel's 20 ms fade-in after a short pause, a slowed nasal's quick attack, P2's "TT P1 BE" closure exception, and P1's
+  "unless slowed" exemption from the nasal join.
+- **A nasal overlaps the vowel after it by 13 ms, MM by 22** (both units: MM into a vowel hands over ~22 ms before the
+  nasal's end alone, NE ~13, whatever the vowel - a formant-distance rule put NE IY and NE UW 22-32 ms early); scaled by
+  Speed and Slow. **A vowel overlaps the nasal after it by 15 ms.**
+- **Speech takes the speech length law below Speed 114 too**, (162 - Speed) / 48: the effects' law gave Speed 90 MM AW
+  x1.84 where both units play x1.68.
+- VoxProbe 16 join items (sections 3-8), levels: 4.569 -> 4.207 dB; move timing 14.3 -> 13.9 ms rms; Man Goes Down P1
+  1480 ms against 1490 (without its Slows 1280 against 1305), P2 1725 against 1688, P4 945 against 932. Every solo sound
+  unchanged. Open: Slow at Speed 108 and 118 (our stretch compounds with Speed: MM Slow AY +35 ms, P2 +37), AW IY at
+  Speed 90 +25, NGE into a vowel.
+
 The join rules first found (two now replaced by the held formants and the glide rate, above):
 
 - **Straight after SE or TT a sound's F1 starts at 400 Hz at most**, beside 0.5.4's F2 at 1600 (both units, SE AW: the
