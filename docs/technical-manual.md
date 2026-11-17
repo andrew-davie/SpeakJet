@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.23, 2026-11-17.** The version rises with every change to what is known about the chip (new
+**Version 1.24, 2026-11-18.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -499,6 +499,13 @@ before a sound) was mixed and is not used, nor 132 AY shorter before a sound (th
 
 ### 6.2 Moving between sounds
 
+**The formants never jump (library 0.5.5, 1.24).** Each sound starts from where the last voiced sound left the formants:
+they are held through a hiss and through a pause under 70 ms (both units, NE P4 AW: the AW opens on NE's F2), and SE and
+TT set them to the alveolar locus, F1 400 Hz and F2 1600 (SE AW: the vowel's first ~12 ms on a low F1 under a 1.5 kHz
+line). A pause of 70 ms or more clears them (held across P1, SE P1 AW and TT P1 AW read 57-140 % worse). **A vowel moves
+at a rate**: 5 ms per ERB of F1/F2 distance, never under the common transition, stretched by Speed and Slow. These two
+replaced four of the earlier per-pair rules and improved joins no rule had reached (SE P4 AW, TT P4 AW 16-40 % closer).
+
 **Transition (measured).** The voice moves to each new sound's frame over
 25 ms, linearly, from wherever the last sound left it. The transition is part
 of the sound's length, not added to it, and does not scale with Speed.
@@ -670,30 +677,52 @@ fricative held.
 
 ### 6.5 Joins
 
-**Cutting short (revised 1.11).** A sound followed at once by another sound is cut short: its last segment loses
-15 ms, or 30 ms when the last segment is voiced and the next sound is a voiced allophone (not a fricative or unvoiced
-stop). The cut is skipped if it would leave the segment with a tick or less. Three exceptions:
+**Rebuilt from VoxProbe 16 (library 0.5.5, 1.24).** VoxProbe 16 recorded every kind of join on its own, on both units
+(solo sounds in the same session; nasal, vowel, liquid, hiss and stop joins; Speed and Slow on joins; Man Goes Down's
+phrases as sent and with each control stripped; its joins alone with their controls). The rules fitted to Man Goes Down's
+phrases through a phrase score (1.11-1.23) were compensating for each other - a correct nasal overlap scored worse against
+them - so they are gone, and the joins are judged on VoxProbe 16's items: the timing of each formant move against both
+units' F1/F2 tracks, and the levels in sixteen bands with every take lined up on its own onset. On those items the
+library stands at 4.07 dB mean band error (0.5.4: 4.57); unit A against unit B gives 2.77.
 
-- **after a stop** (measured): a stop on either side takes the short 15 ms, as the old rule's own wording said; the
-  code had looked only at the next sound, so 179 GO lost 51 ms of its release to OWWW. After an **unvoiced** stop
-  there is no cut at all (the TT AW pairs, VoxProbe 4, 8 and 9, both units: 166-176 ms where the cut gave 145).
-- **vowel or glide into vowel or glide (assumed, 1.11, fitted on VoxProbe 4's pairs, both units).** The fixed 30 ms
-  was an earlier finding these pairs don't support. The cut is 66.9 − 6.9·d ms, d the ERB distance of F1 plus F2
-  between the sound's last frame and the next sound's first (a glide's first allophone); below zero the sound runs
-  on by that much. The chip takes longer between sounds further apart: AW IY and IY AW 261/260 ms (the fixed cut
-  gave 215; now 270/268), AW UW 204 (gave 212; now 210). Nasals, liquids and voiced fricatives keep the fixed cut:
-  their table formants are not a vowel position, and including them put Man Goes Down's phrases 1 and 2 51-145 ms
-  long. Their own joins are still off (section 13).
-- **a stop into a vowel**: section 6.4.
+**Cutting short (measured).** A sound followed at once by another is cut short at its end: by 15 ms, or 30 ms when its last
+segment is voiced and the next sound is a voiced allophone. Exceptions, each from recorded pairs:
 
-**Toward a hiss (fitted, 1.11, Man Goes Down's phrase 4, both units).** A voiced sound followed at once by 187 SE bends
-its F2 and F3 over its last 40 ms to those of 167 ZZ, SE's voiced partner: P4's IYUW falls to ~1090 Hz and rises to
-~1500 before the hiss (ZZ's F2 is 1469). Only SE is recorded this way; the other hisses keep their joins.
+- **vowel or glide into vowel or glide** (VoxProbe 4, 13 and 16, both units): 66.9 - 6.9 d ms plus the two sounds' own join
+  terms, d the ERB distance of F1 plus F2 between the sound's last frame and the next sound's first; below zero the sound
+  runs on by that much. On the 20 recorded vowel pairs the library's lengths are within 12 ms rms (mean +2.5). WW and RR
+  take this rule too; **LE and LO do not** (VoxProbe 16: LE AW and AW LE within 6 ms off it, 12-16 ms early on it).
+- **a nasal into a vowel** overlaps by 13 ms, MM by 22 (VoxProbe 16, both units: MM hands over ~22 ms before its own end
+  alone, NE ~13, whatever the vowel - a formant-distance rule put NE IY and NE UW 22-32 ms early), scaled by Speed and Slow.
+  **A vowel into a nasal** overlaps by 15 ms. The 1.13 rule, no overlap unless either is slowed, was wrong both ways.
+- **a stop on either side** takes the short 15 ms; after an unvoiced stop there is no cut at all (the TT AW pairs, VoxProbe
+  4, 8 and 9, both units). A stop into a vowel: section 6.4.
 
-**A slowed glide followed by a Slow (assumed, 1.11, Man Goes Down's phrase 4 only).** A glide under Slow, followed by
-modifiers that include a Slow before the next sound, plays 50 ms longer (× the Speed factor). P4's Slow IYUW ends
-40-50 ms after the library's on both units, though the same Slow IYUW alone matches (VoxProbe 12). The cause is not
-known; the rule matches P4 (944 ms on the chip, 875 → 925) and touches neither phrase 1 nor 2.
+**Toward a hiss (fitted, 1.11, Man Goes Down's phrase 4, both units; confirmed by the formant tracks of VoxProbe 4's AW SE,
+1.24).** A voiced sound followed at once by 187 SE bends its F2 and F3 over its last 40 ms to those of 167 ZZ, SE's voiced
+partner. Only SE is recorded this way.
+
+**Speed on joined speech (VoxProbe 16, 1.24).** Below Speed 114 a vowel or glide takes its own law, (149.3 - Speed) / 35.3
+(both units: AW IY and MM AW at Speed 90 x1.65-1.68 over their Speed 114 lengths; Man Goes Down's phrase 1 at Speed 108 is
+consistent), and every other speech length the speech law (162 - Speed) / 48 - no longer the effects' law, which gave
+Speed 90 MM AW x1.84. Above 114 the step law of 6.1 stands, and a nasal above Speed 118 takes it as the vowels do (Speed
+127 MM AW hands over at 38-56 ms where the nasal law put it at 80-102). Speed 127 is exact on both pairs.
+
+**After a pause (VoxProbe 16, 1.24).** An unvoiced stop after a pause code closes 15 ms longer (UX P1 EK 260 ms on both
+units; 1.13's 30 read 10 ms long). The next sound starts from the formants the last voiced sound left (4.1); the 1.23
+rules for a vowel's attack and AW's release around a short pause are gone.
+
+**Removed in 1.24** (each had been fitted on the phrases, not on a recorded join): IY 5 ms shorter after a sound, LE 5 ms
+longer before one, a vowel 10 ms shorter after MM, a nasal 5 ms shorter and a slowed nasal 10 ms longer before a vowel, a
+low-F2 vowel 15 ms shorter into a nasal, a slowed vowel's F1 move into a nasal, TT 10 ms longer before a vowel, a slowed
+glide's 25-50 ms run-on before a Slow (1.11's phrase 4 rule), a slowed nasal's quick attack, and phrase 2's "TT P1 BE"
+closure exception. The rebuilt joins also fit VoxProbe 13's 87 recorded pairs better than 1.23 did (length error 18.1 ->
+13.5 ms rms).
+
+**Still open (section 13).** Slow on a vowel joined after a sound at Speed 108 or 118 runs ~30 ms shorter on the chip than
+x1.29 x the Speed factor (Man Goes Down's MM Slow AY, FF RR Slow UW), where isolated slowed pairs at Speed 114 fit; a
+voiced stop after a pause (phrase 2's TT P1 BE: a 20 ms bar 25 ms in, then 95 ms of quiet); PO after a nasal (VoxProbe 13:
+a longer closure, a shorter release); AY IY and AW IH AW 30-35 ms long.
 
 "Followed at once" looks past any modifier and setting bytes between the two
 sounds: Fast, Slow, Stress, Relax, Wait, Volume, Speed, Pitch, Bend and
@@ -754,7 +783,7 @@ copies together.
 or control between, plays as a Repeat copy of the first: no new onset and no
 overlap cut between the two (VoxProbe 12, both units; matches within 1-13 ms).
 
-### 6.8 What was fitted on Man Goes Down, and what changed (1.11)
+### 6.8 What was fitted on Man Goes Down, and what changed (1.11; the join rules here were replaced in 1.24, see 6.5)
 
 Rules fitted on the game's phrases are listed here so they can be told apart from what holds everywhere.
 
@@ -1047,6 +1076,15 @@ A part with neither V nor P is plain: its tones are steady sines at 0.6 and
 its phases run on from part to part.
 
 ### 7.3 Tones and their ending
+
+**A tone switch (library 0.5.5, 1.24; 226 B6, all four takes).** At a part change a new tone takes the oscillator whose
+tone just stopped, not an idle one, and an oscillator already sounding whose frequency leaps by more than 25 % plays the
+midpoint of the old and new frequencies for 1.5 ms before the new one: on B6 every switch between its 1.8 and 3.5 kHz
+tones leaves a ~1.7 ms burst at the arithmetic midpoint, the hump between 2.2 and 3.1 kHz on its whole-sound spectrum, low
+at both ends and peaking in the middle (a constant-rate glide drew a slope instead). Not from silence, not into or out of
+a voiced part, not on a small step. B6's tones above 4 kHz were the 3.5 kHz tone's image at the 8026 Hz rate (the two
+lines sum to the rate on every take; the library's output images too): removed, with C2's and A4's. Tones above 4013 Hz
+that pair with nothing (B9) are real.
 
 **Steadiness (measured).** A plain tone holds its pitch to 0.03-0.13 % rms
 (the DTMF tones and the robots' carriers) and its level to 0.01-0.09 dB rms in
@@ -1629,7 +1667,28 @@ Lessons: score every release against every earlier one, not only the last; a cho
 when the measure is fixed, not kept for its history. A real take scored as ours is the check on what 1.0 means:
 the original AtariVox's takes score about 1.0, the AtariVox+'s 1.2-2.4.
 
+### 12.7 VoxProbe 16 (1.24)
+
+VoxProbe 16 (build 1, sha1 83de1bce, recorded 2026-11-18 on both units, 2600 and Stella, six takes) records every kind of
+join alone, ~3.3 minutes: the solo sounds the joins use; MM NE NGE into IY AW UW EYIY, plain and with Slow on either side;
+IY AW UW into MM NE; every pair of IY EH AW UW, EYIY in and out, LE and RR beside vowels, SE and TT before and after vowels;
+AW IY and MM AW at Speed 90 and 127 and with Slow; Man Goes Down's three phrases as sent and each without its Slows,
+Pitches or Bends; and each of its joins alone with the controls in force. Its items are placed by the DTMF markers and the
+silences (section 2's lone hisses by order). Two judges read it: each formant move's start and end against both units'
+F1/F2 tracks (an LPC tracker run the same way on every take and on ours), and the levels in sixteen bands from 300 Hz to
+5 kHz with every take lined up on its own onset, the chip's background added to ours. The two units agree within 5-10 ms on
+every join; where their lengths differ (unit B's solo nasals read 35-45 ms long) it is the take's background, not the chip.
+
 ## 13. Known gaps and open questions
+
+**From VoxProbe 16 (1.24).** Slow on a vowel joined after a sound at Speed 108 or 118 runs ~30 ms shorter on the chip than
+x1.29 x the Speed factor (Man Goes Down's MM Slow AY 285 ms against the library's 320, FF RR Slow UW 205 against 225),
+where isolated slowed pairs at Speed 114 fit within 10 ms; phrase 2 is 37 ms long for it. A voiced stop after a pause
+(phrase 2's TT P1 BE, both units): a 20 ms bar 25 ms after the hiss, 95 ms of quiet, then the vowel; the library plays
+72 ms of silence then the bar and release as from silence. PO after a nasal (VoxProbe 13's NE PO OW): a longer closure and
+a shorter release than ours. AY IY and AW IH AW 30-35 ms long. IY SE: the vowel ends ~15 ms early on ours (a smaller cut
+helps it and hurts phrase 4). IYUW after P4 at Pitch 40 (phrase 2's end): the chip's voicing ~20 ms before ours, not in the
+onset itself.
 
 Where the library and the chip still differ, or the chip is not understood:
 
@@ -2281,6 +2340,11 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ```
 
 ## Revision history
+
+- **1.24 (2026-11-18, library 0.5.5).** Joins rebuilt from VoxProbe 16 (6.5): the Man Goes Down-fitted rules removed; a nasal
+  overlaps the vowel after it by 13 ms, MM 22, a vowel the nasal after it by 15; LE and LO off the vowel rule; a vowel's own
+  Speed law below 114 and the speech law for the rest; a nasal above Speed 118 on the step law; a stop after a pause closes 15
+  ms longer, not 30; NGE's and MM's second formants are their 2249 and 1430 Hz lines. 12.7: VoxProbe 16.
 
 ```
 1.23  2026-11-17   library 0.5.4: joins against a real unit (6.2); IY after a sound and LE before one take their phrase lengths (6.1); a plain vowel's long
