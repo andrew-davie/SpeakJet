@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.24, 2026-11-18.** The version rises with every change to what is known about the chip (new
+**Version 1.25, 2026-11-18.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -695,6 +695,8 @@ segment is voiced and the next sound is a voiced allophone. Exceptions, each fro
 - **a nasal into a vowel** overlaps by 13 ms, MM by 22 (VoxProbe 16, both units: MM hands over ~22 ms before its own end
   alone, NE ~13, whatever the vowel - a formant-distance rule put NE IY and NE UW 22-32 ms early), scaled by Speed and Slow.
   **A vowel into a nasal** overlaps by 15 ms. The 1.13 rule, no overlap unless either is slowed, was wrong both ways.
+- **a vowel after NGE** (1.25) moves from NGE's frame 6 ms longer per ERB of F2 distance and is that much longer, as after
+  GE at 8 (VoxProbe 16, both units: NGE AW 242 ms, NGE UW 243 where the plain join gave 195; NGE IY on time).
 - **a stop on either side** takes the short 15 ms; after an unvoiced stop there is no cut at all (the TT AW pairs, VoxProbe
   4, 8 and 9, both units). A stop into a vowel: section 6.4.
 
@@ -2340,6 +2342,8 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ```
 
 ## Revision history
+
+- **1.25 (2026-11-18).** A vowel after NGE takes the velar move (6.5).
 
 - **1.24 (2026-11-18, library 0.5.5).** Joins rebuilt from VoxProbe 16 (6.5): the Man Goes Down-fitted rules removed; a nasal
   overlaps the vowel after it by 13 ms, MM 22, a vowel the nasal after it by 15; LE and LO off the vowel rule; a vowel's own

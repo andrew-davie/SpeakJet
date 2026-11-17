@@ -7,6 +7,11 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
+### Since 0.5.5 (unreleased; technical manual 1.25)
+
+- **A vowel after NGE moves from NGE's frame 6 ms longer per ERB of F2 distance**, as after GE (VoxProbe 16, both units:
+  NGE AW 242 ms and NGE UW 243 where ours gave 195; NGE IY, its F2 near NGE's, on time). VoxProbe 16 4.071 -> 3.947 dB.
+
 ### 0.5.5 (2026-11-18; technical manual 1.24)
 
 Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule
