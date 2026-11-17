@@ -12,22 +12,12 @@ v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule
 tested on every item, none worse; solo sounds unchanged.
 
-Mechanisms in place of join rules (branch mechanism):
-
-- **The formants never jump.** Each sound starts where the last voiced sound left the formants, held through a hiss and a
-  pause under 70 ms; SE and TT set them to the alveolar locus (F1 400, F2 1600). Replaces 0.5.4's carry across a short
-  pause and the SE/TT start rule below; 231.9 -> 225.3, and SE P4 AW and TT P4 AW, which no rule reached, 16-40 % closer.
-- **A vowel glides at a rate**: 5 ms per ERB of F1/F2 distance (at least the common 25 ms), stretched by Speed and Slow.
-  Replaces the slowed vowel after a nasal (60 ms) below; 225.3 -> 224.3.
-
-The rules first found for the same items (the two marked replaced are gone):
-
-- (replaced by the held formants) **Straight after SE or TT a sound's F1 starts at 400 Hz at most**, beside 0.5.4's F2 at 1600 (both units, SE AW: the
+- **Straight after SE or TT a sound's F1 starts at 400 Hz at most**, beside 0.5.4's F2 at 1600 (both units, SE AW: the
   vowel's first ~12 ms on a low F1 under the 1.5 kHz line). All 12 SE/TT-into-a-vowel items closer; 247.5 -> 235.3.
 - **A slowed nasal before a vowel or glide runs 10 ms longer** (Slow NE AW: 222 -> 109 and 317 -> 135); 235.3 -> 231.9.
 - **A vowel after a short pause (P4, P5) fades in over 20 ms at most** (NE P4 AW: 305 -> 241, 355 -> 277; AW P4 AW
   closer); 249.4 -> 247.5.
-- (the first half replaced by the glide rate) **A slowed vowel after a nasal moves over 60 ms, and into a nasal moves F1 to the nasal's over its last 60 ms** (Man
+- **A slowed vowel after a nasal moves over 60 ms, and into a nasal moves F1 to the nasal's over its last 60 ms** (Man
   Goes Down P1's MM Slow AY Slow NE, both units: F1 arcs where ours stepped; P1 548 -> 462, 620 -> 531); 251.4 -> 249.4.
 - **A vowel straight after MM runs 10 ms shorter** (MM AW: the chip's AW 110 ms, ours 125; after NE any cut was
   worse); 258.1 -> 251.4.
