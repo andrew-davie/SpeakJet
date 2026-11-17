@@ -25,6 +25,10 @@ v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
   OW 250 ms, NO BO OW 257, NE PO OW 290; ours were 280 / 290 / 315, now 255 / 255 / 300; NE KO OW 290 unchanged). VoxProbe
   13's stop items (section 6) 8.9 -> 6.8 ms mean error, worst +32 -> +18; nothing else moves. Reference samples regenerated.
 
+- **AY carries a +12 ms join term** (table; with F1 at 0.6 of F2 the AY joins sat 10-15 ms under the chip: AY IY 245 -> 235 ms
+  against 230, AY EH and AY AW as the chip). 20 recorded vowel pairs 8.3 -> 7.3 ms rms; VoxProbe 13 section 5 8.6 -> 7.5 ms
+  mean error. Tables 6823 bytes.
+
 ### 0.5.5 (2026-11-18; technical manual 1.24)
 
 Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule

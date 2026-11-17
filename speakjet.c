@@ -642,8 +642,9 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
  * distance law, a few sounds carry a join term of their own (alloj), added to the cut of every vowel or glide join
  * they are on either side of: IH +15, AW +6, OW -10, RR -16 ms. The law alone left AW IH, IH AW IH and AW IH AW
  * 22-45 ms long and AW RR, RR AW 10-13 ms short; with the terms the 26 joins without AY read rms 16.8 -> 5.0 ms, max
- * 42 -> 10. Fitted on VoxProbe 4 and 13 alone, the terms took VoxProbe 14 from rms 30.1 to 10.6 ms. AY IY is still
- * ~30 ms long: no term on AY or IY fits it with AY EH and IY's other joins (open) */
+ * 42 -> 10. Fitted on VoxProbe 4 and 13 alone, the terms took VoxProbe 14 from rms 30.1 to 10.6 ms. AY +12 (2026-11-18,
+ * once F1 counted 0.6 of F2 in the distance: AY IY 245 -> 235 against 230, AY EH 210, AY AW 230 = the chip's; the 20 pairs
+ * 8.3 -> 7.3 ms rms) */
 static double join_term(int idx) {
   for (int i = 0; i < ALLOJ_N; i++)
     if (alloj[i][0] == idx)
