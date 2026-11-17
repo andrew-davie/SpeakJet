@@ -105,9 +105,12 @@ fricative, stop, voiced stop, affricate), three formants (frequency and level
 0–31), a noise band (centre, half width, level), its length, its Repeat copy
 length and a level byte. A glide carries the two allophones it runs between:
 the first frame holds for a fifth of the sound, the move takes the next seven
-tenths, the second frame holds the last tenth. The voice moves to a new
-sound's frame over 25 ms (`transition`); after silence it starts at the
-sound's own formants with no level, instead of sweeping up from 0 Hz.
+tenths, the second frame holds the last tenth. The formants never jump (0.5.5): a sound starts from where the
+last voiced sound left them, held through a hiss and through a pause under 70 ms (`fhold`); SE and TT set
+them to the alveolar locus, F1 400 Hz and F2 1600; a pause of 70 ms or more clears them, and after one the
+sound starts at its own formants with no level, not sweeping up from 0 Hz. A vowel moves at a rate, 5 ms
+per ERB of F1/F2 distance (never under `transition`, 25 ms), stretched by Speed and Slow; the other kinds
+move over `transition`, a nasal after a sound in 5 ms.
 
 **Noise.** The chip's hiss is Gaussian-distributed to the sample on both
 units (kurtosis 2.8–3.2, 4–5 % of samples beyond two sigma), not a tone whose
@@ -159,21 +162,24 @@ Fast is ×2/3 and Slow ×4/3 of the played length (`fast`, `slow`; VoxProbe 12, 
 plain vowel is ×1.29 (0.5.0, VoxProbe 8's slowed AW and IY on both units); the unvoiced stops and
 affricates are unchanged, the voiced stops take Slow but not Fast.
 
-**Joins.** A sound followed at once by another keeps the voice running: no
-release on it and no attack on the next; it is cut short by 15 ms, 30 when
-both are voiced (`overlap`, `overlap_v`). A stop on either side takes the 15, and nothing is cut after an unvoiced
-stop. A vowel or glide into a vowel or glide is cut by `JOIN_A` − `JOIN_K`·d ms instead, d the F1+F2 ERB distance,
-running on when that is negative (ASSUMPTION: fitted on VoxProbe 4's vowel pairs). Between two sounds of the vowel
-family (vowels, glides, LE LO WW RR) `cross_join` bends the first sound's tail and `cross_segments` finishes the move
-in the second: each formant on one line of `XJ_A` + `XJ_K`·d ms (at least `XJ_MIN`), ending `XJ_END` ms into the
-second sound (ASSUMPTION: fitted on VoxProbe 13 section 5, VoxProbe 4 section 5, VoxProbe 8 section 10); a crossing cut longer
-than a glide's last segment trims across its segments (0.5.0: VoxProbe 8's AYWW AW). A vowel or glide after a voiced
-stop other than GE GO opens at its own level and amplitudes while its formants glide from the release; a voiced
-fricative after a pause opens with 40 ms of noise alone; a voiced stop after a short pause (P4–P6) opens its bar
-12 ms into the pause; the longer closure after a sound is DO's (+25 ms) and GO's (+15) only (all 0.5.0, Man Goes
-Down and VoxProbe 4 on both units; technical manual 6.11). A voiced sound into 187 SE bends
-toward 167 ZZ's formants over its last 40 ms; a slowed glide followed by a Slow plays `SLOW_GLIDE_ON` ms longer
-(ASSUMPTION: Man Goes Down's phrase 4 only). Pauses, effects and silence keep
+**Joins (rebuilt from VoxProbe 16, 0.5.5).** A sound followed at once by another keeps the voice running: no
+release on it and no attack on the next; it is cut short by 15 ms, 30 when both are voiced (`overlap`,
+`overlap_v`). A stop on either side takes the 15, and nothing is cut after an unvoiced stop. A vowel, glide, WW
+or RR into one of those is cut by `JOIN_A` − `JOIN_K`·d ms plus the two sounds' join terms (`jc`), d the F1+F2 ERB
+distance, running on when that is negative (VoxProbe 4, 13 and 16's pairs: 12 ms rms over 20 recorded pairs);
+`cross_join` bends the first sound's tail and `cross_segments` finishes the move in the second on one line of
+`XJ_A` + `XJ_K`·d ms ending `XJ_END` ms into it. A nasal into a vowel overlaps by 13 ms, MM by 22 (VoxProbe 16, both
+units: the handover sits that far before the nasal's own end, whatever the vowel); a vowel into a nasal by 15; LE
+and LO take those fixed cuts, not the vowel rule (VoxProbe 16). Every cut scales with Speed and, when the first
+sound is slowed, with Slow. Below Speed 114 a vowel or glide's length follows (149.3 − Speed)/35.3 and every
+other speech length the speech law (162 − Speed)/48; above 115 the step law, a nasal above 118 included. A vowel
+or glide after a voiced stop other than GE GO opens at its own level and amplitudes while its formants glide
+from the release; a voiced fricative after a pause opens with 40 ms of noise alone; an unvoiced stop after a
+pause closes 15 ms longer; the longer closure after a sound is DO's (+25 ms) and GO's (+15) only. A voiced sound
+into 187 SE bends toward 167 ZZ's formants over its last 40 ms. The rules that had been fitted to Man Goes
+Down's phrases (IY, LE, MM, nasal and TT length offsets, the pause-side attack and release rules, the slowed
+glide's run-on) were removed in 0.5.5: each was compensating for another, and VoxProbe 16 records every kind of
+join alone (technical manual 6.5). Pauses, effects and silence keep
 the ramps. The look-ahead steps over Fast, Slow, Stress, Relax and the
 two-byte settings, so a pitch byte between words doesn't break a join.
 
