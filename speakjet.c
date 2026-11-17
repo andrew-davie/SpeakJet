@@ -1466,9 +1466,11 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     /* ASSUMPTION (2026-11-08, VoxProbe 13 section 7, all four takes: after GE's burst F2 glides from ~2000 Hz to the
      * vowel's over ~60 ms before OW; GE OW, GE UW 39-49 ms short, GE IY EH AY 15-20): a vowel after GE moves from GE's
      * frame over 8 ms more per ERB of F2 distance (10 put GE OW's end 10 ms late on the picture), and is that much longer */
+    /* 0.5.5: NGE too, at 6 ms per ERB (VoxProbe 16, both units: NGE AW 242 ms, NGE UW 243 where the plain join gave 195; NGE IY,
+     * F2 near NGE's, on time either way) */
     if (sj->after_velar && a->kind == K_VOWEL) {
       const double ea = 21.4 * sj_log(1.0 + 0.00437 * from.f[1]) / M_LN10, eb = 21.4 * sj_log(1.0 + 0.00437 * tgt.f[1]) / M_LN10;
-      const int ex = TICKS(8.0 * (ea > eb ? ea - eb : eb - ea) * speed_factor(sj, true));
+      const int ex = TICKS((sj->prev_code == 143 ? 6.0 : 8.0) * (ea > eb ? ea - eb : eb - ea) * speed_factor(sj, true));
       tr += ex;
       ticks += ex;
     }
@@ -1595,7 +1597,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   sj->last_nasal = a - allophones >= 12 && a - allophones <= 16;
   if (a - allophones == 59 || a - allophones == 63) { sj->fhold[0] = 400.0f; sj->fhold[1] = 1600.0f; } /* SE, TT: the alveolar locus */
   sj->last_nge = a - allophones == 15;
-  sj->after_velar = a - allophones == 50; sj->after_vstop = a->kind == K_VSTOP; sj->after_velar2 = a - allophones == 50 || a - allophones == 51;
+  sj->after_velar = a - allophones == 50 || a - allophones == 15; sj->after_vstop = a->kind == K_VSTOP; sj->after_velar2 = a - allophones == 50 || a - allophones == 51;
   sj->after_kvelar = a - allophones == 66;
   const bool was_pause = sj->after_pause;
   /* 0.5.4: a vowel straight after a voiced stop or a nasal has no long second period (the phrase items: 316.4 -> 313.0,
