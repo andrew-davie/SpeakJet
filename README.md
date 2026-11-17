@@ -118,29 +118,27 @@ to each other**.
                                       0.4.3   0.5.4
 allophones (72), mean X                0.98    0.84   72 closer, none further
 sound effects (55), mean X             1.20    0.93   55 closer, none further
-joins (88 recorded pairs and phrases)   481     264   mean cost; 68 closer by 5 %+, 8 further by 15 %+
-lengths 15 ms or more off (88 items)     24      13
+joins (VoxProbe 16, 76 items; 0.5.5)    4.57    4.07   dB mean band error, 0.5.4 -> 0.5.5; unit against unit 2.77
 ```
 
 (0.5.4 corrected two measuring faults, so these replace the figures published with 0.5.0-0.5.3: X could
 place a voiced sound one voice period off, and phrases that open on a hiss were measured with the hiss
 outside their window. Both versions above are scored with the corrected measures.)
-For the joins there is a yardstick too: each unit's recordings of the 88 items scored against the other
-unit's give a mean cost of 144 (median 138). 0.5.4's 264 (median 185) is closer than 0.4.3's 481 but not
-yet at a real unit's distance; Man Goes Down's phrases carry most of the rest.
-
-The joins are VoxProbe 4, 7 and 8's two-sound pairs and Man Goes Down's
-phrases, on both units, scored by a lined-up time-frequency difference. Man
-Goes Down's phrase lengths, against the two chips:
+For the joins (0.5.5) the judge is VoxProbe 16: every kind of join recorded alone on both units (nasal,
+vowel, liquid, hiss and stop joins; Speed and Slow on joins; Man Goes Down's phrases as sent and with each
+control stripped, and its joins alone), scored by the levels in sixteen bands with every take lined up on
+its own onset. 0.5.4 stood at 4.57 dB mean band error on those 76 items, 0.5.5 at 4.07; unit A against unit B
+reads 2.77. The rules that had been fitted to Man Goes Down's phrases are gone; the mechanisms that replaced
+them (how far a nasal overlaps a vowel, the formants held across a hiss, the Speed laws) also fit VoxProbe 13's
+87 recorded pairs better (length error 18.1 -> 13.5 ms rms). Man Goes Down's phrase lengths, against the two
+chips (VoxProbe 16's takes):
 
 ```
-              unit A   unit B   0.4.3   0.5.4
-phrase 1        1483     1490    1475    1482 ms
-phrase 2        1676     1671    1683    1707 ms
+              unit A   unit B   0.5.4   0.5.5
+phrase 1        1490     1490    1480    1475 ms
+phrase 2        1690     1685    1725    1725 ms
+phrase 4         930      935     945     930 ms
 ```
-
-(Phrase 4 is left out: the recordings' labels end before its final EK burst, so the chips' figures miss
-it and ours, now louder there, include it.)
 
 Biggest gains: 213 A3 and 253 M1 -43 %, 235 C5 -40 %, 228 B8 -38 %, 220 B0 -37 %,
 223 B3 -35 %. Every sound's score is in [`docs/scores.md`](docs/scores.md).
@@ -154,8 +152,9 @@ detail):
 - AW before LE starts with a weak first pulse. (VoxProbe 15: AW's attack after a
   pause rises as the library's does.)
 - A Pitch command takes effect at the next sound on both units (VoxProbe 15), as
-  in the library; Man Goes Down's "late" pitch is not a plain delay, and its
-  phrase 2 still runs about 30 ms long (open).
+  in the library; Man Goes Down's "late" pitch is not a plain delay. Its phrase 2
+  runs 37 ms long: Slow on a vowel joined at Speed 118 adds less on the chip than
+  the library's x1.29 (VoxProbe 16), and BE after a pause is shaped differently.
 - After an unvoiced stop or hiss the chip's level dies away over about 100 ms;
   the library's stops within a few.
 - Bend below zero: the chip folds a tone bent under about 50-90 Hz to near
