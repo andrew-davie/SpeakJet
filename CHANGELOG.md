@@ -52,6 +52,10 @@ VoxProbe 16's own items, timing by F1/F2 tracks and levels in 16 bands on both u
   x1.84 where both units play x1.68.
 - **An unvoiced stop after a pause closes 15 ms longer, not 30** (UX P1 EK 260 ms on both units, ours 270; Man Goes Down
   P4 930 against 930-935). 4.207 -> 4.168 dB.
+- **NGE's and MM's second formants are the 2249 and 1430 Hz lines** (both units: the line that glides into the next vowel's
+  F2), the near-silent 423 / 769 Hz ones third; alone sample-identical, their joins closer (4.168 -> 4.114 dB).
+- **LE and LO join vowels as the nasals do**, off the vowel-distance rule (LE AW and AW LE within 6 ms; WW and RR stay on
+  it, where they read 3.6-8.5 dB worse off it). 4.114 -> 4.093 dB.
 - VoxProbe 16 join items (sections 3-8), levels: 4.569 -> 4.207 dB; move timing 14.3 -> 13.9 ms rms; Man Goes Down P1
   1480 ms against 1490 (without its Slows 1280 against 1305), P2 1725 against 1688, P4 945 against 932. Every solo sound
   unchanged. Open: Slow at Speed 108 and 118 (our stretch compounds with Speed: MM Slow AY +35 ms, P2 +37), AW IY at
