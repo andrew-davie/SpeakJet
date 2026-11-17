@@ -1275,42 +1275,6 @@ static frame lerp_frame(frame a, frame b, float t) {
   return a;
 }
 
-/* the sound's last at ticks bend F2 and F3 to (f2, f3), its levels and F1 as they are (split where the span starts) */
-static void anticipate(sj_chip *sj, int at, float f2, float f3) {
-  int total = 0;
-  for (int k = 0; k < sj->nseg; k++)
-    total += sj->seg[k].ticks;
-  if (at <= 0 || at >= total - 1 || sj->nseg >= MAX_SEGMENTS)
-    return;
-  const int start = total - at;
-  int acc = 0, k = 0;
-  while (acc + sj->seg[k].ticks <= start)
-    acc += sj->seg[k++].ticks;
-  if (acc < start) {
-    const segment sg = sj->seg[k];
-    const int t1 = start - acc;
-    const frame mid = lerp_frame(sg.from, sg.to, (float)t1 / (float)sg.ticks);
-    memmove(&sj->seg[k + 2], &sj->seg[k + 1], (size_t)(sj->nseg - k - 1) * sizeof(segment));
-    sj->seg[k].ticks = t1;
-    sj->seg[k].to = mid;
-    sj->seg[k + 1] = sg;
-    sj->seg[k + 1].ticks = sg.ticks - t1;
-    sj->seg[k + 1].from = mid;
-    sj->nseg++;
-    k++;
-  }
-  const float f2a = sj->seg[k].from.f[1], f3a = sj->seg[k].from.f[2];
-  int el = 0;
-  for (; k < sj->nseg; k++) {
-    segment *g = &sj->seg[k];
-    g->from.f[1] = f2a + (f2 - f2a) * (float)el / (float)at;
-    g->from.f[2] = f3a + (f3 - f3a) * (float)el / (float)at;
-    el += g->ticks;
-    g->to.f[1] = f2a + (f2 - f2a) * (float)el / (float)at;
-    g->to.f[2] = f3a + (f3 - f3a) * (float)el / (float)at;
-  }
-}
-
 /* split the sound's segments at tick 'at' from its start (no split at an existing edge) */
 static void split_at(sj_chip *sj, int at) {
   int acc = 0, k = 0;
@@ -1823,12 +1787,7 @@ static void next_command(sj_chip *sj) {
       const int next = next_sound(sj, n);
       /* 0.5.5: no run-on for a slowed glide before a Slow (0.4.x added 25 ms for Man Goes Down P4; with 0.5.4's rules ours
        * ran 15 ms long there and in VoxProbe 13's Slow IYUW Slow SE, both units: phrase items 264.0 -> 258.1, none worse) */
-      /* a voiced sound straight into SE bends F2 and F3 to ZZ's, SE's voiced partner, over its last 40 ms (Man Goes
-       * Down P4, both units: IYUW's F2 falls to ~1090 Hz and rises to ~1500 before the hiss; ZZ's F2 is 1469) */
-      if (next == 187 && sj->nseg > 0 && sj->seg[sj->nseg - 1].voiced) {
-        const allophone *zz = &allophones[167 - 128];
-        anticipate(sj, TICKS(40.0 * speed_factor(sj, false)), bent(zz->f2 * HZ_STEP, bend_hz(sj)), bent(zz->f3 * HZ_STEP, bend_hz(sj)));
-      }
+      /* mechanism 1: no bend toward ZZ's formants before SE any more (the held formants; off: phrase items 224.3 -> 224.1) */
       /* GO followed at once by a sound starting on OW (OW OWRR OWIY OWWW) releases on F2 1430 and F3 1920 Hz, F3 the
        * stronger by 4-5 dB (Man Goes Down's GO OWWW, both units, the user's drawn lines: two level bands that then split
        * into OW's F2 and F3); alone it keeps its table formants, which its solo takes need (moving them there: spectrum
