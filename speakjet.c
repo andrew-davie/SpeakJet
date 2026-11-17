@@ -1921,9 +1921,11 @@ static void next_command(sj_chip *sj) {
          * Man Goes Down P2 51-145 ms long */
         const int kn = next <= 199 ? allophones[next - 128].kind : -1;
         bool crossing = false; /* the cut came from the crossing-join rule */
+        /* 0.5.5: LE and LO join vowels as the nasals do, not by the vowel rule (VoxProbe 16, both units: LE AW and AW LE within 6 ms
+         * off it, 12-16 ms early on it; WW and RR stay on it - off it RR IY, IY RR and IY WW IH read 3.6-8.5 dB worse) */
         /* the liquids LE LO WW RR join vowels by the same rule (2026-11-08, Man Goes Down P2's IY WW IH 30 ms short: P2
          * timing 23.4 -> 17.0 ms, 1665 -> 1702; VoxProbe 13 section 5 10.2 -> 8.6) */
-        if (both && next != code && (kc == K_VOWEL || kc == K_GLIDE || (code >= 145 && code <= 148)) && (kn == K_VOWEL || kn == K_GLIDE || (next >= 145 && next <= 148))) {
+        if (both && next != code && (kc == K_VOWEL || kc == K_GLIDE || (code >= 147 && code <= 148)) && (kn == K_VOWEL || kn == K_GLIDE || (next >= 147 && next <= 148))) {
           const allophone *b = &allophones[next - 128];
           if (b->kind == K_GLIDE)
             b = &allophones[b->f1]; /* a glide's f1 f2 name the allophones it runs between: it starts on the first's */
@@ -1977,7 +1979,7 @@ static void next_command(sj_chip *sj) {
           trim_tail(sj, cut);
           l = &sj->seg[sj->nseg - 1];
         }
-        if (both && (kc == K_VOWEL || kc == K_GLIDE || ((code >= 145 && code <= 148))) && next != code && next <= 199 && (allophones[next - 128].kind == K_VOWEL || allophones[next - 128].kind == K_GLIDE || (next >= 145 && next <= 148)))
+        if (both && (kc == K_VOWEL || kc == K_GLIDE || ((code >= 147 && code <= 148))) && next != code && next <= 199 && (allophones[next - 128].kind == K_VOWEL || allophones[next - 128].kind == K_GLIDE || (next >= 147 && next <= 148)))
           cross_join(sj, allo_frame(&allophones[next - 128], false, bend_hz(sj)));
         sj->release = 0;
         sj->joined = true;
