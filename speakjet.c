@@ -1462,10 +1462,18 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
       tr += ex;
       ticks += ex;
     }
-    /* 0.5.5: a slowed vowel after a nasal moves over 60 ms (Man Goes Down P1's MM Slow AY, both units: F1 rises ~400 -> 800 Hz
-     * over ~60 ms where ours stepped; P1 548 -> 462 and 620 -> 531 with the move into NE below, no other item changes) */
-    if (a->kind == K_VOWEL && sj->slow && sj->prev_code >= 140 && sj->prev_code <= 144 && tr < TICKS(60.0))
-      tr = TICKS(60.0);
+    /* mechanism 2: a vowel's move takes 5 ms per ERB of F1/F2 distance (never under the common transition), stretched by
+     * Speed and Slow - it glides at a rate, not over a fixed time. Replaces 0.5.5's slowed vowel after a nasal (60 ms):
+     * phrase items 225.3 -> 224.3, none worse; 3 ms: 224.3; 8 ms: 227.5, out of MM NE 44-104 % worse */
+    if (a->kind == K_VOWEL) {
+      double de = 0.0;
+      for (int q = 0; q < 2; q++) {
+        const double d = fabs(21.4 * sj_log(1.0 + 0.00437 * from.f[q]) / M_LN10 - 21.4 * sj_log(1.0 + 0.00437 * tgt.f[q]) / M_LN10);
+        if (d > de) de = d;
+      }
+      const double ms = 5.0 * de > T.transition ? 5.0 * de : T.transition;
+      tr = TICKS(ms * speed_factor(sj, false) * (sj->slow ? T.slow : 1.0));
+    }
     if (tr > ticks)
       tr = ticks;
     /* a sound with an onset, from silence, starts on its own frame (its onset at full level) */
