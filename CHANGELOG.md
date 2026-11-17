@@ -7,7 +7,7 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
-### 0.5.5 (unreleased)
+### 0.5.5 (2026-11-18; technical manual 1.24)
 
 Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule
 tested on every item, none worse; solo sounds unchanged.
