@@ -77,9 +77,9 @@
 #define NASAL_RAMP_FROM 0.316228 /* from 10 dB down */
 #endif
 #ifndef JOIN_A
-#define JOIN_A 66.9 /* a vowel or glide into a vowel or glide: cut JOIN_A - JOIN_K * d ms, d the ERB distance of F2 and */
-#define JOIN_K 6.9
-#define JOIN_W1 1.0 /* JOIN_W1 times F1's */
+#define JOIN_A 64.0 /* a vowel or glide into a vowel or glide: cut JOIN_A - JOIN_K * d ms, d the ERB distance of F2 and */
+#define JOIN_K 7.5
+#define JOIN_W1 0.6 /* 2026-11-18: F1 counts less than F2 (20 recorded vowel pairs, both units: IY EH / EH IY overlap 18 ms, IY UW / UW IY -18, both 7.1 ERB apart; pair lengths 12.3 -> 8.3 ms rms, VoxProbe 16 3.949 -> 3.849 dB, move timing unchanged) */ /* JOIN_W1 times F1's */
 #endif
 #ifndef XJ_A
 #define XJ_A 5.0    /* a vowel or glide into a vowel: its formants move over XJ_A + XJ_K * (F1+F2 ERB distance) ms, ... */

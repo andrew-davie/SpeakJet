@@ -16,6 +16,11 @@ v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
   16, both units: Speed 118 FF RR Slow UW 200-210 ms, ours 225 -> 210; Man Goes Down phrase 2 1690/1685, ours 1725 -> 1675).
   VoxProbe 16 3.947 -> 3.949 dB.
 
+- **The vowel join counts F1's distance at 0.6 of F2's**: cut 64 - 7.5 d ms (was 66.9 - 6.9 d, F1 and F2 equal). 20 recorded
+  vowel pairs, both units: IY EH / EH IY overlap 18 ms where IY UW / UW IY run on 18, all 7.1 ERB apart. Pair lengths
+  12.3 -> 8.3 ms rms; VoxProbe 13's pairs (section 5) 9.6 -> 8.6 ms mean error; VoxProbe 16 3.949 -> 3.849 dB; move timing
+  unchanged (12.2 ms). Reference samples regenerated.
+
 ### 0.5.5 (2026-11-18; technical manual 1.24)
 
 Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule

@@ -688,9 +688,12 @@ library stands at 4.07 dB mean band error (0.5.4: 4.57); unit A against unit B g
 **Cutting short (measured).** A sound followed at once by another is cut short at its end: by 15 ms, or 30 ms when its last
 segment is voiced and the next sound is a voiced allophone. Exceptions, each from recorded pairs:
 
-- **vowel or glide into vowel or glide** (VoxProbe 4, 13 and 16, both units): 66.9 - 6.9 d ms plus the two sounds' own join
-  terms, d the ERB distance of F1 plus F2 between the sound's last frame and the next sound's first; below zero the sound
-  runs on by that much. On the 20 recorded vowel pairs the library's lengths are within 12 ms rms (mean +2.5). WW and RR
+- **vowel or glide into vowel or glide** (VoxProbe 4, 13 and 16, both units): 64 - 7.5 d ms plus the two sounds' own join
+  terms, d the ERB distance of 0.6 x F1 plus F2 between the sound's last frame and the next sound's first; below zero the
+  sound runs on by that much. F1 counts less than F2 (1.25): IY EH and EH IY overlap 18 ms, IY UW and UW IY run on 18 ms,
+  all four 7.1 ERB apart on F1 + F2, the first pair mostly an F1 move, the second F2. On the 20 recorded vowel pairs the
+  library's lengths are within 8.3 ms rms (12.3 with F1 and F2 equal); a least-squares fit puts F1's weight at 0.16, but
+  below ~0.5 the handovers come early (move timing 12.2 -> 14.0 ms). WW and RR
   take this rule too; **LE and LO do not** (VoxProbe 16: LE AW and AW LE within 6 ms off it, 12-16 ms early on it).
 - **a nasal into a vowel** overlaps by 13 ms, MM by 22 (VoxProbe 16, both units: MM hands over ~22 ms before its own end
   alone, NE ~13, whatever the vowel - a formant-distance rule put NE IY and NE UW 22-32 ms early), scaled by Speed and Slow.
