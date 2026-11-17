@@ -56,6 +56,8 @@ VoxProbe 16's own items, timing by F1/F2 tracks and levels in 16 bands on both u
   F2), the near-silent 423 / 769 Hz ones third; alone sample-identical, their joins closer (4.168 -> 4.114 dB).
 - **LE and LO join vowels as the nasals do**, off the vowel-distance rule (LE AW and AW LE within 6 ms; WW and RR stay on
   it, where they read 3.6-8.5 dB worse off it). 4.114 -> 4.093 dB.
+- **A vowel's own Speed law below 114**, (149.3 - Speed) / 35.3 (both units: AW IY and MM AW at Speed 90 x1.65-1.68; the
+  effects' law gave x1.73): Speed 90 MM AW 320 ms = the chip's, AW IY 450 against 435. 4.093 -> 4.071 dB.
 - VoxProbe 16 join items (sections 3-8), levels: 4.569 -> 4.207 dB; move timing 14.3 -> 13.9 ms rms; Man Goes Down P1
   1480 ms against 1490 (without its Slows 1280 against 1305), P2 1725 against 1688, P4 945 against 932. Every solo sound
   unchanged. Open: Slow at Speed 108 and 118 (our stretch compounds with Speed: MM Slow AY +35 ms, P2 +37), AW IY at
