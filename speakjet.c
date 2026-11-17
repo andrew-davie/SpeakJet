@@ -1122,8 +1122,10 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
   /* ASSUMPTION (2026-11-08): an unvoiced stop straight after a pause code closes 30 ms longer, in silence, so it can't
    * be seen on a stop played alone (VoxProbe 13 UX P1 EK 22 ms short; Man Goes Down P4's UX P1 EK: P4 timing 9.7 -> 4.9
    * ms, length 910 -> 940 against 942/945) */
+  /* 0.5.5: 15, not 30 (VoxProbe 16, both units: UX P1 EK 260 ms, ours 270 at 30; Man Goes Down P4 930 against 930-935; VoxProbe
+   * 13's UX P1 EK was 22 ms short at 0) */
   if (a->kind == K_STOP && sj->after_pause)
-    clms += 30.0;
+    clms += 15.0;
   /* ASSUMPTION (2026-11-08, VoxProbe 13 NE KO OW, both units by picture: NE stops at 0.105 s and KO bursts at 0.15, 30 ms
    * after ours; NE TT and NE PO already land): KE and KO after a nasal close longer. 15 ms, not 30 (2026-11-09, the
    * closure's quiet run against both units' 2600 takes: with 30 it was 11-30 ms long on VoxProbe 14's NE NO MM NGE KO AW
