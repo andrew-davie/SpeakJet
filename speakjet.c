@@ -316,6 +316,7 @@ struct sj_chip {
 
   /* synthesizer state */
   int period, ptick;
+  float fsl[NTONE], ftg[NTONE], fsa[NTONE]; int fsn[NTONE], fslon, fsv; /* 0.5.5: an effect tone's leap passes through its midpoint (fsl the frequency played, ftg the target, fsa the level, fsn the ticks left on the midpoint, fsv the last part voiced) */
   double phase[NTONE];
   float xa[NTONE]; /* FX_SMOOTH: the tone amplitudes as they ramp */
   float xv; /* FX_SMOOTH: the voice's gain as it ramps in */
@@ -2292,6 +2293,28 @@ static double tick(sj_chip *sj) {
     }
   } else
     for (int k = 0; k < NTONE; k++) sj->xa[k] = f.a[k];
+  /* 0.5.5: an effect oscillator already sounding whose target frequency leaps (by more than 25 % in a tick) plays the midpoint
+   * of old and new for 12 ticks (1.5 ms), then the new (226 B6, all four takes: at each part change a ~1.7 ms burst at the
+   * arithmetic midpoint - the 2.2-3.1 kHz hump between its 1.8 and 3.5 kHz tones, low at both ends, peaking in the middle;
+   * a constant-rate glide drew a slope instead, the user's eye). Not from silence, not into or out of a voiced part (there
+   * the order names the formants: A4), not on a small step (C9's zig-zag sweeps). All 43 effects X sum 41.52 -> 41.53, none
+   * worse by 0.01; B6 with its table 1.046 -> 1.016 */
+  if (sj->effect) {
+    if (!sj->fslon) { for (int k = 0; k < NTONE; k++) { sj->fsl[k] = sj->ftg[k] = f.f[k]; sj->fsn[k] = 0; } sj->fslon = 1; }
+    const int vz = (s->flags & (FX_VOICED | FX_PULSED)) != 0, plain = !vz && !sj->fsv; /* not into or out of a voiced part: there the order says which tone is a formant */
+    sj->fsv = vz;
+    for (int k = 0; k < NTONE; k++) {
+      const float tg = f.f[k];
+      const bool was = sj->fsa[k] > 0.0f; sj->fsa[k] = f.a[k];
+      if (f.a[k] <= 0.0f || !was) { sj->fsl[k] = sj->ftg[k] = tg; sj->fsn[k] = 0; continue; }
+      if (plain && sj->ftg[k] > 0.0f && tg > 0.0f && (tg > 1.25f * sj->ftg[k] || sj->ftg[k] > 1.25f * tg)) { sj->fsl[k] = 0.5f * (sj->fsl[k] + tg); sj->fsn[k] = 12; }
+      else if (sj->fsn[k] > 0) sj->fsn[k]--;
+      else sj->fsl[k] = tg;
+      sj->ftg[k] = tg;
+      f.f[k] = sj->fsl[k];
+    }
+  } else
+    sj->fslon = 0;
   sj->last = f;
   if (f.a[0] + f.a[1] + f.a[2] > 0.0f)
     for (int q = 0; q < 3; q++) sj->fhold[q] = f.f[q];

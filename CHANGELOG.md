@@ -12,6 +12,30 @@ v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule
 tested on every item, none worse; solo sounds unchanged.
 
+Mechanisms in place of join rules:
+
+- **The formants never jump.** Each sound starts where the last voiced sound left the formants, held through a hiss and a
+  pause under 70 ms; SE and TT set them to the alveolar locus (F1 400, F2 1600). Replaces 0.5.4's carry across a short pause
+  and the SE/TT start rule; 231.9 -> 225.3, and SE P4 AW and TT P4 AW, which no rule reached, 16-40 % closer.
+- **A vowel glides at a rate**: 5 ms per ERB of F1/F2 distance (at least the common 25 ms), stretched by Speed and Slow.
+  Replaces the slowed vowel after a nasal (60 ms); 225.3 -> 224.3.
+
+The effects' tone switches (226 B6, the user's eye on its spectrum line: a mountain on the chip at 2.2-3.1 kHz where ours had
+a valley):
+
+- **A new tone takes the oscillator whose tone just stopped**, before an idle one: the chip carries the new tone on the old
+  oscillator; ours started it fresh and cross-faded. B6 1.063 -> 1.046, B5 0.877 -> 0.860, no effect worse.
+- **A tone's leap passes through its midpoint**: an oscillator already sounding whose frequency leaps by more than 25 % plays
+  the midpoint of old and new for 1.5 ms, then the new (all four takes: a ~1.7 ms burst at the arithmetic midpoint at every
+  part change - the hump between B6's 1.8 and 3.5 kHz tones, low at both ends and peaking in the middle; a constant-rate
+  glide drew a slope). Not from silence, not into or out of a voiced part, not on a small step. All 43 effects neutral (X sum
+  41.52 -> 41.53, none worse by 0.01).
+- **B6's 4.5 kHz tones were the 3.5 kHz tone's DAC image** (the two lines sum to the 8026 Hz rate on every take; our output
+  images too): removed, its tones held at the chip's 1803 / 3504 Hz, the high parts 3 dB up, its bed 150. B6 1.046 -> 1.016,
+  its lines 1.78 -> 1.24. B9 C2 A4 also carry tones above 4013 Hz (to do).
+
+The join rules first found (two now replaced by the held formants and the glide rate, above):
+
 - **Straight after SE or TT a sound's F1 starts at 400 Hz at most**, beside 0.5.4's F2 at 1600 (both units, SE AW: the
   vowel's first ~12 ms on a low F1 under the 1.5 kHz line). All 12 SE/TT-into-a-vowel items closer; 247.5 -> 235.3.
 - **A slowed nasal before a vowel or glide runs 10 ms longer** (Slow NE AW: 222 -> 109 and 317 -> 135); 235.3 -> 231.9.
