@@ -950,8 +950,11 @@ static void play_effect(sj_chip *sj, int code) {
         if (used[k] || !(a.a[k] > 0.0f || b.a[k] > 0.0f))
           continue;
         int j = -1;
+        /* 0.5.5: an oscillator whose tone just stopped first, then an idle one (226 B6, all four takes: at each part change
+         * the old tone's oscillator carries the new one - the chip's 2.2-3.1 kHz band stands at full level for ~2 ms there,
+         * where a fresh oscillator cross-faded; B6 1.063 -> 1.046, B5 0.877 -> 0.860, no effect worse by 0.01) */
         for (int i = 0; i < NTONE && j < 0; i++)
-          if (slot[i] < 0 && !(pv->a[i] > 0.0f && pv->f[i] > 0.0f))
+          if (slot[i] < 0 && pv->a[i] > 0.0f && pv->f[i] > 0.0f)
             j = i;
         for (int i = 0; i < NTONE && j < 0; i++)
           if (slot[i] < 0)
