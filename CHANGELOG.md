@@ -12,6 +12,10 @@ v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 - **A vowel after NGE moves from NGE's frame 6 ms longer per ERB of F2 distance**, as after GE (VoxProbe 16, both units:
   NGE AW 242 ms and NGE UW 243 where ours gave 195; NGE IY, its F2 near NGE's, on time). VoxProbe 16 4.071 -> 3.947 dB.
 
+- **A slowed vowel or glide above Speed 115 takes the vowels' Speed step**, as an unslowed one does (provisional; VoxProbe
+  16, both units: Speed 118 FF RR Slow UW 200-210 ms, ours 225 -> 210; Man Goes Down phrase 2 1690/1685, ours 1725 -> 1675).
+  VoxProbe 16 3.947 -> 3.949 dB.
+
 ### 0.5.5 (2026-11-18; technical manual 1.24)
 
 Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule

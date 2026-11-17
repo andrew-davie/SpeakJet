@@ -721,8 +721,13 @@ glide's 25-50 ms run-on before a Slow (1.11's phrase 4 rule), a slowed nasal's q
 closure exception. The rebuilt joins also fit VoxProbe 13's 87 recorded pairs better than 1.23 did (length error 18.1 ->
 13.5 ms rms).
 
-**Still open (section 13).** Slow on a vowel joined after a sound at Speed 108 or 118 runs ~30 ms shorter on the chip than
-x1.29 x the Speed factor (Man Goes Down's MM Slow AY, FF RR Slow UW), where isolated slowed pairs at Speed 114 fit; a
+**Slow above Speed 115 (1.25, provisional).** A slowed vowel or glide takes the same Speed step as an unslowed one above
+115, not the effects' law: Speed 118 FF RR Slow UW 210 ms against the units' 200-210 (was 225), Man Goes Down phrase 2 1675
+against 1690/1685 (was 1725). Fitted on those two; the VoxProbe 16 band judge is unchanged (3.947 -> 3.949).
+
+**Still open (section 13).** Slow on a vowel joined after a sound at Speed 108 runs ~35 ms shorter on the chip than
+x1.29 x the Speed factor (MM Slow AY 285 against 320, Slow AY Slow NE 320 against 355). Letting it ignore Speed fits both
+but takes phrase 1 to 1440 against the chip's 1490 and the band judge 3.947 -> 3.993, so it is not adopted; a
 voiced stop after a pause (phrase 2's TT P1 BE: a 20 ms bar 25 ms in, then 95 ms of quiet); PO after a nasal (VoxProbe 13:
 a longer closure, a shorter release); AY IY and AW IH AW 30-35 ms long.
 
@@ -1683,9 +1688,9 @@ every join; where their lengths differ (unit B's solo nasals read 35-45 ms long)
 
 ## 13. Known gaps and open questions
 
-**From VoxProbe 16 (1.24).** Slow on a vowel joined after a sound at Speed 108 or 118 runs ~30 ms shorter on the chip than
-x1.29 x the Speed factor (Man Goes Down's MM Slow AY 285 ms against the library's 320, FF RR Slow UW 205 against 225),
-where isolated slowed pairs at Speed 114 fit within 10 ms; phrase 2 is 37 ms long for it. A voiced stop after a pause
+**From VoxProbe 16 (1.24, 1.25).** Slow on a vowel joined after a sound at Speed 108 runs ~35 ms shorter on the chip than
+x1.29 x the Speed factor (Man Goes Down's MM Slow AY 285 ms against the library's 320), where isolated slowed pairs at
+Speed 114 fit within 10 ms; at 118 it is fixed provisionally by the vowels' Speed step (section 6.5). A voiced stop after a pause
 (phrase 2's TT P1 BE, both units): a 20 ms bar 25 ms after the hiss, 95 ms of quiet, then the vowel; the library plays
 72 ms of silence then the bar and release as from silence. PO after a nasal (VoxProbe 13's NE PO OW): a longer closure and
 a shorter release than ours. AY IY and AW IH AW 30-35 ms long. IY SE: the vowel ends ~15 ms early on ours (a smaller cut
