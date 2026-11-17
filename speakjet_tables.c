@@ -78,8 +78,8 @@ static const allophone allophones[72] = {
 #define ALLOG_N 5
 static const uint8_t allog[5][4] = {{43, 52, 87, 149}, {44, 29, 108, 141}, {45, 18, 84, 143}, {48, 16, 119, 174}, {49, 17, 103, 162}}; /* BO EB OB ED OD */
 /* index, join term ms + 128: a vowel or glide join cut by this much more */
-#define ALLOJ_N 4
-static const uint8_t alloj[4][2] = {{4, 140}, {8, 128}, {9, 119}, {20, 112}}; /* AY AW OW RR */
+#define ALLOJ_N 5
+static const uint8_t alloj[5][2] = {{1, 143}, {4, 140}, {8, 128}, {9, 119}, {20, 112}}; /* IH AY AW OW RR */
 /* the effects, part after part (fx_decode) */
 static const uint8_t fxdata[4235] = {
     /* R0  */ 10, 1, 3, 0, 7, 34, 3, 37, 3, 181, 235, 183, 1, 31, 2, 255, 57, 201, 0, 32, 1, 225, 14, 61, 0, 67, 128, 6, 19, 3, 26, 3, 143, 115, 27, 2, 12, 2, 234, 94, 21, 1, 25, 1, 233, 25, 166, 3, 0, 0, 0, 0,

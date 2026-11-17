@@ -642,7 +642,8 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
  * distance law, a few sounds carry a join term of their own (alloj), added to the cut of every vowel or glide join
  * they are on either side of: IH +15, AW +6, OW -10, RR -16 ms. The law alone left AW IH, IH AW IH and AW IH AW
  * 22-45 ms long and AW RR, RR AW 10-13 ms short; with the terms the 26 joins without AY read rms 16.8 -> 5.0 ms, max
- * 42 -> 10. Fitted on VoxProbe 4 and 13 alone, the terms took VoxProbe 14 from rms 30.1 to 10.6 ms. AY +12 (2026-11-18,
+ * 42 -> 10 (IH's +15 had dropped out of the table by 0.5.5; back 2026-11-18: VoxProbe 13's AW IH AW +28 -> under 15, section 5
+ * 7.5 -> 6.7 ms). Fitted on VoxProbe 4 and 13 alone, the terms took VoxProbe 14 from rms 30.1 to 10.6 ms. AY +12 (2026-11-18,
  * once F1 counted 0.6 of F2 in the distance: AY IY 245 -> 235 against 230, AY EH 210, AY AW 230 = the chip's; the 20 pairs
  * 8.3 -> 7.3 ms rms) */
 static double join_term(int idx) {
@@ -1940,7 +1941,8 @@ static void next_command(sj_chip *sj) {
             const double ea = 21.4 * sj_log(1.0 + 0.00437 * l->to.f[q]) / M_LN10, eb = 21.4 * sj_log(1.0 + 0.00437 * bf[q]) / M_LN10;
             d += (q == 0 ? JOIN_W1 : 1.0) * (ea > eb ? ea - eb : eb - ea);
           }
-          const double ms = (JOIN_A - JOIN_K * d + join_term(code - 128) + join_term(next - 128)) * speed_factor(sj, false);
+          /* WW RR take no term from the sound after them (2026-11-18: IH's +15 put Man Goes Down P2's IY WW IH 20 ms short) */
+          const double ms = (JOIN_A - JOIN_K * d + join_term(code - 128) + (code >= 147 && code <= 148 ? 0.0 : join_term(next - 128))) * speed_factor(sj, false);
           if (ms >= 0.0) {
             cut = TICKS(ms);
             crossing = true;

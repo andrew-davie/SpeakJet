@@ -29,6 +29,10 @@ v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
   against 230, AY EH and AY AW as the chip). 20 recorded vowel pairs 8.3 -> 7.3 ms rms; VoxProbe 13 section 5 8.6 -> 7.5 ms
   mean error. Tables 6823 bytes.
 
+- **IH's +15 ms join term is back in the table** (it had dropped out by 0.5.5), and WW and RR take no term from the sound after
+  them: VoxProbe 13's AW IH AW +28 -> under 15 ms, section 5 7.5 -> 6.7 ms mean error; Man Goes Down P2's IY WW IH 320 against
+  325 (305 with IH's term on WW). Tables 6825 bytes.
+
 ### 0.5.5 (2026-11-18; technical manual 1.24)
 
 Connected speech against a real unit (one unit's phrase recordings against the other's: 143.9 on the 88 items). Each rule
