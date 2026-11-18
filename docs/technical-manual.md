@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.25, 2026-11-18.** The version rises with every change to what is known about the chip (new
+**Version 1.26, 2026-11-19.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -1013,7 +1013,9 @@ What the allophones gained, each measured on both units:
 - **Joins.** A vowel or glide after a voiced stop other than GE GO opens at its own level and amplitudes while its
   formants still glide from the stop's release (Man Goes Down's DO AYWW: the vowel at full level straight after the
   bar). A voiced fricative after a pause opens with 40 ms of its noise alone before its voicing (P2's EYIY P4 DH:
-  the chip's frication 40 ms, 10 alone). A voiced stop after a short pause (P4-P6) opens its bar 12 ms into the
+  the chip's frication 40 ms, 10 alone); the 40 ms is added to the sound, not taken from it, and above Speed 115 the
+  sound and its lead-in take the vowels' step (1.26; VoxProbe 12, per sound by DTW: P2's DH 140-150 ms at Speed 114
+  and 110 at 118 on both units). A voiced stop after a short pause (P4-P6) opens its bar 12 ms into the
   pause (P1's ZZ P4 DO: the bar 11 ms after ZZ's end). The longer closure after a sound (6.9) belongs to DO (+25 ms)
   and GO (+15) only; DE and GE had it by analogy and ran 25 ms long after a vowel (VoxProbe 4's EH DE). A crossing
   cut (6.2) longer than a glide's last segment trims across its segments instead of being skipped (VoxProbe 8's
@@ -1701,6 +1703,14 @@ Speed 114 fit within 10 ms; at 118 it is fixed provisionally by the vowels' Spee
 helps it and hurts phrase 4). IYUW after P4 at Pitch 40 (phrase 2's end): the chip's voicing ~20 ms before ours, not in the
 onset itself.
 
+**Re-measured (1.26).** What Slow adds to Man Goes Down's phrases is the chip's (P2 165 ms against 165-170), and AY at Speed
+108 alone or slowed fits (VoxProbe 12: 170 and 225 against 180 and 220), so the 35 ms above is not Slow's factor: a rule
+that ignored Speed on a slowed vowel landed both items and cost P1 35 ms, and was not adopted. Phrase 2's 37 ms is gone
+(1680 -> 1690 against 1685-1690) with the 1.25 join terms and the voiced fricative's lead-in (6.5). Phrase 2 sent without
+its Speed (Speed 114) is still ~105 ms short of both units: by DTW its FF TT WW are ~25 % short at 114 and right at 118,
+where the chip steps every sound x0.8 and the library steps vowels, glides, nasals above 118 and voiced fricatives. BE after
+the P1 pause is within 12 ms by DTW at both Speeds. IY SE's end is within one 10 ms frame.
+
 Where the library and the chip still differ, or the chip is not understood:
 
 - **When a Pitch command takes effect inside a phrase** (section 9.1): one to five sounds late on Man Goes Down, not
@@ -2351,6 +2361,9 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ```
 
 ## Revision history
+
+- **1.26 (2026-11-19).** A voiced fricative after a pause: its 40 ms noise lead-in is added to its length, and above Speed 115
+  it takes the vowels' step (6.5; VoxProbe 12, P2's DH by DTW). 12.7: the open list re-measured.
 
 - **1.25 (2026-11-18).** A vowel after NGE takes the velar move (6.5).
 

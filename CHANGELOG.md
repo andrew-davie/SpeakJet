@@ -7,7 +7,18 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
-### Since 0.5.5 (unreleased; technical manual 1.25)
+### Since 0.5.5 (unreleased; technical manual 1.26)
+
+- **A voiced fricative after a pause keeps its whole length after its 40 ms noise lead-in**, and takes the vowels' Speed step
+  above 115, lead-in included (VoxProbe 12, both units, per sound by DTW: Man Goes Down P2's DH after P4 140-150 ms at Speed
+  114 and 110 at 118, ours 97 at both; now 137 and 110). P2 1680 -> 1690 against 1680-1690; P2 sent without its Speed
+  1950 -> 2095/2110 now 1990; VoxProbe 16 3.849 -> 3.820 dB; of 519 scored items only P2 changes. Reference samples
+  regenerated (intro, pangram, pitch).
+
+- **Attack, release and onset steps on 15 sounds** (table): a structure search over 56 sounds' edges, each step kept only
+  where X improved. 187 SE -3.8 %, 192 TU -1.5 %, 211 A1 -1.3 %, 220 B0, 234 C4, 236 C6 -1.2 %, 200 R0 -1.0 %, 188 SO,
+  144 NGO, 147 WW, 217 A7, 253 M1, 177 OD, 169 DH, 183 HE -0.1 to -0.9 %. The other 39 sounds' steps were dropped (194 KE
+  and 197 OK +40 %). Reference samples regenerated. Tables 7324 bytes (every table, sizeof).
 
 - **A vowel after NGE moves from NGE's frame 6 ms longer per ERB of F2 distance**, as after GE (VoxProbe 16, both units:
   NGE AW 242 ms and NGE UW 243 where ours gave 195; NGE IY, its F2 near NGE's, on time). VoxProbe 16 4.071 -> 3.947 dB.

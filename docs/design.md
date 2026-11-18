@@ -172,9 +172,10 @@ distance, running on when that is negative (VoxProbe 4, 13 and 16's pairs: 12 ms
 units: the handover sits that far before the nasal's own end, whatever the vowel); a vowel into a nasal by 15; LE
 and LO take those fixed cuts, not the vowel rule (VoxProbe 16). Every cut scales with Speed and, when the first
 sound is slowed, with Slow. Below Speed 114 a vowel or glide's length follows (149.3 − Speed)/35.3 and every
-other speech length the speech law (162 − Speed)/48; above 115 the step law, a nasal above 118 included. A vowel
+other speech length the speech law (162 − Speed)/48; above 115 the step law, a nasal above 118 and a voiced fricative included. A vowel
 or glide after a voiced stop other than GE GO opens at its own level and amplitudes while its formants glide
-from the release; a voiced fricative after a pause opens with 40 ms of noise alone; an unvoiced stop after a
+from the release; a voiced fricative after a pause opens with 40 ms of noise alone, added to its length, and takes the step above
+115; an unvoiced stop after a
 pause closes 15 ms longer; the longer closure after a sound is DO's (+25 ms) and GO's (+15) only. A voiced sound
 into 187 SE bends toward 167 ZZ's formants over its last 40 ms. The rules that had been fitted to Man Goes
 Down's phrases (IY, LE, MM, nasal and TT length offsets, the pause-side attack and release rules, the slowed

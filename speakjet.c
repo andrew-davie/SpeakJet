@@ -1435,7 +1435,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
    * Man Goes Down P2 at Speed 118 1698 ms against 1695/1700 with the liquid joins below) */
   /* 0.5.5: a nasal above Speed 118 takes the vowels' Speed step (VoxProbe 16, both units: Speed 127 MM AW's handover 38-56 ms where ours
    * came at 80-102; at Speed 90 the nasal already fits. 52 join items move timing rms 20.9 -> 20.0; 88 phrase items unchanged) */
-  int ticks = TICKS(modified_ms(sj, a, a->ms * MS_STEP) * ((a->kind == K_VOWEL || a->kind == K_GLIDE || (a->kind == K_NASAL && sj->speed > 118)) ? (sj->speed > 115 /* slowed too (VoxProbe 16, both units: Speed 118 FF RR Slow UW 200-210 ms, ours 225 on the effects' law; Man Goes Down P2 1690/1685, ours 1725 -> 1675) */ ? speed_step(sj) : sj->speed < 114 ? (149.3 - sj->speed) / 35.3 /* 0.5.5: a vowel's own law below 114 (VoxProbe 16, both units: AW IY and MM AW at Speed 90 x1.65-1.68, Speed 90 MM AW 320 = the chip's; the effects' law gave x1.73, the speech law x1.5) */ : speed_factor(sj, true)) : (sj->speed > 114 ? 1.0 : speed_factor(sj, false))));
+  int ticks = TICKS(modified_ms(sj, a, a->ms * MS_STEP) * ((a->kind == K_VOWEL || a->kind == K_GLIDE || (a->kind == K_NASAL && sj->speed > 118) || (a->kind == K_VFRIC && sj->speed > 115) /* 0.5.6: a voiced fricative takes the step (VoxProbe 12, P2's DH x0.76 from Speed 114 to 118) */) ? (sj->speed > 115 /* slowed too (VoxProbe 16, both units: Speed 118 FF RR Slow UW 200-210 ms, ours 225 on the effects' law; Man Goes Down P2 1690/1685, ours 1725 -> 1675) */ ? speed_step(sj) : sj->speed < 114 ? (149.3 - sj->speed) / 35.3 /* 0.5.5: a vowel's own law below 114 (VoxProbe 16, both units: AW IY and MM AW at Speed 90 x1.65-1.68, Speed 90 MM AW 320 = the chip's; the effects' law gave x1.73, the speech law x1.5) */ : speed_factor(sj, true)) : (sj->speed > 114 ? 1.0 : speed_factor(sj, false))));
   /* ASSUMPTION (2026-11-15, VoxProbe 7's 'Pitch 150 then AW/IY/OW', both units: 133-134 ms where the library gives 113-117, the same
    * sounds 114-123 at Pitch 88): a vowel or glide above Pitch 88 runs longer, by 16 % at 150, taken as linear in Pitch; one Pitch measured */
   if ((a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->pitch > 88)
@@ -1459,11 +1459,14 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     int tr = TICKS(a - allophones >= 12 && a - allophones <= 16 && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f ? 5.0 : T.transition);
     /* 0.5.0: a voiced fricative after a pause opens with 40 ms of its noise alone before the voicing (Man Goes Down P2's
      * EYIY P4 DH, both units: ~30 ms of faint frication before the voicing, 10 alone) */
+    /* 0.5.6: the 40 ms is added to the sound, not taken from it, and steps with Speed above 115 like the rest of the sound
+     * (VoxProbe 12, both units, by DTW: P2's DH 140-150 ms at Speed 114 and 110 at 118, ours 97 at both; with this 137 and
+     * 110. P2 without Speed 1950 -> 1990 against 2095/2110, P2 1680 -> 1690 against 1680-1690; of 519 scored items only P2
+     * changes) */
     if (a->kind == K_VFRIC && sj->after_pause) {
       frame nz = tgt;
       nz.a[0] = nz.a[1] = nz.a[2] = 0.0f;
-      add_segment(sj, TICKS(40.0), nz, nz, false);
-      ticks -= TICKS(40.0) > ticks / 2 ? ticks / 2 : TICKS(40.0);
+      add_segment(sj, TICKS(40.0 * (sj->speed > 115 ? speed_step(sj) : 1.0)), nz, nz, false);
     }
     /* ASSUMPTION (2026-11-08, VoxProbe 13 section 7, all four takes: after GE's burst F2 glides from ~2000 Hz to the
      * vowel's over ~60 ms before OW; GE OW, GE UW 39-49 ms short, GE IY EH AY 15-20): a vowel after GE moves from GE's

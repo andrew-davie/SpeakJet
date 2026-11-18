@@ -135,10 +135,10 @@ them (how far a nasal overlaps a vowel, the formants held across a hiss, the Spe
 chips (VoxProbe 16's takes):
 
 ```
-              unit A   unit B   0.5.4   0.5.5
-phrase 1        1490     1490    1480    1475 ms
-phrase 2        1690     1685    1725    1725 ms
-phrase 4         930      935     945     930 ms
+              unit A   unit B   0.5.4   0.5.5   main
+phrase 1        1490     1490    1480    1475    1475 ms
+phrase 2        1690     1685    1725    1725    1690 ms
+phrase 4         930      935     945     930     930 ms
 ```
 
 Biggest gains: 213 A3 and 253 M1 -43 %, 235 C5 -40 %, 228 B8 -38 %, 220 B0 -37 %,
@@ -154,8 +154,9 @@ detail):
   pause rises as the library's does.)
 - A Pitch command takes effect at the next sound on both units (VoxProbe 15), as
   in the library; Man Goes Down's "late" pitch is not a plain delay. Its phrase 2
-  runs 37 ms long: Slow on a vowel joined at Speed 118 adds less on the chip than
-  the library's x1.29 (VoxProbe 16), and BE after a pause is shaped differently.
+  is on length since 0.5.5 (join terms, and DH's lead-in after a pause), but sent
+  without its Speed command it runs ~105 ms short: at Speed 118 the chip shortens
+  every sound, the library only the voiced ones.
 - After an unvoiced stop or hiss the chip's level dies away over about 100 ms;
   the library's stops within a few.
 - Bend below zero: the chip folds a tone bent under about 50-90 Hz to near
