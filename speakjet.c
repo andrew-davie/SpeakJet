@@ -331,7 +331,6 @@ struct sj_chip {
   int vcount; /* 0.5.4: voicing periods since the voice started */
   bool vafter; /* 0.5.4: this sound follows a voiced stop or a nasal: no long period */
   float fhold[3]; /* mechanism: where the formants are, held through hisses and pauses (0: not set) */
-  frame prepause; bool ppok; /* 0.5.4: the last sound's frame before a short pause, and whether it carries over */
   bool paused; /* 0.5.4: a pause since the last sound */
   bool aplain; /* 0.5.0: the playing allophone is a plain vowel (IY..UW) */
   double wander; /* an FX_WANDER part's slow pitch drift, a fraction */
@@ -1687,17 +1686,11 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
 }
 
 static void play_pause(sj_chip *sj, double ms) {
-  /* 0.5.4: across a short pause (under 70 ms: P4, P5) the next sound starts from the last one's formants (both units, NE P4
-   * AW: the AW opens on NE's ~1.5 kHz F2 with its F1 band 15-20 ms late; phrase items 300.7 -> 297.7, none worse; across
-   * P1 NE P1 AW was worse) */
+  /* across a short pause (under 70 ms) the formants hold (fhold, 0.5.5), so the next sound starts from the last one's (NE P4
+   * AW, both units); a longer pause lets them go. (audit 2026-11-19: 0.5.4's own carry was no longer read) */
   sj->paused = true;
-  sj->ppok = false;
   if (ms >= 70.0)
     sj->fhold[0] = sj->fhold[1] = sj->fhold[2] = 0.0f;
-  if (AUD(24) && ms < 70.0 && sj->last.a[0] + sj->last.a[1] + sj->last.a[2] > 0.0f) {
-    sj->prepause = sj->last;
-    sj->ppok = true;
-  }
   sj->nseg = 0;
   add_segment(sj, TICKS(ms), silent_frame(), silent_frame(), false);
   start(sj, false);
@@ -2023,7 +2016,7 @@ static void next_command(sj_chip *sj) {
 static void finish_sound(sj_chip *sj) {
   const int code = peek(sj, 0);
   if (code >= 128) {
-    sj->prev_slow = sj->slow; sj->prev_code = code; sj->ppok = false; sj->paused = false;
+    sj->prev_slow = sj->slow; sj->prev_code = code; sj->paused = false;
     sj->fast = sj->slow = sj->stress = sj->relax = false;
   }
   sj->head = (sj->head + sj->executing + sj->ahead) % SJ_BUFFER_SIZE;
@@ -2105,7 +2098,8 @@ static double output_stage(sj_chip *sj, double v, bool voice) {
        * valleys at h8; 0.024 as the effects': 72 allophones X 0.867 -> 0.848, 45 better, LO +0.017; phrases 313.0 -> 311.4,
        * none worse. The voice itself stays exactly periodic) */
       sj->bedhold = fabs(v) > sj->bedhold ? fabs(v) : sj->bedhold * 0.993770;
-      v += 0.024 * 2.0 * r * sj->bedhold;
+      if (AUD(34))
+        v += 0.024 * 2.0 * r * sj->bedhold;
     }
     else {
       /* the effects' bed (both units): timing error, proportional to the
@@ -2444,7 +2438,7 @@ static double tick(sj_chip *sj) {
     sj->nz[0] = y;
     /* 0.5.4: a wandering part's noise (252 M0) through the resonance twice: the chip's band falls away steeply each side
      * (by picture, both units: nothing of it under 1 kHz, where one stage put a dark block; X 0.93 -> 0.92 with the band x2) */
-    if (sj->effect && (s->flags & FX_WANDER)) {
+    if (AUD(35) && sj->effect && (s->flags & FX_WANDER)) {
       const double y2 = g * y + 2.0 * r * c * sj->nz2[0] - r2 * sj->nz2[1];
       sj->nz2[1] = sj->nz2[0];
       sj->nz2[0] = y2;
