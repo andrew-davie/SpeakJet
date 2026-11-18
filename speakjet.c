@@ -1612,8 +1612,9 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   sj->vafter = AUD(22) && !was_pause && sj->prev_code >= 128 && (allophones[sj->prev_code - 128].kind == K_VSTOP || (sj->prev_code >= 140 && sj->prev_code <= 144));
   sj->after_pause = false;
   const bool nasal_ramp = sj->ramp_seg >= 0;
-  /* an unvoiced fricative starts and stops at once (HE HO WH FF SE SO SH TH, both units, background allowed for: rise
-   * and fall 0-4 ms, median 2, where the vowels' 35 ms ramp gave 22-38) */
+  /* an unvoiced fricative starts at once (HE HO WH FF SE SO SH TH, both units, background allowed for: rise 0-4 ms, median
+   * 2, where the vowels' 35 ms ramp gave 22-38). Its end is its own (audit 2026-11-19, the VoxRecord solo takes, -3 to
+   * -20 dB in 2-8 kHz: HE WH FF TH 1.5-3 ms, SH 4-6, SE 8-10, SO 9-10.5), set by each sound's rr over this ramp */
   if (a->kind == K_FRIC)
     sj->attack = sj->release = TICKS(FRIC_RAMP);
   if (a->kind == K_VSTOP && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f)
