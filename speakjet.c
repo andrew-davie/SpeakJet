@@ -1673,8 +1673,6 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     sj->seg[sj->nseg - 1].to.na *= a->nd / 256.0f;
   if (a->rr)
     sj->release = TICKS(a->rr); /* a sound's own fade-out (SE, SO: the chip fades over most of the sound) */
-  /* 0.5.4: AW straight before a short pause (P4-P6) ends over 10 ms (both units, AW P4 AW: the first AW ends sharply at 115 ms,
-   * ours tapered to 122; phrase items 267.6 -> 265.7, none worse) */
   /* the copies of a Repeat follow on; the level ramps once, over the whole */
   sj->copies = sj->repeat > 1 ? sj->repeat - 1 : 0;
   sj->copy_of = (int)(a - allophones);
@@ -1696,7 +1694,7 @@ static void play_pause(sj_chip *sj, double ms) {
   sj->ppok = false;
   if (ms >= 70.0)
     sj->fhold[0] = sj->fhold[1] = sj->fhold[2] = 0.0f;
-  if (ms < 70.0 && sj->last.a[0] + sj->last.a[1] + sj->last.a[2] > 0.0f) {
+  if (AUD(24) && ms < 70.0 && sj->last.a[0] + sj->last.a[1] + sj->last.a[2] > 0.0f) {
     sj->prepause = sj->last;
     sj->ppok = true;
   }
@@ -2329,7 +2327,7 @@ static double tick(sj_chip *sj) {
         if (c >= 128 && c <= 254)
           nleft++;
       }
-      if (!sj->effect && !sj->joined && (sj->aidx != 8 || (nleft == 0 && sj->prev_code < 128)) && (allophones[sj->aidx].kind == K_VOWEL || allophones[sj->aidx].kind == K_GLIDE || (sj->aidx >= 17 && sj->aidx <= 20)) && sj->stotal - sj->stick < TICKS(25.0))
+      if (AUD(25) && !sj->effect && !sj->joined && (sj->aidx != 8 || (nleft == 0 && sj->prev_code < 128)) && (allophones[sj->aidx].kind == K_VOWEL || allophones[sj->aidx].kind == K_GLIDE || (sj->aidx >= 17 && sj->aidx <= 20)) && sj->stotal - sj->stick < TICKS(25.0))
         sj->ptick += (int)(14.0 * (1.0 - (double)(sj->stotal - sj->stick) / TICKS(25.0)) + 0.5);
       /* (0.5.0-0.5.3: the 12 ticks delayed the first pulse; 0.5.1 left out IH OH) */
       sj->vstarted = true;
