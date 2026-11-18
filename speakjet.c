@@ -1072,16 +1072,6 @@ static bool slow_before_next(const sj_chip *sj, int i);
 static int peek(const sj_chip *sj, int i);
 static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, double bend) {
   frame tgt = allo_frame(a, false, bend);
-  float tt_g = 1.0f;
-  /* 0.5.4: TT before a vowel, pauses and controls between allowed, is 3 dB louder (both units: VoxProbe 4 and 8, TT AW
-   * TT P4 AW Slow TT AW, the burst at -24..-29 dB against the vowel where ours was -30..-34; TT alone unchanged) */
-  if (a - allophones == 63) {
-    int i = sj->executing, c = -1;
-    while (i < sj->count) { c = peek(sj, i); if (c >= 128) break; if (c <= 6 || c == 7 || c == 8) { i++; c = -1; continue; } if (c == 20 || c == 21 || c == 22 || c == 23 || c == 26) { i += 2; c = -1; continue; } break; }
-    if (c >= 128 && c <= 199 && (allophones[c - 128].kind == K_VOWEL || allophones[c - 128].kind == K_GLIDE))
-      tt_g = 1.4125375f; /* +3 dB */
-  }
-  tgt.lv *= tt_g;
   frame bar = from, gone = silent_frame();
   if (a->kind == K_VSTOP) {
     gone.f[0] = tgt.f[0];
@@ -1216,7 +1206,6 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
     add_segment(sj, ticks - TICKS(NASAL_RAMP), tgt, allo_frame(a, true, bend), true);
   } else {
     frame t2 = allo_frame(a, true, bend);
-    t2.lv *= tt_g;
     add_segment(sj, ticks, tgt, t2, a->kind == K_VSTOP);
   }
   return closure + ticks;
@@ -1470,7 +1459,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   case K_VFRIC: {
     /* 0.5.4: a true nasal (MM NE NO NGE NGO) after a sound takes 5 ms to move, not 25 (VoxProbe 4, both units: AW MM and
      * IY MM, the vowel's F1 gone from the nasal at once on the chip; ours carried AW's ~700 Hz 10-29 dB into MM) */
-    int tr = TICKS(a - allophones >= 12 && a - allophones <= 16 && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f ? 5.0 : T.transition);
+    int tr = TICKS(AUD(21) && a - allophones >= 12 && a - allophones <= 16 && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f ? 5.0 : T.transition);
     /* 0.5.0: a voiced fricative after a pause opens with 40 ms of its noise alone before the voicing (Man Goes Down P2's
      * EYIY P4 DH, both units: ~30 ms of faint frication before the voicing, 10 alone) */
     /* 0.5.6: the 40 ms is added to the sound, not taken from it, and steps with Speed above 115 like the rest of the sound
@@ -1621,7 +1610,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   const bool was_pause = sj->after_pause;
   /* 0.5.4: a vowel straight after a voiced stop or a nasal has no long second period (the phrase items: 316.4 -> 313.0,
    * BE IY, BE EH, Slow NE AW better, none worse); after silence, a pause or an unvoiced sound it has */
-  sj->vafter = !was_pause && sj->prev_code >= 128 && (allophones[sj->prev_code - 128].kind == K_VSTOP || (sj->prev_code >= 140 && sj->prev_code <= 144));
+  sj->vafter = AUD(22) && !was_pause && sj->prev_code >= 128 && (allophones[sj->prev_code - 128].kind == K_VSTOP || (sj->prev_code >= 140 && sj->prev_code <= 144));
   sj->after_pause = false;
   const bool nasal_ramp = sj->ramp_seg >= 0;
   /* an unvoiced fricative starts and stops at once (HE HO WH FF SE SO SH TH, both units, background allowed for: rise
@@ -1644,7 +1633,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   /* 0.5.4: AW starts fast before an unvoiced sound or LE (both units, VoxProbe 4: AW TT and AW LE 7-18 dB under the
    * chip at 400-800 Hz over AW's first 20-40 ms with its 45 ms fade-in; before a vowel, RR or MM the fade-in fits) */
   const int nx = next_sound(sj, sj->executing);
-  const bool aw_fast = sj->aidx == 8 && nx >= 128 && nx <= 199 && (allophones[nx - 128].kind == K_FRIC || allophones[nx - 128].kind == K_STOP || allophones[nx - 128].kind == K_AFFR || nx == 145);
+  const bool aw_fast = AUD(23) && sj->aidx == 8 && nx >= 128 && nx <= 199 && (allophones[nx - 128].kind == K_FRIC || allophones[nx - 128].kind == K_STOP || allophones[nx - 128].kind == K_AFFR || nx == 145);
   if (aw_fast)
     sj->attack = TICKS(20.0); /* 0.5.4: a 20 ms fade-in, not its own 45 or the 35 ms default (AW LE 17-31 %, AW SE 16 % closer; 0 split the units: AW LE -81 % on B, +89 % on A) */
   if (a->aa && !aw_fast)
@@ -1784,11 +1773,6 @@ static void next_command(sj_chip *sj) {
     if (code <= 6) {
       {
         double pms = T.pause[code] * (sj->speed > 115 ? speed_step(sj) : (T.fx_speed_a - sj->speed) / T.fx_speed_b);
-        const int nx = next_sound(sj, n);
-        /* 0.5.0: after a short pause (P4-P6), a voiced stop's bar opens 12 ms into the pause before it (Man Goes Down P1's ZZ P4 DO, both units: the bar
-         * 11 ms after ZZ's end, ours 23) */
-        if (pms <= 20.0 && nx >= 128 && nx <= 199 && allophones[nx - 128].kind == K_VSTOP)
-          pms = pms > 12.0 ? pms - 12.0 : 0.0;
         play_pause(sj, pms);
       }
       sj->joined = false;
@@ -1827,7 +1811,7 @@ static void next_command(sj_chip *sj) {
        * ran 15 ms long there and in VoxProbe 13's Slow IYUW Slow SE, both units: phrase items 264.0 -> 258.1, none worse) */
       /* a voiced sound straight into SE bends F2 and F3 to ZZ's, SE's voiced partner, over its last 40 ms (Man Goes
        * Down P4, both units: IYUW's F2 falls to ~1090 Hz and rises to ~1500 before the hiss; ZZ's F2 is 1469) */
-      if (next == 187 && sj->nseg > 0 && sj->seg[sj->nseg - 1].voiced) {
+      if (AUD(27) && next == 187 && sj->nseg > 0 && sj->seg[sj->nseg - 1].voiced) {
         const allophone *zz = &allophones[167 - 128];
         anticipate(sj, TICKS(40.0 * speed_factor(sj, false)), bent(zz->f2 * HZ_STEP, bend_hz(sj)), bent(zz->f3 * HZ_STEP, bend_hz(sj)));
       }
@@ -1856,7 +1840,7 @@ static void next_command(sj_chip *sj) {
         /* 0.5.4: a vowel or glide into TT moves F2 to 1600 Hz over its last 20 ms (both units, AW TT: in AW's last 25 ms the
          * 856-1525 Hz band empties 12-21 dB under ours and 1525-1922 fills - F2 climbing to the alveolar locus; phrase items
          * 309.6 -> 305.4, none worse; running the vowel on as well was worse) */
-        if (next == 191 && (allophones[code - 128].kind == K_VOWEL || allophones[code - 128].kind == K_GLIDE) && sj->stotal > TICKS(20.0) + 2) {
+        if (AUD(28) && next == 191 && (allophones[code - 128].kind == K_VOWEL || allophones[code - 128].kind == K_GLIDE) && sj->stotal > TICKS(20.0) + 2) {
           split_at(sj, sj->stotal - TICKS(20.0));
           l = &sj->seg[sj->nseg - 1];
           l->to.f[1] = 1600.0f;
