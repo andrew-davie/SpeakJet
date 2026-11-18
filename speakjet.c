@@ -693,7 +693,7 @@ static double modified_ms(const sj_chip *sj, const allophone *a, double ms) {
   /* SE SO SH take half of Slow's stretch (2026-11-08, VoxProbe 13 section 10, all four takes: every slowed SE 16-34 ms
    * long at x4/3; VoxProbe 12 had Slow SE +20 ms; Man Goes Down P4's Slow SE Slow SE) */
   if (sj->slow)
-    ms *= (a - allophones >= 59 && a - allophones <= 61) ? 1.0 + (T.slow - 1.0) / 2.0 : a->kind == K_VOWEL ? 1.29 : T.slow; /* 0.5.0: a plain vowel stretches x1.29 under Slow (VoxProbe 8 section 2, both units: Slow AW IY 149-150 ms where x4/3 gave 154-157); the glides and nasals keep x4/3 (Slow AYWW 320-332, ours 325; Slow NE 116-125, ours 125) */
+    ms *= (AUD(29) && a - allophones >= 59 && a - allophones <= 61) ? 1.0 + (T.slow - 1.0) / 2.0 : a->kind == K_VOWEL ? 1.29 : T.slow; /* 0.5.0: a plain vowel stretches x1.29 under Slow (VoxProbe 8 section 2, both units: Slow AW IY 149-150 ms where x4/3 gave 154-157); the glides and nasals keep x4/3 (Slow AYWW 320-332, ours 325; Slow NE 116-125, ours 125) */
   return ms > 10 ? ms : 10;
 }
 
@@ -1783,7 +1783,7 @@ static void next_command(sj_chip *sj) {
        * Slow SE UX 464 ms, 435 as a copy), except on a vowel: that stays a copy, stretched as a slowed vowel (2026-11-16,
        * VoxProbe 15 section 4, all four takes: AW AW Pitch n Slow AW AW 20-35 ms over AW AW Pitch n AW AW; as two whole
        * sounds ours read +105) */
-      const bool again = sj->joined && sj->copy_of == code - 128 && sj->repeat <= 1 && (!sj->slow || allophones[code - 128].kind == K_VOWEL);
+      const bool again = sj->joined && sj->copy_of == code - 128 && sj->repeat <= 1 && (!AUD(31) || !sj->slow || allophones[code - 128].kind == K_VOWEL);
       const bool prev_nasal = sj->last_nasal;
       const bool prev_kind_vowel = sj->last.a[0] > 0.0f && !sj->last_nasal;
       play_allophone(sj, &allophones[code - 128]);
@@ -1817,7 +1817,7 @@ static void next_command(sj_chip *sj) {
        * stronger by 4-5 dB (Man Goes Down's GO OWWW, both units, the user's drawn lines: two level bands that then split
        * into OW's F2 and F3); alone it keeps its table formants, which its solo takes need (moving them there: spectrum
        * 2.28 -> 4.12). Only before OW until another context is recorded (VoxProbe 13 section 7) */
-      if (code == 179 && (next == 137 || next == 153 || next == 156 || next == 164) && sj->nseg > 0) {
+      if (AUD(32) && code == 179 && (next == 137 || next == 153 || next == 156 || next == 164) && sj->nseg > 0) {
         segment *r = &sj->seg[sj->nseg - 1];
         const double bh = bend_hz(sj);
         r->from.f[1] = r->to.f[1] = bent(1430.0, bh);
@@ -1930,7 +1930,7 @@ static void next_command(sj_chip *sj) {
          * off it, 12-16 ms early on it; WW and RR stay on it - off it RR IY, IY RR and IY WW IH read 3.6-8.5 dB worse) */
         /* the liquids LE LO WW RR join vowels by the same rule (2026-11-08, Man Goes Down P2's IY WW IH 30 ms short: P2
          * timing 23.4 -> 17.0 ms, 1665 -> 1702; VoxProbe 13 section 5 10.2 -> 8.6) */
-        if (both && next != code && (kc == K_VOWEL || kc == K_GLIDE || (code >= 147 && code <= 148)) && (kn == K_VOWEL || kn == K_GLIDE || (next >= 147 && next <= 148))) {
+        if (both && next != code && (kc == K_VOWEL || kc == K_GLIDE || (AUD(33) && code >= 147 && code <= 148)) && (kn == K_VOWEL || kn == K_GLIDE || (AUD(33) && next >= 147 && next <= 148))) {
           const allophone *b = &allophones[next - 128];
           if (b->kind == K_GLIDE)
             b = &allophones[b->f1]; /* a glide's f1 f2 name the allophones it runs between: it starts on the first's */
