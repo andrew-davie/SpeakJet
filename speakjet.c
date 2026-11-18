@@ -406,6 +406,18 @@ typedef struct allophone {
 } allophone;
 
 /* TABLES-BEGIN */
+/* audit switches (2026-11-19, audit branch): built with -DSJ_AUDIT, rule n is off when bit n of the environment's
+ * SJ_AUDIT_OFF (a decimal mask) is set; otherwise every rule is on and AUD(n) is the constant 1 */
+#ifdef SJ_AUDIT
+#include <stdlib.h>
+static int AUD(int n) {
+  static long long m = -1;
+  if (m < 0) { const char *e = getenv("SJ_AUDIT_OFF"); m = e ? atoll(e) : 0; }
+  return !((m >> n) & 1);
+}
+#else
+#define AUD(n) 1
+#endif
 #include "speakjet_tables.c"
 /* TABLES-END */
 
@@ -649,7 +661,7 @@ void sj_set_controls(sj_chip *sj, const sj_controls *c) {
 static double join_term(int idx) {
   for (int i = 0; i < ALLOJ_N; i++)
     if (alloj[i][0] == idx)
-      return alloj[i][1] - 128.0;
+      return AUD(19) ? alloj[i][1] - 128.0 : 0.0;
   return 0.0;
 }
 static double speed_step(const sj_chip *sj) { return (155.9 - sj->speed) / 47.4; }
@@ -1107,7 +1119,7 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
    * the 44): a voiced stop from silence, not slowed, running into a sound with no Slow on it closes for at most 30 ms.
    * "man goes down"'s DO (Slow on its AYWW) keeps its closure, as the recordings want. Not after a pause code
    * (2026-11-08, Man Goes Down P2's TT P1 BE: BE 45 ms early, P2 timing 14.1 -> 12.7 ms) */
-  if (a->kind == K_VSTOP && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f && next_sound(sj, sj->executing) >= 128 && !slow_before_next(sj, sj->executing) && !sj->slow && clms > 30.0)
+  if (AUD(1) && a->kind == K_VSTOP && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f && next_sound(sj, sj->executing) >= 128 && !slow_before_next(sj, sj->executing) && !sj->slow && clms > 30.0)
     clms = 30.0;
   if (from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f && clms < JOIN_CLOSURE)
     clms = JOIN_CLOSURE;
@@ -1115,8 +1127,10 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
    * 15 ms (AW EH LO MM NE NO NGE OW RR before DO were 15-59 ms short, before GO 4-58, before BO 0-11) */
   const long stop_id = a - allophones;
   const bool alveolar = stop_id == 46 || stop_id == 47, velar = stop_id == 50 || stop_id == 51;
-  if (a->kind == K_VSTOP && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f)
-    clms += stop_id == 47 ? 25.0 : stop_id == 51 ? 15.0 : 0.0; /* 0.5.0: DO and GO only - the VoxProbe 13 measurements were before DO and GO; DE after EH (VoxProbe 4, both units) closes for 45 ms, its own 40 */
+  if (AUD(2) && a->kind == K_VSTOP && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f)
+    clms += stop_id == 47 ? 13.0 : 0.0; /* audit (2026-11-19, VoxProbe 13 section 6, both units, per item: DO after AW EH LO OW RR
+                                              * +12 +20 +5 +17 -5 ms long with +25, -15 -5 -20 -10 -30 without, so +13; GO +10..+20 long with
+                                              * its +15 and -0..+5 without, so none). 0.5.0: DO and GO only - the VoxProbe 13 measurements were before DO and GO; DE after EH (VoxProbe 4, both units) closes for 45 ms, its own 40 */
   /* a voiced stop after a nasal closes quietly, and Slow lengthens that closure (Man Goes Down's NE GO, VoxProbe 12
    * section 4, all four takes: the join falls to -38..-41 dB above 300 Hz, under -30 dB for 30-40 ms as sent and 20-30
    * without its Slow; ours stayed above -22 dB and "goes" lost its /g/. EH DE, a vowel into a voiced stop, has no such
@@ -1126,20 +1140,20 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
    * ms, length 910 -> 940 against 942/945) */
   /* 0.5.5: 15, not 30 (VoxProbe 16, both units: UX P1 EK 260 ms, ours 270 at 30; Man Goes Down P4 930 against 930-935; VoxProbe
    * 13's UX P1 EK was 22 ms short at 0) */
-  if (a->kind == K_STOP && sj->after_pause)
+  if (AUD(3) && a->kind == K_STOP && sj->after_pause)
     clms += 15.0;
   /* ASSUMPTION (2026-11-08, VoxProbe 13 NE KO OW, both units by picture: NE stops at 0.105 s and KO bursts at 0.15, 30 ms
    * after ours; NE TT and NE PO already land): KE and KO after a nasal close longer. 15 ms, not 30 (2026-11-09, the
    * closure's quiet run against both units' 2600 takes: with 30 it was 11-30 ms long on VoxProbe 14's NE NO MM NGE KO AW
    * and 15 on VoxProbe 13's NE KO OW itself) */
-  if ((a - allophones == 66 || a - allophones == 67) && sj->last_nasal && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f)
+  if (AUD(4) && (a - allophones == 66 || a - allophones == 67) && sj->last_nasal && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f)
     clms += 15.0;
   /* ASSUMPTION (2026-11-08): a slowed unvoiced stop after a sound closes 20 ms longer (VoxProbe 13 section 10, all four
    * takes: AW Slow TT AW and Slow AYWW Slow TT 60 ms short; Man Goes Down P2's UW Slow TT: P2 timing 17.0 -> 12.3) */
   /* only before a pause (2026-11-08): before a sound the vowel ahead runs on instead (see the join). That is TT's way;
    * a slowed KE KO PE PO closes longer before a sound too (2026-11-09, VoxProbe 14 section 4, both units: AW Slow KO AW's
    * closure 56 ms against 44 unslowed, AW Slow PO AW's 101 against 85, where the AW ahead doesn't run on) */
-  if (a->kind == K_STOP && sj->slow && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f && (next_sound(sj, sj->executing) < 128 || a - allophones != 63))
+  if (AUD(5) && a->kind == K_STOP && sj->slow && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f && (next_sound(sj, sj->executing) < 128 || a - allophones != 63))
     clms += 20.0;
   const bool nasal_join = a->kind == K_VSTOP && sj->last_nasal && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f;
   /* the gap's width, band by band on both units' Man Goes Down NE GO (2026-11-07): 20-32 ms under the row's peak
@@ -1149,11 +1163,11 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
   /* ASSUMPTION (2026-11-08, VoxProbe 13 section 6; Man Goes Down P1 1488 -> 1502 against 1495/1502): after a nasal
    * DE DO GE GO close 10 ms longer than BE BO; not under Slow (Man Goes Down P1's Slow GO: timing 18.3 -> 12.3 ms
    * without it) */
-  if (nasal_join && (alveolar || velar) && !sj->slow)
+  if (AUD(6) && nasal_join && (alveolar || velar) && !sj->slow)
     clms += 10.0;
   /* ASSUMPTION (2026-11-08, VoxProbe 13 section 6, all four takes: NGE before BO DO GO 38-48 ms short): after NGE the
    * closure is 40 ms longer */
-  if (nasal_join && sj->last_nge)
+  if (AUD(7) && nasal_join && sj->last_nge)
     clms += 40.0;
   if (nasal_join && sj->slow)
     clms *= T.slow;
@@ -1438,7 +1452,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   int ticks = TICKS(modified_ms(sj, a, a->ms * MS_STEP) * ((a->kind == K_VOWEL || a->kind == K_GLIDE || (a->kind == K_NASAL && sj->speed > 118) || (a->kind == K_VFRIC && sj->speed > 115) /* 0.5.6: a voiced fricative takes the step (VoxProbe 12, P2's DH x0.76 from Speed 114 to 118) */) ? (sj->speed > 115 /* slowed too (VoxProbe 16, both units: Speed 118 FF RR Slow UW 200-210 ms, ours 225 on the effects' law; Man Goes Down P2 1690/1685, ours 1725 -> 1675) */ ? speed_step(sj) : sj->speed < 114 ? (149.3 - sj->speed) / 35.3 /* 0.5.5: a vowel's own law below 114 (VoxProbe 16, both units: AW IY and MM AW at Speed 90 x1.65-1.68, Speed 90 MM AW 320 = the chip's; the effects' law gave x1.73, the speech law x1.5) */ : speed_factor(sj, true)) : (sj->speed > 114 ? 1.0 : speed_factor(sj, false))));
   /* ASSUMPTION (2026-11-15, VoxProbe 7's 'Pitch 150 then AW/IY/OW', both units: 133-134 ms where the library gives 113-117, the same
    * sounds 114-123 at Pitch 88): a vowel or glide above Pitch 88 runs longer, by 16 % at 150, taken as linear in Pitch; one Pitch measured */
-  if ((a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->pitch > 88)
+  if (AUD(8) && (a->kind == K_VOWEL || a->kind == K_GLIDE) && sj->pitch > 88)
     ticks = (int)(ticks * (1.0 + 0.16 * (sj->pitch - 88) / 62.0) + 0.5);
   const frame tgt = allo_frame(a, false, bend), tgt0 = tgt;
   frame from = from_frame(sj, tgt);
@@ -1473,7 +1487,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
      * frame over 8 ms more per ERB of F2 distance (10 put GE OW's end 10 ms late on the picture), and is that much longer */
     /* 0.5.5: NGE too, at 6 ms per ERB (VoxProbe 16, both units: NGE AW 242 ms, NGE UW 243 where the plain join gave 195; NGE IY,
      * F2 near NGE's, on time either way) */
-    if (sj->after_velar && a->kind == K_VOWEL) {
+    if (AUD(9) && sj->after_velar && a->kind == K_VOWEL) {
       const double ea = 21.4 * sj_log(1.0 + 0.00437 * from.f[1]) / M_LN10, eb = 21.4 * sj_log(1.0 + 0.00437 * tgt.f[1]) / M_LN10;
       const int ex = TICKS((sj->prev_code == 143 ? 6.0 : 8.0) * (ea > eb ? ea - eb : eb - ea) * speed_factor(sj, true));
       tr += ex;
@@ -1507,7 +1521,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
      * distance (the pictures' ~60 ms into AW) but the vowel grows only half that. Fitted on the ten KE/KO items: KE AW
      * -30 -> -5, KE OW -45 -> -15, KE UW -30 -> -5 ms, KE IY EH unchanged. KO is left alone: no one locus fits both KO IY
      * (-20) and KO EH (+5), which went to +15 and +20 (open) */
-    if (sj->after_kvelar && a->kind == K_VOWEL) {
+    if (AUD(10) && sj->after_kvelar && a->kind == K_VOWEL) {
       frame lf = tgt;
       lf.f[0] = bent(KV_F1, bend);
       lf.f[1] = bent(KV_KE, bend);
@@ -1583,7 +1597,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     /* ASSUMPTION (2026-11-08, VoxProbe 13 section 10, all four takes: TH between a vowel and a sound ~75 ms on the chip,
      * ~40 here; AW TH AW, IHWW TH RR 25-39 ms short): TH after a voiced sound and before another plays 25 ms longer.
      * Not before a pause (Man Goes Down P2's Slow TH P4: timing 12.7 -> 16.0 ms with it) */
-    if (a - allophones == 62 && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f && next_sound(sj, sj->executing) >= 128)
+    if (AUD(11) && a - allophones == 62 && from.a[0] + from.a[1] + from.a[2] + from.na > 0.0f && next_sound(sj, sj->executing) >= 128)
       ticks += TICKS(25.0 * speed_factor(sj, false));
     add_segment(sj, ticks, tgt, tgt, false);
     break;
@@ -1855,7 +1869,7 @@ static void next_command(sj_chip *sj) {
          * into GO or GE runs on 18 ms, and 25 more when the GO is slowed (the Slow read ahead); not with a Fast on the GO.
          * NE GO OW's NE 90 -> 110 against 110-120, NO GO 100 -> 115 against 112, NE Slow GO 90 -> 135 against 130, NE Fast
          * GO 90 against 90. Man Goes Down P1's NE is slowed and keeps its length (fitted to the drawn lines) */
-        if ((code == 141 || code == 142) && (next == 178 || next == 179) && !sj->slow) {
+        if (AUD(12) && (code == 141 || code == 142) && (next == 178 || next == 179) && !sj->slow) {
           bool fast_next = false;
           for (int i = n; i < sj->count && peek(sj, i) < 128; i += (peek(sj, i) >= 20 && peek(sj, i) <= 26) ? 2 : 1)
             if (peek(sj, i) == 7)
@@ -1871,7 +1885,7 @@ static void next_command(sj_chip *sj) {
          * is followed by a pause (Man Goes Down P2's UW Slow TT P1): AW 130 -> 170 ms against 170). Before TT only
          * (2026-11-09, VoxProbe 14 section 4, both units by picture: before a slowed KO or PO the AW is ~130 ms, as unslowed,
          * where ours ran ~160; AW Slow KO AW +30 -> ~0, AW Slow PO AW +25) */
-        if (next == 191 && slow_before_next(sj, n) && allophones[code - 128].kind != K_STOP && !(code >= 140 && code <= 144)) {
+        if (AUD(14) && next == 191 && slow_before_next(sj, n) && allophones[code - 128].kind != K_STOP && !(code >= 140 && code <= 144)) {
           int j = n;
           while (j < sj->count && peek(sj, j) < 128)
             j += (peek(sj, j) >= 20 && peek(sj, j) <= 26) ? 2 : 1;
@@ -1898,23 +1912,23 @@ static void next_command(sj_chip *sj) {
          * vowel, glide or hiss into TT (AW 130 -> 145 against 152, SE 80 -> 95 against 102), nor from NE or NO into KE KO
          * PE PO BE BO (NE 90 -> 105 against 105-110); PO into a voiced sound after a vowel overlaps 20 ms (AW PO AW's
          * release 195 -> 175 against 175) */
-        if (next == 191 && !(code >= 140 && code <= 144) && !slow_before_next(sj, n))
+        if (AUD(15) && next == 191 && !(code >= 140 && code <= 144) && !slow_before_next(sj, n))
           cut = 0;
         /* KE KO only (2026-11-18, VoxProbe 13, both units: NE BO OW 250 ms, NO BO OW 257, NE PO OW 290, where no overlap gave
          * 280 / 290 / 315; NE KO OW 290 as the chip) */
-        if ((code == 141 || code == 142) && (next == 194 || next == 195))
+        if (AUD(13) && (code == 141 || code == 142) && (next == 194 || next == 195))
           cut = 0;
         if (code == 199 && prev_kind_vowel && next <= 199 && allophones[next - 128].kind != K_STOP && allophones[next - 128].kind != K_FRIC)
           cut = TICKS(20.0);
         /* ASSUMPTION (2026-11-08, VoxProbe 13 section 10, all four takes: AW TH AW, IHWW TH RR 25-54 ms short): no
          * overlap into TH (Man Goes Down P2's IH TH lines up with it) */
-        if (next == 190)
+        if (AUD(16) && next == 190)
           cut = 0;
         /* ASSUMPTION (2026-11-08, VoxProbe 13 section 5, all four takes: IY MM, MM IY, IY NE, NE IY 26-38 ms short):
          * a nasal (MM NE NO NGE NGO) and a vowel or glide join with no overlap, unless either is slowed (Man Goes Down
          * P1's three nasal joins are all slowed and keep it: P1 1502 against 1495/1502). Vowels only: Man Goes Down P2's MM
          * EYIY, a glide, keeps it (P2 timing 29.7 -> 18.4 ms) */
-        if (both && next <= 199) {
+        if (AUD(17) && both && next <= 199) {
           const int kn2 = allophones[next - 128].kind;
           if (code >= 140 && code <= 144 && kn2 == K_VOWEL)
             cut = TICKS((13.0 + (code == 140 ? 9.0 : 0.0)) * speed_factor(sj, false) * (sj->slow ? T.slow : 1.0)); /* a nasal overlaps the vowel after it by 13 ms, MM by 22 (VoxProbe 16, both units) */
@@ -1959,7 +1973,7 @@ static void next_command(sj_chip *sj) {
         /* ASSUMPTION (2026-11-07, every recorded voiced-stop pair, both units): a voiced stop into a vowel or glide with
          * no Slow on it loses 30 - 10 * d ms more off its end, d the ERB distance between its release F2 and the
          * vowel's (BE EH 168 ms where we gave 198, DO AYWW 284 / 315; BE AW and GO OWWW, far apart, already matched) */
-        if (kc == K_VSTOP && code != 178 && code != 179 && next != code && (kn == K_VOWEL || kn == K_GLIDE)) {
+        if (AUD(18) && kc == K_VSTOP && code != 178 && code != 179 && next != code && (kn == K_VOWEL || kn == K_GLIDE)) {
           const allophone *b = &allophones[next - 128];
           if (b->kind == K_GLIDE)
             b = &allophones[b->f1];
