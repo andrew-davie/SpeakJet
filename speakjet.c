@@ -2522,7 +2522,10 @@ static double tick(sj_chip *sj) {
   v = output_stage(sj, v, s->voiced && !(s->flags & (FX_VOICED | FX_PULSED)));
   /* 0.5.4: the effects' output through a 40 Hz high-pass after the output stage (B2 A0 C7 R5 R7, all four takes: nothing under ~50 Hz on the
    * chip where ours was 15-22 dB up - the AtariVox's output stage; effects' mean X unchanged) */
-  if (sj->effect) {
+  /* audit (2026-11-19): speech through it too - the AtariVox's output stage is the same for everything. Six vowels and glides,
+   * against their four takes: the first harmonic (85 Hz) 0.8 dB too strong, positive on all six; a 40 Hz one-pole takes 0.9
+   * dB there (the second harmonic's +0.9 is a separate, smaller matter) */
+  {
     const double k = exp(-2.0 * M_PI * FX_OUT_HP / RATE);
     sj->fxhpz = k * sj->fxhpz + (1.0 - k) * v;
     v -= sj->fxhpz;
