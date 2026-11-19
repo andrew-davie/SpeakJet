@@ -2208,13 +2208,7 @@ static double tick(sj_chip *sj) {
   frame f;
   for (int k = 0; k < NTONE; k++) {
     const double fa = s->from.f[k], fb = s->to.f[k];
-    /* 2026-11-20 (user, on 218 A8's opening: "slightly curved, starts way down ... ends ~1 kHz"): FX_EXP and FX_EXPDECAY together
-     * - a settle on the log scale: steep, then flattening, (1 - e^-2t) / (1 - e^-2) of the octaves covered. A8's lines, four
-     * takes: 0.27 0.45 0.61 0.76 0.90 of the rise's octaves at 0.11 0.22 0.44 0.67 0.89 of the part (this gives .23 .41 .68 .85
-     * .96); a straight glide in log frequency missed the steep start, two straight pieces clicked at their join */
-    if ((s->flags & FX_EXP) && (s->flags & FX_EXPDECAY) && fa > 0 && fb > 0)
-      f.f[k] = (float)(fa * sj_exp((1.0 - sj_exp(-2.0 * t)) / 0.8646647167633873 * sj_log(fb / fa)));
-    else if ((s->flags & FX_EXP) && fa > 0 && fb > 0)
+    if ((s->flags & FX_EXP) && fa > 0 && fb > 0)
       f.f[k] = (float)(fa * sj_exp(t * sj_log(fb / fa)));
     else if (s->flags & FX_EXPDECAY)
       f.f[k] = (float)(fb + (fa - fb) * sj_exp(-4.0 * t));
