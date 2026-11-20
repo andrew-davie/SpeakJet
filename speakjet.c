@@ -103,6 +103,7 @@
 #define NASAL_ATTACK 25.0 /* a nasal's attack, ms (the vowels': T.attack) */
 #ifndef BAR_UP
 #define BAR_UP 0.12 /* a voiced stop's bar: its upper formants at this fraction of the release's */
+#define ABAR_UP 0.05 /* 2026-11-20: an alveolar's bar (DE DO ED OD): its upper formants weaker still (both units, DO: the bar 10 dB over the chip at 1.5-2.5 kHz with 0.12; across the 12 voiced stops 0.05 gives DO 2.15 -> 2.08, DE 1.62 -> 1.55, ED OD unchanged, X) */
 #define BAR_NF 1000.0f /* 0.5.3: an alveolar's bar is partly noise: a band, Hz (both units: DE DO's bar pulses match one another 0.40-0.59 above 700 Hz, ours 0.76-0.81) */
 #define BAR_NW 800.0f  /* its width, Hz */
 #define BAR_NA 4.0f    /* its level (the velars' bar is periodic on the chip) */
@@ -1083,6 +1084,8 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
     gone.a[1] = (float)(tgt.a[1] * BAR_UP);
     gone.a[2] = (float)(tgt.a[2] * BAR_UP);
     if (a - allophones >= 46 && a - allophones <= 49) { /* DE DO ED OD */
+      gone.a[1] = (float)(tgt.a[1] * ABAR_UP);
+      gone.a[2] = (float)(tgt.a[2] * ABAR_UP);
       gone.nf = BAR_NF;
       gone.nw = BAR_NW;
       gone.na = BAR_NA;
