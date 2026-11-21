@@ -97,6 +97,7 @@
 #define NHP_TWO 1 /* two stages (1) or one (0) */
 #endif
 #define FRIC_RAMP 3.0 /* an unvoiced fricative's attack and release, ms */
+static const double PON_GAIN[3] = {0.0316228, 0.446684, 0.794328}; /* 0.5.7: a voice's first three pulses from silence, -30 -7 -2 dB */
 #define THUMP_MS 16.0 /* a sibilant's starting burst of low noise: it fades out over this, ms */
 #define FXBURST_MS 5.0 /* an effect's starting click: it fades out over this, ms (220 B0: the chip's is ~5 ms, flat to 1.5 kHz and beyond) */
 #define THUMP_HZ 800.0 /* and is low-passed here */
@@ -330,6 +331,8 @@ struct sj_chip {
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   bool vstarted; /* 0.5.0 */
   int vcount; /* 0.5.4: voicing periods since the voice started */
+  int pon, opulse; /* 0.5.7: a vowel or glide from silence rises by pulse (pon), opulse its pulses so far */
+  double ndk;      /* 0.5.7: a decaying release: the noise band's gain at the end of its last segment (0: none) */
   bool vafter; /* 0.5.4: this sound follows a voiced stop or a nasal: no long period */
   float fhold[3]; /* mechanism: where the formants are, held through hisses and pauses (0: not set) */
   bool paused; /* 0.5.4: a pause since the last sound */
@@ -803,6 +806,8 @@ static void start(sj_chip *sj, bool effect) {
   sj->wobph = 0.0;
   sj->onset = 0;
   sj->onset_from = 0;
+  sj->pon = sj->opulse = 0;
+  sj->ndk = 0.0;
   sj->release_gain = 1.0;
   sj->wfloor = 0.0;
   sj->thump = 0.0;
@@ -1641,6 +1646,14 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     sj->attack = TICKS(20.0); /* 0.5.4: a 20 ms fade-in, not its own 45 or the 35 ms default (AW LE 17-31 %, AW SE 16 % closer; 0 split the units: AW LE -81 % on B, +89 % on A) */
   if (a->aa && !aw_fast)
     sj->attack = TICKS(a->aa * (sj->pitch > 88 ? 88.0 / sj->pitch : 1.0));
+  /* 0.5.7: a vowel or glide from silence with no attack of its own rises by pulse, not by time (both units, solo takes:
+   * a faint first pulse, then -7, -2, 0 dB; the 35 ms ramp left the second pulse 6-10 dB under the chip's, read as an
+   * onset ~11 ms late in every band). IYUW X -12.3 %, OWWW -5.5, EYRR -2.3, OWRR -1.4, OW -0.8; EH and OH fit the ramp
+   * better and keep it through their own aa 35. A sound with its own aa keeps its ramp (fitted with it: ZZ IHWW worse) */
+  if (AUD(35) && (a->kind == K_VOWEL || a->kind == K_GLIDE) && !a->aa && !aw_fast && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f) {
+    sj->pon = 1;
+    sj->attack = 0;
+  }
   if ((a->kind == K_STOP || a->kind == K_VSTOP || a->kind == K_AFFR) && sj->nseg > 1)
     for (int k = 0; k < sj->nseg - 1; k++)
       sj->onset_from += sj->seg[k].ticks; /* the release: everything before its segment */
@@ -1671,9 +1684,12 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     sj->lps = sin(ph);
   }
   /* a release that decays: the noise band ends its last segment at nd/256 of its level (TS, both units, every take:
-   * -13 dB over its 95 ms, the low band holding - the white floor - while the band falls) */
+   * -13 dB over its 95 ms, the low band holding - the white floor - while the band falls). 0.5.7: applied in the noise
+   * mix, to the band alone and evenly in dB (it scaled the frame's level, so the floor fell with the band and the
+   * straight fall held the level for 80 ms then dropped it; both units: TS's 1.5-8 kHz falls 17-18 dB across the sound
+   * at a steady rate, 300-1500 Hz 6-8 dB) */
   if (a->nd && sj->nseg > 0)
-    sj->seg[sj->nseg - 1].to.na *= a->nd / 256.0f;
+    sj->ndk = a->nd / 256.0;
   if (a->rr)
     sj->release = TICKS(a->rr); /* a sound's own fade-out (SE, SO: the chip fades over most of the sound) */
   /* the copies of a Repeat follow on; the level ramps once, over the whole */
@@ -2304,6 +2320,7 @@ static double tick(sj_chip *sj) {
           sj->period++;
         }
       sj->ptick = sj->period;
+      sj->opulse++;
       /* 0.5.4: a plain vowel's long period is its second after the voice starts, not a delay before the first (both units:
        * pulses -23, -7, -1 dB, gaps 10.7 12.3 11.4 ms on AW, 11.5 12.9 11.8 on EH; the 12 ticks there take all 12 plain
        * vowels' X 0.906 -> 0.883, every one better, IH and OH included) */
@@ -2462,7 +2479,11 @@ static double tick(sj_chip *sj) {
       const double o2 = k * (sj->nhp[3] + o1 - sj->nhp[2]);
       sj->nhp[2] = o1;
       sj->nhp[3] = o2;
-      yo = (NHP_TWO ? o2 : o1) + sj->wfloor * ex;
+      double band = NHP_TWO ? o2 : o1;
+      /* 0.5.7: a decaying release (nd): the band falls evenly in dB across the last segment, the white floor holding */
+      if (sj->ndk > 0.0 && sj->cur == sj->nseg - 1 && s->ticks > 1)
+        band *= sj_exp(sj_log(sj->ndk) * (double)sj->tick / (s->ticks - 1));
+      yo = band + sj->wfloor * ex;
     }
     if (sj->thump > 0.0 && sj->stick < TICKS(THUMP_MS)) { /* low noise (one pole at THUMP_HZ) fading over THUMP_MS */
       sj->thlp += sj->thk * (ex - sj->thlp);
@@ -2493,6 +2514,8 @@ static double tick(sj_chip *sj) {
     const int att = sj->attack, rel = sj->release;
     if (sj->stick < att)
       v *= (double)sj->stick / att;
+    if (sj->pon && sj->opulse <= 3)
+      v *= PON_GAIN[sj->opulse < 1 ? 0 : sj->opulse - 1];
     if (sj->stotal - sj->stick < rel) {
       v *= (double)(sj->stotal - sj->stick) / rel; fg *= (double)(sj->stotal - sj->stick) / rel;
     }
