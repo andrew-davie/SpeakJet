@@ -1765,7 +1765,11 @@ Where the library and the chip still differ, or the chip is not understood:
   to R3 have lines that move with Pitch: pulse trains where the library has
   plain tones. The chip's pulse there carries mostly f and 2f, where the voice
   envelope gives the full series. The effects' pulse source is not yet
-  understood.
+  understood. Tested on 22 pulsed effects (2026-11-23): a sine or triangle pulse
+  in place of the saw made every one worse (mean X 1.23 -> 1.99 / 2.03), and the saw's fall at 30, 100 ticks or a
+  half or 0.9 of the period worse than its 58 ticks (1.26 -> 1.50-1.77). On R2 R8 R9 the chip's first three pulse
+  harmonics match ours within 3 dB; what differs is ours' 4th and 5th harmonics around the upper pulsed tone (R2: 909
+  and 1136 Hz at -26 and -16 dB, absent on the chip), though removing that tone makes each sound far worse. Open.
 - **The death sound in Man Goes Down** ("Reset, Speed 62, Pitch 212, 231 C1").
   The chip plays it in 731 ms against the library's 707. Its pulse rate climbs
   from 228 to 575 Hz over the first 180 ms, where the library's starts at
