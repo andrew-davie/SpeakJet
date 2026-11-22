@@ -7,7 +7,57 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
-### Since 0.5.5 (unreleased; technical manual 1.26)
+### 0.5.6 (2026-11-22; technical manual 1.27)
+
+**The scale.** Every figure in this release is on the re-baselined X (technical manual 12.8): X2, a weighted mean of five
+views each divided by what a real take scores, with the recordings' background now given to both sides. Figures in the
+entries of earlier releases are on the scales of their day. Against 0.4.3, both rescored on this measure: allophones mean X 1.20 -> 0.95 (-21 %), effects 1.75 -> 1.22
+(-30 %), all 127 sounds 1.44 -> 1.07 (-26 %), median 1.29 -> 1.02; sounds over 1.0 98 -> 67; 118 closer, 7 further (TU, AY, ED,
+SH, UW +4 %, D4 +3 %, C7 +1 %); edgecheck timing flags 252 -> 124 (docs/scores.md). Connected speech, 44 phrase items on both
+units, mean cost 264 (0.5.4) -> 235.7, median 185 -> 175 (one unit against the other: 143.9 / 138.3). Tables 7356 bytes
+(every table, sizeof; the 6823 and 6825 quoted below were counted with a 31-byte allophone record, 216 bytes short).
+
+**Engine**
+
+- **A vowel or glide from silence ramps in from -26 dB, not from nothing** (with no attack of its own; `PON_FLOOR`).
+  Both units' first pulses lie on a straight 35 ms line from -26 dB, at Pitch 88 (-32, -8, -1, 0 dB at 1, 11, 23, 35 ms)
+  and at Pitch 150 (-29, -10, -5, -2, -1, 0 at 0, 10, 20, 29, 36, 43 ms); from zero the first three pulses were 5-12 dB
+  low and every band read the onset ~11 ms late. A rise by pulse count fitted Pitch 88 and doubled VoxProbe 7's Pitch 150
+  OW on both units, and was dropped. IYUW, OWWW, EYRR, OWRR 0.7-2.8 % closer; 135 OH (aa 35 -> 0) 0.599 -> 0.577, 139 UW
+  (aa 11 -> 0) 0.965 -> 0.919; 88 phrase items +0.03 %.
+- **193 TS's decaying release falls on the noise band alone, evenly in dB**, the white floor holding (it scaled the whole
+  frame linearly, so the floor fell with the band and the level held 80 ms then dropped; both units: 1.5-8 kHz falls 17-18
+  dB across the sound, 300-1500 Hz 6-8). TS X 1.120 -> 0.882 with its refit; its 500-1500 Hz tail is back.
+- **The 40 Hz output high-pass on speech too** (it was on the effects since 0.5.4): six vowels and glides' first harmonic
+  was 0.8 dB strong on every take, the pole takes 0.9 dB there.
+- **An alveolar's voice bar (DE DO ED OD) carries its upper formants at 0.05 of the release's** (`ABAR_UP`; the other
+  voiced stops keep 0.12): 175 DO's bar sat 10 dB over the chip at 1.5-2.5 kHz. DE -4.5 %, DO -3.0 %.
+- **Audit** of the join and timing rules (each behind a switch in `SJ_AUDIT` builds only; normal builds unchanged):
+  DO's closure after a sound +13 ms (was +25), GO's none (was +15); TT's +3 dB before a vowel and a voiced stop's bar
+  opening into a short pause deleted; 0.5.4's carry across a short pause deleted (never read since 0.5.5); SE's attack back
+  to 13 ms. VoxProbe 16 3.909 -> 3.807 dB band error; Man Goes Down P1 1475 -> 1485 against 1490.
+- **Table bytes are held to their range.** A fit could write a negative onset length (174 DE's `ob` -3); C wrapped it to
+  253, Go refused to build. gen_tables now holds every unsigned allophone byte at 0 as well as 255.
+
+**Sounds**
+
+- **Every sound refitted on the new measure**, with its placement locked to the chip's and its start and end charged by
+  the band (a fit may not buy X by sliding a sound in time), each kept only if X improved without its structure, timing
+  flags, dropouts, level-over-time or the old X1 getting worse, and its picture checked against both units. Where the
+  final best failed, the newest earlier best that passed was taken.
+- By hand: 191 TT's white floor off and band +2 dB (3.3 dB quiet against AW in five recording sets); 238 C8's noise band
+  widened round its sweep (the whole-sound spectrum on the chip's from 100 Hz to 4 kHz); 222 B2 1.5 dB quieter; 218 A8's
+  opening a plain glide in Hz to the chip's flat 501/1002 Hz octave (a curved glide was tried and removed: across 206 chip
+  glides in 50 effects a straight ramp in Hz fits best); 199 PO's low pulse decay shorter; 208 R8 and 224 B4 timed and
+  held to the chip's lines; 214 A4's third formant at 0.05 in parts 4-5; 215 A5 back to its 0.5.5 parts; 128 IY F1 272 Hz.
+- 148 RR back to its numbers before the 2026-11-19 refit, which was the worst regression against 0.4.3 on the new measure
+  (0.871 -> 0.783 now); 188 SO back to its earlier numbers (by ear).
+
+**Measure and tools** (lab only, not in the library): the 2048-point spectrogram view had no background (the takes' first
+50 ms is under two windows), and the spectrum view clamped the takes at their background but not ours; both fixed.
+
+**Before the audit (2026-11-18)**
+
 
 - **A voiced fricative after a pause keeps its whole length after its 40 ms noise lead-in**, and takes the vowels' Speed step
   above 115, lead-in included (VoxProbe 12, both units, per sound by DTW: Man Goes Down P2's DH after P4 140-150 ms at Speed

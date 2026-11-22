@@ -97,7 +97,7 @@
 #define NHP_TWO 1 /* two stages (1) or one (0) */
 #endif
 #define FRIC_RAMP 3.0 /* an unvoiced fricative's attack and release, ms */
-#define PON_FLOOR 0.05 /* 0.5.7: a vowel's or glide's default attack from silence starts here (-26 dB), not at nothing */
+#define PON_FLOOR 0.05 /* 0.5.6: a vowel's or glide's default attack from silence starts here (-26 dB), not at nothing */
 #define THUMP_MS 16.0 /* a sibilant's starting burst of low noise: it fades out over this, ms */
 #define FXBURST_MS 5.0 /* an effect's starting click: it fades out over this, ms (220 B0: the chip's is ~5 ms, flat to 1.5 kHz and beyond) */
 #define THUMP_HZ 800.0 /* and is low-passed here */
@@ -331,8 +331,8 @@ struct sj_chip {
   double venv; /* the voicing envelope this tick, for an FX_ALL effect's noise */
   bool vstarted; /* 0.5.0 */
   int vcount; /* 0.5.4: voicing periods since the voice started */
-  bool pon;        /* 0.5.7: a vowel or glide from silence: its attack ramps from PON_FLOOR */
-  double ndk;      /* 0.5.7: a decaying release: the noise band's gain at the end of its last segment (0: none) */
+  bool pon;        /* 0.5.6: a vowel or glide from silence: its attack ramps from PON_FLOOR */
+  double ndk;      /* 0.5.6: a decaying release: the noise band's gain at the end of its last segment (0: none) */
   bool vafter; /* 0.5.4: this sound follows a voiced stop or a nasal: no long period */
   float fhold[3]; /* mechanism: where the formants are, held through hisses and pauses (0: not set) */
   bool paused; /* 0.5.4: a pause since the last sound */
@@ -1646,12 +1646,12 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     sj->attack = TICKS(20.0); /* 0.5.4: a 20 ms fade-in, not its own 45 or the 35 ms default (AW LE 17-31 %, AW SE 16 % closer; 0 split the units: AW LE -81 % on B, +89 % on A) */
   if (a->aa && !aw_fast)
     sj->attack = TICKS(a->aa * (sj->pitch > 88 ? 88.0 / sj->pitch : 1.0));
-  /* 0.5.7: a vowel or glide from silence with no attack of its own ramps up from -20 dB, not from nothing (both units:
-   * the pulses sit on a straight 35 ms ramp from -20 dB at Pitch 88 - -32, -8, -1, 0 dB at 1, 11, 23, 35 ms - and at
+  /* 0.5.6: a vowel or glide from silence with no attack of its own ramps up from -26 dB, not from nothing (both units:
+   * the pulses sit on a straight 35 ms ramp from -26 dB at Pitch 88 - -32, -8, -1, 0 dB at 1, 11, 23, 35 ms - and at
    * Pitch 150 - -29, -10, -5, -2, -1, 0 at 0, 10, 20, 29, 36, 43 ms; from nothing, ours were 5-12 dB low on the first
    * three and read as an onset ~11 ms late in every band. A rise by pulse instead fitted Pitch 88 and doubled VoxProbe
    * 7's Pitch 150 OW's cost on both units: the rise is in time). A sound with its own aa keeps its ramp */
-  if (AUD(35) && (a->kind == K_VOWEL || a->kind == K_GLIDE) && !a->aa && !aw_fast && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f)
+  if (AUD(36) && (a->kind == K_VOWEL || a->kind == K_GLIDE) && !a->aa && !aw_fast && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f)
     sj->pon = true;
   if ((a->kind == K_STOP || a->kind == K_VSTOP || a->kind == K_AFFR) && sj->nseg > 1)
     for (int k = 0; k < sj->nseg - 1; k++)
@@ -1683,7 +1683,7 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
     sj->lps = sin(ph);
   }
   /* a release that decays: the noise band ends its last segment at nd/256 of its level (TS, both units, every take:
-   * -13 dB over its 95 ms, the low band holding - the white floor - while the band falls). 0.5.7: applied in the noise
+   * -13 dB over its 95 ms, the low band holding - the white floor - while the band falls). 0.5.6: applied in the noise
    * mix, to the band alone and evenly in dB (it scaled the frame's level, so the floor fell with the band and the
    * straight fall held the level for 80 ms then dropped it; both units: TS's 1.5-8 kHz falls 17-18 dB across the sound
    * at a steady rate, 300-1500 Hz 6-8 dB) */
@@ -2478,7 +2478,7 @@ static double tick(sj_chip *sj) {
       sj->nhp[2] = o1;
       sj->nhp[3] = o2;
       double band = NHP_TWO ? o2 : o1;
-      /* 0.5.7: a decaying release (nd): the band falls evenly in dB across the last segment, the white floor holding */
+      /* 0.5.6: a decaying release (nd): the band falls evenly in dB across the last segment, the white floor holding */
       if (sj->ndk > 0.0 && sj->cur == sj->nseg - 1 && s->ticks > 1)
         band *= sj_exp(sj_log(sj->ndk) * (double)sj->tick / (s->ticks - 1));
       yo = band + sj->wfloor * ex;

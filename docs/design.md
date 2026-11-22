@@ -10,16 +10,16 @@ The aim is the smallest model that matches the recordings: a rule wherever a
 rule could be found, and a few bytes of parameters per sound where it could
 not.
 
-The library is `speakjet.c` (about 1950 lines), which includes a generated
-table, `speakjet_tables.c` (5131 bytes of tables): 72 allophones of 27 bytes,
+The library is `speakjet.c` (about 2650 lines), which includes a generated
+table, `speakjet_tables.c` (7356 bytes of tables, 0.5.6): 72 allophones of 34 bytes,
 a second frame for the five voiced stops that have their own (BO EB OB ED
-OD), and the effects as a 2721-byte stream of 238 parts, each its length, a
+OD), a join term for the few that carry one, and the effects as a 4267-byte stream of parts, each its length, a
 byte saying which fields follow, its flags and level, then only the tones and
 fields it uses (most parts have no noise, gate, pulse offset or ramp), with
-each effect's offset into it and six bytes of its own (attack, release, start
-burst, the burst's corner, a noise high pass, the burst's length). Frequencies
+each effect's offset into it and nine bytes of its own (attack, release, a start
+burst's level, corner and length, a noise high pass, the bed's scale, a wobble's rate and depth). Frequencies
 are in 16 Hz steps and lengths in 5 ms. Compiled with `-O2` the object is
-about 35 KB. The measured constants are the fields of `struct tune` in
+about 60 KB. The measured constants are the fields of `struct tune` in
 `speakjet.c`, named below in `code`.
 
 ## The chip
@@ -128,7 +128,8 @@ of its own where measured (`hp`: PE, PO); WH carries a white floor 30 dB under
 its band (`wf`); SE, SO and SH start on a 16 ms burst of low noise (`th`, `tc`;
 `th` is /64 of the band since 2026-11-07 — at /256 the byte could not reach the
 chip's burst, twice what SE had); TS's release decays to `nd`/256 of its band
-over its length (−13 dB over 95 ms on both units, the white floor holding).
+over its length, evenly in dB and on the band alone, the white floor holding (0.5.6; both units: 1.5-8 kHz falls
+17-18 dB across the sound, 300-1500 Hz 6-8; until 0.5.6 it scaled the whole frame, linearly).
 These came from the band × time audit: library minus chip, 24 log bands × 2.5 ms,
 against the chip's own take-to-take spread (technical manual 1.8, 1.10).
 
@@ -198,12 +199,14 @@ the glides' copies run 185–290 ms. JH's copy is 80 ms, ZH's 70.
 
 **Level over time.** A sound after silence ramps in over 35 ms and out over
 30 (`attack`, `release`); an unvoiced fricative switches in 3 ms, a nasal rises in
-25, and a sound may have its own (`aa`, `rr`). Since 0.5.0 every vowel and glide has its own attack, 20–60 ms
+25, and a sound may have its own (`aa`, `rr`). A vowel or glide from silence without its own attack ramps from
+−26 dB, not from nothing (`PON_FLOOR`, 0.5.6: both units' first pulses lie on that line at Pitch 88 and 150; a rise
+by pulse count fitted 88 and failed 150). Since 0.5.0 vowels and glides may have their own attack, 20–60 ms
 (technical manual 6.11), shortened in proportion to the pitch period above Pitch 88 and never lengthened below; the
 plain vowels' first voicing period from silence is 12 ticks longer (not IH OH; it lands on the silent opening, so
 nothing audible changes), and every vowel's pulse falls over 58 ticks (0.5.1's 72 on EY UX UH AW was undone in 0.5.4,
 when the score was corrected; the attacks were re-fitted then too); AW fades in over 20 ms (not 45) before an unvoiced sound or LE
-and fades over 35 ms after a sound; TT before a vowel is 3 dB louder; a true nasal after a sound moves in 5 ms;
+and fades over 35 ms after a sound; a true nasal after a sound moves in 5 ms;
 198 PE and 199 PO's low pulse swells in over 10 ms. An effect's tone starts within
 1–3 ms on both units (`fx_attack` 1 ms, `fx_release` 25), many on a 5 ms click,
 and an effect may have its own attack, release and click (the `fxs` table), and
@@ -384,6 +387,12 @@ before comparing. For 0.5.0 one measure replaced them: the render's spectrogram 
 against the chip's four takes of the sound (both units), each take's background subtracted, scored at the best of
 shifts of −12..+12 ms round the onset and divided by the takes' own leave-one-out spread, so 1.0 is "as far from the
 chip as another take of it"; a rule ships only when no sound scores worse under it (technical manual 6.11, 12.5).
+Since 2026-11-20 the judge is X2, a weighted mean of five views each calibrated the same way (coarse level by third
+octave and 20 ms block, the whole spectrum's shape, spectrograms at 2048 and 64 points, level over time); since
+0.5.6 both sides carry the recording's background (technical manual 12.8). For 0.5.6 every sound was refitted with
+its placement locked to the chip's and its start and end charged band by band, each result kept only if X improved
+with its structure findings, timing flags, dropouts and level over time no worse, and its picture checked against
+both units; where the final best failed, the newest earlier best that passed was taken.
 
 Each sound's numbers are annealed inside its measured structure (kind,
 lengths, parts, tones and flags fixed; formants within ±10 % and kept in
