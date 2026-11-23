@@ -18,7 +18,7 @@ All three releases rescored on this measure (the 0.5.6 build itself, not its rel
 1.44 (0.4.3) -> 1.07 (0.5.6) -> 1.02 (-29 % on 0.4.3, -4 % on 0.5.6), median 1.29 -> 1.02 -> 1.00; allophones 1.20 ->
 0.95 -> 0.92; effects 1.75 -> 1.22 -> 1.16 (median 1.22 -> 1.12); over 1.0 98 -> 67 -> 65. 122 sounds closer than 0.4.3
 (AY SH TU ED +4 %, C7 level, as at 0.5.6); 70 closer than 0.5.6 - DO -35 %, C0 -25 %, BO -20 %, A6 -17 %, R2 -15 %, B9
--15 % - and only KE further by more than 2 % (+7 % at free placement, closer at its installed one). Phrases 236.6 /
+-15 % - and only KE further by more than 2 % (+7 % at free placement, closer at its installed one). Phrases 236.3 /
 173.7 (0.5.6 235.7 / 175.3; one unit against the other 143.9 / 138.3). Tables 7356 bytes.
 
 **Engine**
@@ -35,6 +35,11 @@ All three releases rescored on this measure (the 0.5.6 build itself, not its rel
   first pulses land within 1 dB of the chip's and their second pulses match (139 UW's first is 6 dB strong). X over the 28 vowels and glides 0.8171 -> 0.8132, five better,
   none worse; XE 0.751 -> 0.697 (OWWW 1.30 -> 0.78, IYUW 1.06 -> 0.76, EYRR, OWRR, UW). The same floor for sounds with an
   aa of their own read 16 of 21 better on XE but worse on X and its level-over-time on seven, and was reverted.
+
+- **A voiced fricative (VV ZZ ZH DH) joined straight on to another sound starts without its onset boost**, as it
+  already starts without its attack. The boost, measured on sounds from silence, lifted a joined ZZ's first pulse to
+  5x its level (IH ZZ peak 1.078 -> 0.210): a click, and a clip at Gopher's gain 1.5, in "is" and "ears", found in the
+  AtariVox demo ROMs. Unvoiced sounds keep it.
 
 **Tables (xstruct's menus widened)**
 

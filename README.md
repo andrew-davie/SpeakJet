@@ -136,7 +136,7 @@ against each, the same cost both ways (lower is closer):
 one unit against the other    143.9    138.3    (as close as a second chip gets)
 0.5.4                         264      185
 0.5.6                         235.7    175.3
-0.5.7                         236.6    173.7
+0.5.7                         236.3    173.7
 ```
 
 What is still known to be off (`docs/technical-manual.md` section 13 has the
