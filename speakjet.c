@@ -302,6 +302,7 @@ struct sj_chip {
   int onset;          /* the sound's louder onset: its length in ticks, where it starts (a stop's or an affricate's
                        * release, after the closure), and its gain */
   int onset_from;
+  int attack_from; /* 2026-11-24: the attack runs again from here (a voiced fricative's voicing after its noise lead-in) */
   double onset_gain;
   double release_gain; /* a stop's release (from onset_from), relative */
   double wfloor;       /* an allophone's white floor under its noise band */
@@ -809,6 +810,7 @@ static void start(sj_chip *sj, bool effect) {
   sj->wobph = 0.0;
   sj->onset = 0;
   sj->onset_from = 0;
+  sj->attack_from = 0;
   sj->pon = false;
   sj->ndk = 0.0;
   sj->release_gain = 1.0;
@@ -1630,6 +1632,11 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
   sj->after_velar = a - allophones == 50 || a - allophones == 15; sj->after_vstop = a->kind == K_VSTOP; sj->after_velar2 = a - allophones == 50 || a - allophones == 51;
   sj->after_kvelar = a - allophones == 66;
   const bool was_pause = sj->after_pause;
+  /* 2026-11-24: a voiced fricative after a pause: its attack starts again with the voicing, after the noise lead-in (VoxRecord
+   * solo DH, the lead-in before it: first pulse 34 % of the steady on unit A, 83 % on B; ours 100 %, the attack spent on the
+   * noise - a hard edge in "that is the") */
+  if (a->kind == K_VFRIC && was_pause && sj->nseg > 1)
+    sj->attack_from = sj->seg[0].ticks;
   /* 0.5.4: a vowel straight after a voiced stop or a nasal has no long second period (the phrase items: 316.4 -> 313.0,
    * BE IY, BE EH, Slow NE AW better, none worse); after silence, a pause or an unvoiced sound it has */
   sj->vafter = AUD(22) && !was_pause && sj->prev_code >= 128 && (allophones[sj->prev_code - 128].kind == K_VSTOP || (sj->prev_code >= 140 && sj->prev_code <= 144));
@@ -1827,8 +1834,16 @@ static void next_command(sj_chip *sj) {
        * sounds (Man Goes Down, both units) where ramping every sound out and
        * in drops it 40-65 dB: a sound that follows straight on starts without
        * its attack, and one followed straight on ends without its release */
-      if (sj->joined)
+      if (sj->joined) {
         sj->attack = 0;
+        /* 2026-11-24: and without an onset boost at its start: measured on sounds from silence, it lifted a joined
+         * ZZ's first pulse to 5x its level (IH ZZ, OH ZZ, IYRR ZZ: a click; the chip's loudest millisecond in Man Goes
+         * Down is 2.4-2.5x its typical, both units). Voiced fricatives only (VV ZZ ZH DH), where the
+         * boost can land on a pulse: an unvoiced sound keeps it (Man Goes Down P4's UX P1 EK, both units, 3-6 % worse
+         * without), as does a stop's boosted release (onset_from > 0) */
+        if (sj->onset_from == 0 && allophones[code - 128].kind == K_VFRIC)
+          sj->onset = 0;
+      }
       sj->joined = false;
       /* followed at once by another sound: the next one's start covers this
        * one's end, by more when both are voiced (measured on the pairs:
@@ -2529,6 +2544,8 @@ static double tick(sj_chip *sj) {
     const int att = sj->attack, rel = sj->release;
     if (sj->stick < att)
       v *= sj->pon ? PON_FLOOR + (1.0 - PON_FLOOR) * sj->stick / att : (double)sj->stick / att;
+    if (sj->attack_from > 0 && sj->stick >= sj->attack_from && sj->stick - sj->attack_from < att)
+      v *= (double)(sj->stick - sj->attack_from) / att;
     if (sj->stotal - sj->stick < rel) {
       v *= (double)(sj->stotal - sj->stick) / rel; fg *= (double)(sj->stotal - sj->stick) / rel;
     }
