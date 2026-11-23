@@ -97,7 +97,7 @@
 #define NHP_TWO 1 /* two stages (1) or one (0) */
 #endif
 #define FRIC_RAMP 3.0 /* an unvoiced fricative's attack and release, ms */
-#define PON_FLOOR 0.05 /* 0.5.6: a vowel's or glide's default attack from silence starts here (-26 dB), not at nothing */
+#define PON_FLOOR 0.25 /* 0.5.6: a vowel's or glide's default attack from silence starts here, not at nothing; 2026-11-23: -12 dB, not -26 (both units, the first pitch pulse 12 dB under the steady level, ours 15-20; XE on the six sounds it reaches - UW EYRR OWRR IYUW OWWW OH - 0.751 -> 0.697 over all 28 vowels and glides, none worse; IYUW 1.06 -> 0.76, OWWW 1.30 -> 0.78) */
 #define THUMP_MS 16.0 /* a sibilant's starting burst of low noise: it fades out over this, ms */
 #define FXBURST_MS 5.0 /* an effect's starting click: it fades out over this, ms (220 B0: the chip's is ~5 ms, flat to 1.5 kHz and beyond) */
 #define THUMP_HZ 800.0 /* and is low-passed here */
