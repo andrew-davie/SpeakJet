@@ -52,7 +52,7 @@ WH +2 %, OH +1 % further at free placement (KE and WH closer at their installed 
 **Pictures.** Every sound's gallery picture is wide: the chip, ours and the excess stacked on one time axis on the
 left; the whole-sound spectrum (each of the four takes, their range shaded, ours on top) and the sound's X at every
 release (each rebuilt from its tag, placed by release date) on the right. Releases on today's measure, mean X: 0.1.0
-1.90, 0.4.3 1.44, 0.5.0 1.32, 0.5.6 1.07, 0.5.7 1.03.
+1.90, 0.3.0 1.52, 0.4.3 1.44, 0.5.0 1.32, 0.5.6 1.07, 0.5.7 1.03.
 
 **Measured and not a fault:** the chip's apparent slow fade over its last 5-8 ms is its recording background (the level
 settles at the pre-onset noise); the effects' onsets match the chip to the 2 ms step except A0 (early) and A6 (late).
