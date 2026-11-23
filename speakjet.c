@@ -1665,7 +1665,9 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
    * the pulses sit on a straight 35 ms ramp from -26 dB at Pitch 88 - -32, -8, -1, 0 dB at 1, 11, 23, 35 ms - and at
    * Pitch 150 - -29, -10, -5, -2, -1, 0 at 0, 10, 20, 29, 36, 43 ms; from nothing, ours were 5-12 dB low on the first
    * three and read as an onset ~11 ms late in every band. A rise by pulse instead fitted Pitch 88 and doubled VoxProbe
-   * 7's Pitch 150 OW's cost on both units: the rise is in time). A sound with its own aa keeps its ramp */
+   * 7's Pitch 150 OW's cost on both units: the rise is in time). A sound with its own aa keeps its ramp. 2026-11-23: the
+   * floor -12 dB (PON_FLOOR 0.25): the eight sounds' first pulse, as a 2 ms level 300 Hz-5 kHz, sits 12 dB under their
+   * steady pulses on all four takes; the XE excess of the six it reaches 0.751 -> 0.697 over the 28 vowels and glides */
   if (AUD(36) && (a->kind == K_VOWEL || a->kind == K_GLIDE) && !a->aa && !aw_fast && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f)
     sj->pon = true;
   if ((a->kind == K_STOP || a->kind == K_VSTOP || a->kind == K_AFFR) && sj->nseg > 1)
