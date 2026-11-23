@@ -115,6 +115,9 @@
 #ifndef BAR_CLICK
 #define BAR_CLICK 0.0 /* and the click it opens on, ms */
 #endif
+#define BO_PRE 9.0      /* 2026-11-23: BO from silence: the event before its bar, ms */
+#define BO_PRE_F1 0.15  /* its first formant's share */
+#define BO_PRE_GAP 2.0  /* and the silence after it, ms */
 #define AM_STEADY 0.006 /* a plain tone's level holds to 0.01-0.09 dB rms in its middle (VoxRecord, both units: the DTMF tones, B0, B3, R7, R9) */
 #define AM_DEPTH 0.1 /* the effects' tones hold their pitch (both units: 0.03-0.13 % rms on the DTMF tones and the robots' carriers) */
 #define AM_RATE 0.05 /* and the energy round their lines is a slow wobble in level, 10 % rms, spread to about 64 Hz */
@@ -1172,6 +1175,18 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
   /* from silence, the bar opens on a click: the release's full frame falling into the bar over BAR_CLICK ms (both units,
    * every voiced stop's first 10 ms 11-33 dB over the library's at 1-10 kHz) */
   int click = 0;
+  /* 2026-11-23: BO from silence opens on an event before its bar (all four takes: 6-8 ms ahead of the onset, the bar's
+   * band above 1.2 kHz at its own level and 8-13 dB under it below 1 kHz, then a dip at 0 and the bar). Its noise band
+   * with F1 at x0.15 for BO_PRE ms, then BO_PRE_GAP ms of silence: X 1.230 -> 1.185, structure 3.0 -> 2.5, X1 0.958 ->
+   * 0.945. BE has it on three takes, but X says no (1.005 -> 1.2): left out */
+  int pre = 0;
+  if (stop_id == 43 && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f) {
+    frame ev = gone;
+    ev.a[0] = (float)(gone.a[0] * BO_PRE_F1);
+    add_segment(sj, TICKS(BO_PRE), ev, ev, true);
+    add_segment(sj, TICKS(BO_PRE_GAP), silent_frame(), silent_frame(), false);
+    pre = TICKS(BO_PRE) + TICKS(BO_PRE_GAP);
+  }
   if (a->kind == K_VSTOP && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f && BAR_CLICK > 0) {
     click = TICKS(BAR_CLICK);
     if (click > closure - 1)
@@ -1215,7 +1230,7 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
     frame t2 = allo_frame(a, true, bend);
     add_segment(sj, ticks, tgt, t2, a->kind == K_VSTOP);
   }
-  return closure + ticks;
+  return pre + closure + ticks;
 }
 
 /* the segments of one copy of a Repeat: the sound's body for its own copy
