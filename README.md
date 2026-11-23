@@ -142,8 +142,8 @@ one unit against the other    143.9    138.3    (as close as a second chip gets)
 What is still known to be off (`docs/technical-manual.md` section 13 has the
 detail):
 
-- The furthest sounds: 238 C8 (2.04), 175 DO (1.93), 198 PE (1.92), 207 R7
-  (1.84), 206 R6 (1.74), 239 C9 (1.70), 222 B2 (1.63), 204 R4 (1.58).
+- The furthest sounds: 238 C8 (2.04), 198 PE (1.89), 207 R7 (1.75), 206 R6
+  (1.65), 239 C9 (1.58), 204 R4 (1.56), 161 AXUW (1.51), 168 ZH (1.48).
 - A Pitch command takes effect at the next sound on both units (VoxProbe 15), as
   in the library; Man Goes Down's "late" pitch is not a plain delay. Its phrase 2
   sent without its Speed command runs ~105 ms short: at Speed 118 the chip
