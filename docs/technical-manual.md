@@ -1755,7 +1755,7 @@ pulse, and X's coarse and level views charge level moved within a sound. Install
 XE and the picture are read beside them. The whole-sound spectrum draws each take as its own line: their mean fills
 the troughs between harmonics by 2-7 dB, most at 4-7 kHz, because the units' clocks (unit B x0.997) and the sessions'
 pitch put each take's harmonics a few Hz apart. Each picture also plots the sound's X at every release, each rebuilt
-from its tag and scored on today's measure. The library's mean: 0.1.0 1.90, 0.3.0 1.52, 0.4.3 1.44, 0.5.0 1.32, 0.5.6
+from its tag and scored on today's measure. The library's mean: 0.3.0 1.52, 0.4.3 1.44, 0.5.0 1.32, 0.5.6
 1.07, 0.5.7 1.03.
 
 ## 13. Known gaps and open questions
