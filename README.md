@@ -110,20 +110,21 @@ the chip is to the others**; lower is closer. Our render gets the recording's ow
 background noise added before it is scored, so it is compared like for like, and
 it is placed in time by its level, then by its pulse phase.
 
-0.5.6 against 0.4.3, both rescored on this measure (technical manual 12.8; figures
-published before 0.5.6 are on older scales):
+0.5.7 against 0.5.6 and 0.4.3, all three rescored on this measure (0.5.6 and 0.4.3 rebuilt from
+their tags; technical manual 12.8; figures published before 0.5.6 are on older scales):
 
 ```
-                      n   mean X         change   median X       over 1.0    closer  further
-                          0.4.3  0.5.6            0.4.3  0.5.6
-allophones           72    1.20   0.95    -21 %    1.13   0.87   46 -> 25        65        5
-sound effects        55    1.75   1.22    -30 %    1.75   1.22   52 -> 42        53        2
-all sounds          127    1.44   1.07    -26 %    1.29   1.02   98 -> 67       118        7
+                      n   mean X                change on   median X              over 1.0
+                          0.4.3  0.5.6  0.5.7   0.4.3  0.5.6   0.4.3  0.5.6  0.5.7     0.4.3  0.5.6  0.5.7
+allophones           72    1.20   0.95   0.92    -23 %    -3 %    1.13   0.87   0.85       46     25     25
+sound effects        55    1.75   1.22   1.16    -34 %    -5 %    1.75   1.22   1.12       52     42     40
+all sounds          127    1.44   1.07   1.02    -29 %    -4 %    1.29   1.02   1.00       98     67     65
 ```
 
-Biggest gains: 213 A3 -70 %, 156 OWIY -54 %, 215 A5 -51 %, 179 GO -50 %, 239 C9
--49 %, 220 B0 -48 %. Seven are slightly further than 0.4.3: 192 TU +4 %, 132 AY
-+4 %, 176 ED +4 %, 189 SH +4 %, 139 UW +4 %, 244 D4 +3 %, 237 C7 +1 %. Every
+Since 0.5.6, 70 sounds are closer; the biggest gains are 175 DO -35 %, 230 C0 -25 %,
+171 BO -20 %, 216 A6 -17 %, 202 R2 -15 %, 229 B9 -15 %. Only 194 KE is further by
+more than 2 % (+7 %, closer at its installed placement). Against 0.4.3, 122 of 127 are
+closer; 132 AY, 189 SH, 192 TU and 176 ED are 4 % further. Every
 sound's score, and the views behind it, is in [`docs/scores.md`](docs/scores.md).
 
 **Connected speech.** 44 phrase items recorded on both units (VoxProbes 4, 7, 8
@@ -135,6 +136,7 @@ against each, the same cost both ways (lower is closer):
 one unit against the other    143.9    138.3    (as close as a second chip gets)
 0.5.4                         264      185
 0.5.6                         235.7    175.3
+0.5.7                         236.6    173.7
 ```
 
 What is still known to be off (`docs/technical-manual.md` section 13 has the
@@ -264,7 +266,7 @@ which the Gopher2600 emulator uses for its AtariVox.
 | `tools/text2speakjet/` | Text to SpeakJet codes, with its dictionaries and tests |
 | `samples/` | Sample phrases, their codes and WAVs |
 | `docs/design.md` | How the emulation works, and every measurement behind it |
-| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.6, with the summary |
+| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.7, with the summary |
 | `docs/technical-manual.md` | The SpeakJet itself, as measured: hardware, synthesizer, voice, allophones, stops, Repeat, effects, commands, and what is still unknown |
 | `docs/reference/` | The SpeakJet User's Manual, and the PhraseALator dictionary text2speakjet uses |
 | `CHANGELOG.md` | What changed, with the measurements behind each change |

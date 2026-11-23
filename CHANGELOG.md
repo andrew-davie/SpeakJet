@@ -15,11 +15,11 @@ something no real AtariVox does (the user's idea). XE, its score, is calibrated 
 typical real take). XE and X agree on bodies and disagree on edges: XE's smoothing hides pulse-scale gaps, X's coarse and
 level views charge level moved within a sound. Installs are judged on X and the hold rules, with XE and the pictures beside.
 All three releases rescored on this measure (the 0.5.6 build itself, not its release figures): all 127 sounds mean X
-1.44 (0.4.3) -> 1.07 (0.5.6) -> 1.03 (-29 % on 0.4.3, -4 % on 0.5.6), median 1.29 -> 1.02 -> 1.00; allophones 1.20 ->
-0.95 -> 0.92; effects 1.75 -> 1.22 -> 1.16; over 1.0 98 -> 67 -> 65. 122 sounds closer than 0.4.3 (AY SH TU ED +4 %, C7
-level, as at 0.5.6); 69 closer than 0.5.6 - DO -35 %, BO -20 %, C0 -19 %, R2 -15 %, A4 -15 %, C9 -13 % - and KE +7 %,
-WH +2 %, OH +1 % further at free placement (KE and WH closer at their installed placement). Phrases 236.7 / 173.7 (0.5.6
-235.7 / 175.3; one unit against the other 143.9 / 138.3). Tables 7356 bytes.
+1.44 (0.4.3) -> 1.07 (0.5.6) -> 1.02 (-29 % on 0.4.3, -4 % on 0.5.6), median 1.29 -> 1.02 -> 1.00; allophones 1.20 ->
+0.95 -> 0.92; effects 1.75 -> 1.22 -> 1.16 (median 1.22 -> 1.12); over 1.0 98 -> 67 -> 65. 122 sounds closer than 0.4.3
+(AY SH TU ED +4 %, C7 level, as at 0.5.6); 70 closer than 0.5.6 - DO -35 %, C0 -25 %, BO -20 %, A6 -17 %, R2 -15 %, B9
+-15 % - and only KE further by more than 2 % (+7 % at free placement, closer at its installed one). Phrases 236.6 /
+173.7 (0.5.6 235.7 / 175.3; one unit against the other 143.9 / 138.3). Tables 7356 bytes.
 
 **Engine**
 
@@ -47,12 +47,14 @@ WH +2 %, OH +1 % further at free placement (KE and WH closer at their installed 
   0.898 -> 0.830, 215 A5 0.719 -> 0.666, 217 A7 1.284 -> 1.225, 205 R5 1.500 -> 1.429, 206 R6 1.732 -> 1.655, 222 B2
   1.598 -> 1.520, 214 A4, 233 C3, 235 C5, 236 C6, 203 R3, 207 R7, 239 C9 and others; 237 C7 held (a dropout).
 - Refits (fixer, walked back): 171 BO 1.479 -> 1.226, 239 C9, 199 PO, 191 TT 0.841 -> 0.831.
-- A second xstruct pass on the effects that moved: 216 A6 1.103 -> 1.014, 231 C1 1.159 -> 1.114, 222 B2 1.520 -> 1.469.
+- A second xstruct pass on the effects that moved: 230 C0 0.833 -> 0.751, 216 A6 1.103 -> 1.014, 229 B9 1.149 -> 1.074,
+  231 C1 1.159 -> 1.114, 222 B2 1.520 -> 1.469, 217 A7 1.225 -> 1.188, 232 C2 0.845 -> 0.813, 239 C9 1.607 -> 1.579,
+  235 C5 1.462 -> 1.437; 237 C7 held (a third dropout).
 
 **Pictures.** Every sound's gallery picture is wide: the chip, ours and the excess stacked on one time axis on the
 left; the whole-sound spectrum (each of the four takes, their range shaded, ours on top) and the sound's X at every
 release (each rebuilt from its tag, placed by release date) on the right. Releases on today's measure, mean X: 0.3.0
-1.52, 0.4.3 1.44, 0.5.0 1.32, 0.5.6 1.07, 0.5.7 1.03.
+1.52, 0.4.3 1.44, 0.5.0 1.32, 0.5.6 1.07, 0.5.7 1.02.
 
 **Measured and not a fault:** the chip's apparent slow fade over its last 5-8 ms is its recording background (the level
 settles at the pre-onset noise); the effects' onsets match the chip to the 2 ms step except A0 (early) and A6 (late).
