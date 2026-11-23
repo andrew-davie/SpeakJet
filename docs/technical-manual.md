@@ -1826,6 +1826,13 @@ Where the library and the chip still differ, or the chip is not understood:
   so how their pulse tracks a low Pitch is not modelled right.
 - **254 M2's sidebands** (section 7.12): the ±262 Hz lines on every band are
   measured but not explained.
+- **238 C8's swept noise, measured (2026-11-23):** on all four takes the band's centre climbs for 40 % of each cycle
+  (ours 50 %) from ~765 to ~2950 Hz (ours 879 to 2768) and the cycle is 19.1-19.4 ms (ours 18.71); its 2 ms ripple is ~8 dB
+  deeper than ours. Setting the engine to those figures scored worse (X 2.04 -> 2.16-2.49), as did a fractional period
+  (quarter-ms gate: 19.25-19.75 all worse than 19), a 10 or 15 dB dip, and wider or narrower ranges; a 30 % climb scored
+  2.04 -> 1.95 with the level over time worse. X moves +-0.3 on small changes in either direction here: on a periodic
+  sweep it is mostly scoring the sweep's phase against the takes', not its shape. Left as it was; the measured shape is
+  the better description of the chip.
 - **238 C8** (2.04 on the 1.27 measure; 1.60 on 1.22's) and **239 C9** (1.70) are among the furthest sounds, with 175 DO
   (1.93), 198 PE (1.92), 207 R7 (1.84) and 206 R6 (1.74). C8's sweep, period and band match
   the chip's track; its level ramp, closing tones, phase and band width were each checked and are not the gap,
