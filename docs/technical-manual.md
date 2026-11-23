@@ -2464,7 +2464,8 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 ## Revision history
 
 - **1.28 (2026-11-24, library 0.5.7).** 171 BO's pre-onset event (6.4); the vowel and glide floor −12 dB, both
-  measurements recorded (6.5); 12.9: the excess picture, XE and the release history; section 13: what the excess
+  measurements recorded (6.5); a voiced fricative joined straight on starts without its onset boost (the clicks in
+  "is" and "ears", found in the AtariVox demo ROMs); 12.9: the excess picture, XE and the release history; section 13: what the excess
   picture shows open.
 - **1.27 (2026-11-22, library 0.5.6).** A vowel or glide from silence ramps from −26 dB (6.5); TS's decaying release
   falls on the band alone, evenly in dB (6.4); the alveolars' bar formants at 0.05 (6.4); the 40 Hz output high-pass,
