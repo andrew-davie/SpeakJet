@@ -16,7 +16,7 @@ typical real take). XE and X agree on bodies and disagree on edges: XE's smoothi
 level views charge level moved within a sound. Installs are judged on X and the hold rules, with XE and the pictures beside.
 All three releases rescored on this measure (the 0.5.6 build itself, not its release figures): all 127 sounds mean X
 1.44 (0.4.3) -> 1.07 (0.5.6) -> 1.02 (-29 % on 0.4.3, -4 % on 0.5.6), median 1.29 -> 1.02 -> 1.00; allophones 1.20 ->
-0.95 -> 0.92; effects 1.75 -> 1.22 -> 1.16 (median 1.22 -> 1.12); over 1.0 98 -> 67 -> 65. 122 sounds closer than 0.4.3
+0.95 -> 0.92; effects 1.75 -> 1.22 -> 1.15 (median 1.22 -> 1.12); over 1.0 98 -> 67 -> 64. 122 sounds closer than 0.4.3
 (AY SH TU ED +4 %, C7 level, as at 0.5.6); 70 closer than 0.5.6 - DO -35 %, C0 -25 %, BO -20 %, A6 -17 %, R2 -15 %, B9
 -15 % - and only KE further by more than 2 % (+7 % at free placement, closer at its installed one). Phrases 236.3 /
 173.7 (0.5.6 235.7 / 175.3; one unit against the other 143.9 / 138.3). Tables 7356 bytes.
@@ -55,6 +55,8 @@ All three releases rescored on this measure (the 0.5.6 build itself, not its rel
 - A second xstruct pass on the effects that moved: 230 C0 0.833 -> 0.751, 216 A6 1.103 -> 1.014, 229 B9 1.149 -> 1.074,
   231 C1 1.159 -> 1.114, 222 B2 1.520 -> 1.469, 217 A7 1.225 -> 1.188, 232 C2 0.845 -> 0.813, 239 C9 1.607 -> 1.579,
   235 C5 1.462 -> 1.437; 237 C7 held (a third dropout).
+- xstruct's effect menu also moves the bed scale and the onset burst (bs, th): 201 R1 1.348 -> 1.317, 218 A8 1.235 ->
+  1.221, 247 D7 1.004 -> 0.995 (the excess fault pass put the D and R effects' onset faults in the bed).
 
 **Pictures.** Every sound's gallery picture is wide: the chip, ours and the excess stacked on one time axis on the
 left; the whole-sound spectrum (each of the four takes, their range shaded, ours on top) and the sound's X at every

@@ -117,8 +117,8 @@ their tags; technical manual 12.8; figures published before 0.5.6 are on older s
                       n   mean X                change on   median X              over 1.0
                           0.4.3  0.5.6  0.5.7   0.4.3  0.5.6   0.4.3  0.5.6  0.5.7     0.4.3  0.5.6  0.5.7
 allophones           72    1.20   0.95   0.92    -23 %    -3 %    1.13   0.87   0.85       46     25     25
-sound effects        55    1.75   1.22   1.16    -34 %    -5 %    1.75   1.22   1.12       52     42     40
-all sounds          127    1.44   1.07   1.02    -29 %    -4 %    1.29   1.02   1.00       98     67     65
+sound effects        55    1.75   1.22   1.15    -34 %    -5 %    1.75   1.22   1.12       52     42     39
+all sounds          127    1.44   1.07   1.02    -29 %    -4 %    1.29   1.02   1.00       98     67     64
 ```
 
 Since 0.5.6, 70 sounds are closer; the biggest gains are 175 DO -35 %, 230 C0 -25 %,
