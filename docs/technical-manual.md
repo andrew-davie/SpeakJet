@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.27, 2026-11-22.** The version rises with every change to what is known about the chip (new
+**Version 1.28, 2026-11-24.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -615,6 +615,13 @@ OD 0.84 -> 0.79). The alveolars' upper formants in the bar are weaker still, 0.0
 1.27; both units, DO: the bar 10 dB over the chip at 1.5-2.5 kHz with 0.12). The velars' bar is periodic on the chip (0.70-0.87) and stays as it was. Not done: the
 alveolars' formants replaced as the labials' are (Man Goes Down P1, whose DO follows a pause, 1.2-1.5 % further),
 and noise in EB OB (EB further). In BE IY the units disagree: unit A 3.0 % closer, unit B 3.2 % further.
+
+**171 BO from silence opens on an event before its bar (measured, 1.28).** On all four takes BO has 6-8 ms of sound
+ahead of its onset: above 1.2 kHz the bar's own noise band at the bar's level, below 1 kHz 8-15 dB under the bar, then a
+dip at the onset, then the bar. The library plays 9 ms of the bar with F1 at 0.15 of its level, then 2 ms of silence
+(`BO_PRE`, `BO_PRE_F1`, `BO_PRE_GAP`): BO 1.230 -> 1.182. The silence matters (without it, 1.64). 170 BE has the event
+on three of its four takes, but every model of it scored worse (1.005 -> 1.2) and it is left out; a click at the bar's
+start (`BAR_CLICK`) and a noise lead taken out of the bar were both tried on BE and BO and refused.
 From silence the bar is there at once at its level, not ramped in; a stop may give
 its bar a fade-in of its own (`ba`, ms: 175 DO's bar is quiet for its first ~30 ms)
 and a level of its own against the release (`bl`, half-decibels). After the
@@ -767,6 +774,15 @@ Pitch 88 −32, −8, −1, 0 dB at 1, 11, 23, 35 ms, and at Pitch 150 −29, �
 every band read the onset ~11 ms late. A rise by pulse count instead (−30, −7, −2, 0 dB on the first four pulses)
 fitted Pitch 88 and doubled VoxProbe 7's Pitch 150 OW on both units: the rise is in time, not in pulses. IYUW, OWWW,
 EYRR and OWRR closer by 0.7-2.8 %; 135 OH takes it in place of its own 35 ms attack.
+
+**1.28: the floor is −12 dB, not −26 (`PON_FLOOR` 0.25).** Measured as a 2 ms level from 300 Hz to 5 kHz, the first
+pulse of eight solo vowels and glides sits 12 dB under their steady pulses on all four takes, where ours sat 15-20 dB
+under. The two measurements disagree (the per-pulse line above reads lower) and are both recorded here; the sounds
+decide it. At 1 ms resolution after the change, 135 OH's and 137 OW's first pulses land within 1 dB of the chip's and
+their second pulses match (139 UW's first is 6 dB strong). X over the 28 vowels and glides 0.8171 -> 0.8132, five
+better and none worse. The same floor for sounds with an attack of their own (`aa`) was tried and reverted: X and its
+level over time were worse on seven of them, the gaps between our first pulses being 5-20 dB shallower than the
+chip's.
 
 Only the edges of a run ramp. Pauses and effects end a run. An allophone
 followed at once by an effect is still cut and loses its release, but the
@@ -1724,7 +1740,34 @@ Two apparent faults were the old measure: TU's "highs fading early" (every band 
 the chip and ours alike) and the D-series' low 150-500 Hz (the chip's 40-300 Hz late in those takes is the
 recording's hum, 0-3 dB over the background).
 
+### 12.9 The excess picture, XE and the release history (1.28)
+
+Every sound's picture compares ours with all four takes cell by cell (10 ms by a third of an octave): ours minus the
+takes' mean, shrunk by each cell's spread across the four takes, so that white means "inside what the real units do"
+and colour means something no take does (the excess; the idea is a user's, "the difference from the difference").
+Rows where the chip stands less than 15 dB over its recording background are left out. Every take is put on unit A's
+gain, as ours is: the aligned takes are already gain-corrected, and undoing that with each take's own recording gain
+had left them up to 7.8 dB apart (vrA3 +5.35 dB, vrnA -2.43). XE, the excess as a number, is calibrated leave one out on
+the takes' median, so 1.0 is a typical real take.
+
+XE and X agree on the body of a sound and disagree at its edges. XE's smoothing hides gaps at the scale of a pitch
+pulse, and X's coarse and level views charge level moved within a sound. Installs are judged on X and the hold rules;
+XE and the picture are read beside them. The whole-sound spectrum draws each take as its own line: their mean fills
+the troughs between harmonics by 2-7 dB, most at 4-7 kHz, because the units' clocks (unit B x0.997) and the sessions'
+pitch put each take's harmonics a few Hz apart. Each picture also plots the sound's X at every release, each rebuilt
+from its tag and scored on today's measure. The library's mean: 0.1.0 1.90, 0.3.0 1.52, 0.4.3 1.44, 0.5.0 1.32, 0.5.6
+1.07, 0.5.7 1.03.
+
 ## 13. Known gaps and open questions
+
+**From the excess picture (1.28).** 128 IY's troughs between harmonics at 2-7 kHz are 6-10 dB deeper than any single
+take's (missing energy between the harmonics: pitch jitter or breath?); 140 MM's are shallower than every take's.
+187 SE and 191 TT are about 3 dB under the takes throughout, but raising their level puts their strongest bands over
+(X's coarse view worse), so it is their spectral balance, and a refit of SE's noise found nothing better. 233 C3 is 5-6 dB
+short in its first 40 ms only. 231 C1's low formant jumps where the chip's rises smoothly (0-80 ms), and its falling
+700 Hz-1 kHz line is up to 10 dB strong at the end. The chip's apparent slow fade over a sound's last 5-8 ms is its
+recording background, not the chip (the level settles at the pre-onset noise).
+
 
 **From VoxProbe 16 (1.24, 1.25).** Slow on a vowel joined after a sound at Speed 108 runs ~35 ms shorter on the chip than
 x1.29 x the Speed factor (Man Goes Down's MM Slow AY 285 ms against the library's 320), where isolated slowed pairs at
@@ -2420,6 +2463,9 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 
 ## Revision history
 
+- **1.28 (2026-11-24, library 0.5.7).** 171 BO's pre-onset event (6.4); the vowel and glide floor −12 dB, both
+  measurements recorded (6.5); 12.9: the excess picture, XE and the release history; section 13: what the excess
+  picture shows open.
 - **1.27 (2026-11-22, library 0.5.6).** A vowel or glide from silence ramps from −26 dB (6.5); TS's decaying release
   falls on the band alone, evenly in dB (6.4); the alveolars' bar formants at 0.05 (6.4); the 40 Hz output high-pass,
   on speech too (10); 12.8: the score re-baselined.

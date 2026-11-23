@@ -11,7 +11,7 @@ rule could be found, and a few bytes of parameters per sound where it could
 not.
 
 The library is `speakjet.c` (about 2650 lines), which includes a generated
-table, `speakjet_tables.c` (7356 bytes of tables, 0.5.6): 72 allophones of 34 bytes,
+table, `speakjet_tables.c` (7356 bytes of tables, 0.5.7): 72 allophones of 34 bytes,
 a second frame for the five voiced stops that have their own (BO EB OB ED
 OD), a join term for the few that carry one, and the effects as a 4267-byte stream of parts, each its length, a
 byte saying which fields follow, its flags and level, then only the tones and
@@ -141,7 +141,8 @@ lined up on the release, BE BO DE DO's bar is 50–55 ms, the final stops' 5–1
 in which the sound before fades away (both units fall 30 dB over 50–60 ms at
 Speed 114 and twice that at Speed 60, with no cut to silence); a voiced stop
 hums through it on its first formant with the upper ones weak (×0.12): both
-units open BE, BO, DE, DO, GE and GO on a voice bar 2–9 dB under the release,
+units open BE, BO, DE, DO, GE and GO on a voice bar 2–9 dB under the release (from silence BO first sounds 9 ms
+of its bar with a weak F1, then 2 ms of silence: `BO_PRE`, 0.5.7),
 part noise above 700 Hz except on the velars (0.5.3). From silence the bar is there at once. A stop may have its own bar fade-in and
 level (`ba`, `bl`) and release level (`rl`); stops and fricatives may open on a
 louder onset (`ob`, `og`). Then the burst and release, which is the measured
@@ -200,8 +201,9 @@ the glides' copies run 185–290 ms. JH's copy is 80 ms, ZH's 70.
 **Level over time.** A sound after silence ramps in over 35 ms and out over
 30 (`attack`, `release`); an unvoiced fricative switches in 3 ms, a nasal rises in
 25, and a sound may have its own (`aa`, `rr`). A vowel or glide from silence without its own attack ramps from
-−26 dB, not from nothing (`PON_FLOOR`, 0.5.6: both units' first pulses lie on that line at Pitch 88 and 150; a rise
-by pulse count fitted 88 and failed 150). Since 0.5.0 vowels and glides may have their own attack, 20–60 ms
+−12 dB, not from nothing (`PON_FLOOR` 0.25; 0.5.6 had −26 from a per-pulse measurement, 0.5.7 −12 from the first
+pulse's 2 ms level on eight sounds, four takes each - technical manual 6.5 records both; a rise by pulse count fitted
+Pitch 88 and failed 150). One with an attack of its own still ramps from nothing (a floor there was worse on seven). Since 0.5.0 vowels and glides may have their own attack, 20–60 ms
 (technical manual 6.11), shortened in proportion to the pitch period above Pitch 88 and never lengthened below; the
 plain vowels' first voicing period from silence is 12 ticks longer (not IH OH; it lands on the silent opening, so
 nothing audible changes), and every vowel's pulse falls over 58 ticks (0.5.1's 72 on EY UX UH AW was undone in 0.5.4,
@@ -392,7 +394,9 @@ octave and 20 ms block, the whole spectrum's shape, spectrograms at 2048 and 64 
 0.5.6 both sides carry the recording's background (technical manual 12.8). For 0.5.6 every sound was refitted with
 its placement locked to the chip's and its start and end charged band by band, each result kept only if X improved
 with its structure findings, timing flags, dropouts and level over time no worse, and its picture checked against
-both units; where the final best failed, the newest earlier best that passed was taken.
+both units; where the final best failed, the newest earlier best that passed was taken. Since 0.5.7 each sound's
+picture (graphs/gallery) carries the excess - ours against all four takes, coloured only where it is outside their
+spread - and its score XE, read beside X (technical manual 12.9).
 
 Each sound's numbers are annealed inside its measured structure (kind,
 lengths, parts, tones and flags fixed; formants within ±10 % and kept in

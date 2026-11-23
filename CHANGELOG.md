@@ -7,6 +7,56 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
+### 0.5.7 (2026-11-24; technical manual 1.28)
+
+**The scale.** X as in 0.5.6. Beside it, a new picture and score: the gallery's one delta is now the **excess** - ours
+against all four takes, cell by cell (10 ms x 1/3 octave), shrunk by the takes' own spread there, so colour means
+something no real AtariVox does (the user's idea). XE, its score, is calibrated leave-one-out on the takes' median (1.0 = a
+typical real take). XE and X agree on bodies and disagree on edges: XE's smoothing hides pulse-scale gaps, X's coarse and
+level views charge level moved within a sound. Installs are judged on X and the hold rules, with XE and the pictures beside.
+All three releases rescored on this measure (the 0.5.6 build itself, not its release figures): all 127 sounds mean X
+1.44 (0.4.3) -> 1.07 (0.5.6) -> 1.03 (-29 % on 0.4.3, -4 % on 0.5.6), median 1.29 -> 1.02 -> 1.00; allophones 1.20 ->
+0.95 -> 0.92; effects 1.75 -> 1.22 -> 1.16; over 1.0 98 -> 67 -> 65. 122 sounds closer than 0.4.3 (AY SH TU ED +4 %, C7
+level, as at 0.5.6); 69 closer than 0.5.6 - DO -35 %, BO -20 %, C0 -19 %, R2 -15 %, A4 -15 %, C9 -13 % - and KE +7 %,
+WH +2 %, OH +1 % further at free placement (KE and WH closer at their installed placement). Phrases 236.7 / 173.7 (0.5.6
+235.7 / 175.3; one unit against the other 143.9 / 138.3). Tables 7356 bytes.
+
+**Engine**
+
+- **171 BO from silence opens on an event before its bar** (all four takes: 6-8 ms ahead of the onset, the bar's noise band
+  at its own level above 1.2 kHz and 8-15 dB under it below 1 kHz, a dip, then the bar): `BO_PRE` 9 ms of the bar with F1
+  x0.15, then 2 ms of silence. BO 1.230 -> 1.182, then its level +1 dB 1.169. 170 BE shows the event on three takes, but
+  every model of it scored worse (1.005 -> 1.2) and it is left out; a click (`BAR_CLICK`) and a noise lead out of the bar
+  were tried on both and refused.
+- **A vowel or glide from silence without an attack of its own ramps from -12 dB, not -26** (`PON_FLOOR` 0.05 -> 0.25).
+  Measured as a 2 ms level 300 Hz-5 kHz, the first pulse of eight solo vowels and glides sits 12 dB under their steady
+  pulses on all four takes, ours 15-20; 0.5.6's per-pulse measurement (-32 dB at 1 ms, Pitch 88) read lower - the two
+  methods disagree and both are recorded at the constant. At 1 ms resolution after the change, 135 OH's and 137 OW's
+  first pulses land within 1 dB of the chip's and their second pulses match (139 UW's first is 6 dB strong). X over the 28 vowels and glides 0.8171 -> 0.8132, five better,
+  none worse; XE 0.751 -> 0.697 (OWWW 1.30 -> 0.78, IYUW 1.06 -> 0.76, EYRR, OWRR, UW). The same floor for sounds with an
+  aa of their own read 16 of 21 better on XE but worse on X and its level-over-time on seven, and was reverted.
+
+**Tables (xstruct's menus widened)**
+
+- The allophone menu moves every engine byte a sound uses (hp wf tc th ba nd gh gm, bl og rl) and the low pulse (pa pt pf
+  pd); the effect menu moves each tone's start and end frequency (x0.97/1.03), each part's lr, and the effect's attack and
+  release. Every candidate is held to the hold rules at the installed placement and its picture checked.
+- Allophones: 172 EB 1.482 -> 1.394, 196 EK 0.858 -> 0.815, 199 PO 1.395 -> 1.331, 187 SE 1.293 -> 1.253, 182 CH
+  1.126 -> 1.089, 185 WH 1.119 -> 1.088, 198 PE 1.920 -> 1.886, 180 EG, 181 OG, 186 FF, 192 TU.
+- Effects (31): 216 A6 1.216 -> 1.103, 229 B9 1.260 -> 1.149, 231 C1 1.273 -> 1.158, 232 C2 0.928 -> 0.845, 230 C0
+  0.898 -> 0.830, 215 A5 0.719 -> 0.666, 217 A7 1.284 -> 1.225, 205 R5 1.500 -> 1.429, 206 R6 1.732 -> 1.655, 222 B2
+  1.598 -> 1.520, 214 A4, 233 C3, 235 C5, 236 C6, 203 R3, 207 R7, 239 C9 and others; 237 C7 held (a dropout).
+- Refits (fixer, walked back): 171 BO 1.479 -> 1.226, 239 C9, 199 PO, 191 TT 0.841 -> 0.831.
+- A second xstruct pass on the effects that moved: 216 A6 1.103 -> 1.014, 231 C1 1.159 -> 1.114, 222 B2 1.520 -> 1.469.
+
+**Pictures.** Every sound's gallery picture is wide: the chip, ours and the excess stacked on one time axis on the
+left; the whole-sound spectrum (each of the four takes, their range shaded, ours on top) and the sound's X at every
+release (each rebuilt from its tag, placed by release date) on the right. Releases on today's measure, mean X: 0.1.0
+1.90, 0.3.0 1.52, 0.4.3 1.44, 0.5.0 1.32, 0.5.6 1.07, 0.5.7 1.03.
+
+**Measured and not a fault:** the chip's apparent slow fade over its last 5-8 ms is its recording background (the level
+settles at the pre-onset noise); the effects' onsets match the chip to the 2 ms step except A0 (early) and A6 (late).
+
 ### 0.5.6 (2026-11-22; technical manual 1.27)
 
 **The scale.** Every figure in this release is on the re-baselined X (technical manual 12.8): X2, a weighted mean of five
