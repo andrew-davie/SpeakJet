@@ -1668,7 +1668,10 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
    * 7's Pitch 150 OW's cost on both units: the rise is in time). A sound with its own aa keeps its ramp. 2026-11-23: the
    * floor -12 dB (PON_FLOOR 0.25): the eight sounds' first pulse, as a 2 ms level 300 Hz-5 kHz, sits 12 dB under their
    * steady pulses on all four takes; the XE excess of the six it reaches 0.751 -> 0.697 over the 28 vowels and glides */
-  if (AUD(36) && (a->kind == K_VOWEL || a->kind == K_GLIDE) && !a->aa && !aw_fast && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f)
+  /* 2026-11-23: and one with an aa of its own ramps over it from the same floor, not from nothing (its first pulse was 30-45 dB
+   * under the chip's on IYRR OWIY AYWW, which then read as starting a pulse late; XE over the 21 with an aa 0.768 -> 0.626,
+   * 16 better - OHIY 1.37 -> 0.91, AXRR 0.89 -> 0.48, AX 0.48 -> 0.22 - and AWRR IHWW AYWW worse until their aa refit) */
+  if (AUD(36) && (a->kind == K_VOWEL || a->kind == K_GLIDE) && !aw_fast && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f)
     sj->pon = true;
   if ((a->kind == K_STOP || a->kind == K_VSTOP || a->kind == K_AFFR) && sj->nseg > 1)
     for (int k = 0; k < sj->nseg - 1; k++)
