@@ -97,7 +97,9 @@
 #define NHP_TWO 1 /* two stages (1) or one (0) */
 #endif
 #define FRIC_RAMP 3.0 /* an unvoiced fricative's attack and release, ms */
+#ifndef PON_FLOOR
 #define PON_FLOOR 0.25 /* 0.5.6: a vowel's or glide's default attack from silence starts here, not at nothing; 2026-11-23: -12 dB, not -26 (both units, the first pitch pulse 12 dB under the steady level, ours 15-20; XE on the six sounds it reaches - UW EYRR OWRR IYUW OWWW OH - 0.751 -> 0.697 over all 28 vowels and glides, none worse; IYUW 1.06 -> 0.76, OWWW 1.30 -> 0.78) */
+#endif
 #define THUMP_MS 16.0 /* a sibilant's starting burst of low noise: it fades out over this, ms */
 #define FXBURST_MS 5.0 /* an effect's starting click: it fades out over this, ms (220 B0: the chip's is ~5 ms, flat to 1.5 kHz and beyond) */
 #define THUMP_HZ 800.0 /* and is low-passed here */
@@ -114,6 +116,9 @@
 #endif
 #ifndef BAR_CLICK
 #define BAR_CLICK 0.0 /* and the click it opens on, ms */
+#endif
+#ifndef VSTOP_LEAD
+#define VSTOP_LEAD 0.0 /* 2026-11-24: EB OB ED OD GE GO EG OG from silence open on this much silence, ms; 17 matched VoxProbe 17's onsets but X worse (GO 1.064 -> 1.433, EG, GE): off */
 #endif
 #define BO_PRE 9.0      /* 2026-11-23: BO from silence: the event before its bar, ms */
 #define BO_PRE_F1 0.15  /* its first formant's share */
@@ -283,6 +288,7 @@ struct sj_chip {
   bool prev_slow; int prev_code; /* the sound before: slowed, and which */
   bool joined;        /* the last sound ran straight into the next: no ramps at that join */
   bool after_pause;    /* a pause code played since the last sound */
+  bool after_reset;    /* a Reset since the last sound (2026-11-24) */
   bool last_nge;       /* the last sound played was NGE */
   bool after_velar; int aidx; bool after_vstop, after_velar2;    /* the last sound played was GE */
   bool after_kvelar;   /* the last sound played was KE */
@@ -454,6 +460,7 @@ sj_chip *sj_new(void) {
 void sj_free(sj_chip *sj) { free(sj); }
 
 static void reset_controls(sj_chip *sj) {
+  sj->after_reset = true;
   sj->volume = SJ_DEFAULT_VOLUME;
   sj->speed = SJ_DEFAULT_SPEED;
   sj->pitch = SJ_DEFAULT_PITCH;
@@ -881,6 +888,7 @@ static const uint8_t *fx_decode(const uint8_t *q, fxpart *f) {
 static void play_effect(sj_chip *sj, int code) {
   sj->last_nasal = false;
   sj->after_pause = false;
+  sj->after_reset = false;
   sj->after_velar = false; sj->after_vstop = false; sj->after_velar2 = false;
   sj->after_kvelar = false;
   /* its peaking filters (fxeq, at most 3): a fixed shaping of its spectrum toward the chip's, set after its structure
@@ -1182,6 +1190,12 @@ static int add_stop(sj_chip *sj, const allophone *a, frame from, int ticks, doub
    * with F1 at x0.15 for BO_PRE ms, then BO_PRE_GAP ms of silence: X 1.230 -> 1.185, structure 3.0 -> 2.5, X1 0.958 ->
    * 0.945. BE has it on three takes, but X says no (1.005 -> 1.2): left out */
   int pre = 0;
+  /* 2026-11-24 (VoxProbe 17, unit A, three rounds within 5 ms): from silence, EB OB ED OD GE GO EG OG start 12-24 ms after
+   * ours (median 17), the chip silent first; BE BO DE DO start with ours */
+  if (VSTOP_LEAD > 0.0 && stop_id >= 44 && stop_id <= 53 && stop_id != 46 && stop_id != 47 && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f) {
+    add_segment(sj, TICKS(VSTOP_LEAD), silent_frame(), silent_frame(), false);
+    pre += TICKS(VSTOP_LEAD);
+  }
   if (stop_id == 43 && from.a[0] + from.a[1] + from.a[2] + from.na == 0.0f) {
     frame ev = gone;
     ev.a[0] = (float)(gone.a[0] * BO_PRE_F1);
@@ -1490,7 +1504,10 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
      * (VoxProbe 12, both units, by DTW: P2's DH 140-150 ms at Speed 114 and 110 at 118, ours 97 at both; with this 137 and
      * 110. P2 without Speed 1950 -> 1990 against 2095/2110, P2 1680 -> 1690 against 1680-1690; of 519 scored items only P2
      * changes) */
-    if (a->kind == K_VFRIC && sj->after_pause) {
+    /* 2026-11-24: not after a Reset (VoxProbe 17, unit A, VV ZZ ZH DH after P1 Reset, three rounds: voiced at once, the
+     * next code 37-53 ms sooner than ours; VoxRecord's solo takes, after a Reset, voiced at once too). Man Goes Down's DH
+     * has a sound and P4 before it, no Reset */
+    if (a->kind == K_VFRIC && sj->after_pause && !sj->after_reset) {
       frame nz = tgt;
       nz.a[0] = nz.a[1] = nz.a[2] = 0.0f;
       add_segment(sj, TICKS(40.0 * (sj->speed > 115 ? speed_step(sj) : 1.0)), nz, nz, false);
@@ -1637,10 +1654,14 @@ static void play_allophone(sj_chip *sj, const allophone *a) {
    * noise - a hard edge in "that is the") */
   if (a->kind == K_VFRIC && was_pause && sj->nseg > 1)
     sj->attack_from = sj->seg[0].ticks;
+  /* 2026-11-24: and a voiced stop's after its silent lead-in (VSTOP_LEAD), not spent on the silence */
+  if (VSTOP_LEAD > 0.0 && a->kind == K_VSTOP && sj->nseg > 1 && sj->seg[0].ticks == TICKS(VSTOP_LEAD) && !sj->seg[0].voiced && sj->seg[0].to.a[0] + sj->seg[0].to.na == 0.0f)
+    sj->attack_from = sj->seg[0].ticks;
   /* 0.5.4: a vowel straight after a voiced stop or a nasal has no long second period (the phrase items: 316.4 -> 313.0,
    * BE IY, BE EH, Slow NE AW better, none worse); after silence, a pause or an unvoiced sound it has */
   sj->vafter = AUD(22) && !was_pause && sj->prev_code >= 128 && (allophones[sj->prev_code - 128].kind == K_VSTOP || (sj->prev_code >= 140 && sj->prev_code <= 144));
   sj->after_pause = false;
+  sj->after_reset = false;
   const bool nasal_ramp = sj->ramp_seg >= 0;
   /* an unvoiced fricative starts at once (HE HO WH FF SE SO SH TH, both units, background allowed for: rise 0-4 ms, median
    * 2, where the vowels' 35 ms ramp gave 22-38). Its end is its own (audit 2026-11-19, the VoxRecord solo takes, -3 to
