@@ -99,8 +99,9 @@ every function.
 ## How close it is
 
 Every allophone and sound effect is scored against the chip's own recordings:
-four takes of each sound alone, two from each of two real AtariVoxes (an
-original AtariVox and an AtariVox+). The score, X, is a weighted mean of five
+three takes of each sound alone from one real AtariVox+ in one session
+(VoxProbe 17), with a fourth from the same unit in an earlier session, so the
+spread includes what changes from one power-up to the next. The score, X, is a weighted mean of five
 views of the sound: its level in third-octave bands and 20 ms blocks, the shape
 of its whole spectrum, its spectrogram at 2048- and 64-point windows, and its
 level over time. Each view is calibrated on the chip itself: every real take is
@@ -110,21 +111,21 @@ the chip is to the others**; lower is closer. Our render gets the recording's ow
 background noise added before it is scored, so it is compared like for like, and
 it is placed in time by its level, then by its pulse phase.
 
-0.5.7 against 0.5.6 and 0.4.3, all three rescored on this measure (0.5.6 and 0.4.3 rebuilt from
-their tags; technical manual 12.8; figures published before 0.5.6 are on older scales):
+0.5.8 against 0.5.7 and 0.4.3, all three rescored on this measure (0.5.7 and 0.4.3 rebuilt from
+their tags; technical manual 12.10; since 0.5.8 the target is one unit, and figures published before
+0.5.8 are on older scales):
 
 ```
                       n   mean X                change on   median X              over 1.0
-                          0.4.3  0.5.6  0.5.7   0.4.3  0.5.6   0.4.3  0.5.6  0.5.7     0.4.3  0.5.6  0.5.7
-allophones           72    1.20   0.95   0.92    -23 %    -3 %    1.13   0.87   0.85       46     25     25
-sound effects        55    1.75   1.22   1.15    -34 %    -5 %    1.75   1.22   1.12       52     42     39
-all sounds          127    1.44   1.07   1.02    -29 %    -4 %    1.29   1.02   1.00       98     67     64
+                          0.4.3  0.5.7  0.5.8   0.4.3  0.5.7   0.4.3  0.5.7  0.5.8     0.4.3  0.5.7  0.5.8
+allophones           72    1.30   1.07   1.01    -22 %    -5 %    1.24   1.05   0.98       58     40     33
+sound effects        55    2.10   1.50   1.46    -30 %    -3 %    2.05   1.43   1.39       55     55     54
+all sounds          127    1.64   1.26   1.21    -27 %    -4 %    1.46   1.16   1.13      113     95     87
 ```
 
-Since 0.5.6, 70 sounds are closer; the biggest gains are 175 DO -35 %, 230 C0 -25 %,
-171 BO -20 %, 216 A6 -17 %, 202 R2 -15 %, 229 B9 -15 %. Only 194 KE is further by
-more than 2 % (+7 %, closer at its installed placement). Against 0.4.3, 122 of 127 are
-closer; 132 AY, 189 SH, 192 TU and 176 ED are 4 % further. Every
+Since 0.5.7, 51 sounds are closer and **none is further**, by any amount; the
+biggest gains are 130 EY -41 %, 176 ED -28 %, 174 DE -25 %, 129 IH -21 %,
+158 IYEH -19 %, 171 BO -18 %. Against 0.4.3, 116 of 127 are closer. Every
 sound's score, and the views behind it, is in [`docs/scores.md`](docs/scores.md).
 
 **Connected speech.** 44 phrase items recorded on both units (VoxProbes 4, 7, 8
@@ -137,13 +138,16 @@ one unit against the other    143.9    138.3    (as close as a second chip gets)
 0.5.4                         264      185
 0.5.6                         235.7    175.3
 0.5.7                         236.3    173.7
+0.5.8                         234.3    173.7
 ```
 
 What is still known to be off (`docs/technical-manual.md` section 13 has the
 detail):
 
-- The furthest sounds: 238 C8 (2.04), 198 PE (1.89), 207 R7 (1.75), 206 R6
-  (1.65), 239 C9 (1.58), 204 R4 (1.56), 161 AXUW (1.51), 168 ZH (1.48).
+- The furthest sounds: 208 R8 (2.42), 254 M2 (2.29), 238 C8 (2.27), 207 R7
+  (2.16), 239 C9 (2.07), 204 R4 (1.99), 206 R6 (1.97), 235 C5 (1.97).
+- 179 GO ends 5-7 ms before the chip; 187 SE, 188 SO and 178 GE open differently
+  from silence than the chip does (technical manual 13).
 - A Pitch command takes effect at the next sound on both units (VoxProbe 15), as
   in the library; Man Goes Down's "late" pitch is not a plain delay. Its phrase 2
   sent without its Speed command runs ~105 ms short: at Speed 118 the chip
@@ -266,7 +270,7 @@ which the Gopher2600 emulator uses for its AtariVox.
 | `tools/text2speakjet/` | Text to SpeakJet codes, with its dictionaries and tests |
 | `samples/` | Sample phrases, their codes and WAVs |
 | `docs/design.md` | How the emulation works, and every measurement behind it |
-| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.7, with the summary |
+| `docs/scores.md` | Every sound's accuracy score, 0.4.3 against 0.5.8, with the summary |
 | `docs/technical-manual.md` | The SpeakJet itself, as measured: hardware, synthesizer, voice, allophones, stops, Repeat, effects, commands, and what is still unknown |
 | `docs/reference/` | The SpeakJet User's Manual, and the PhraseALator dictionary text2speakjet uses |
 | `CHANGELOG.md` | What changed, with the measurements behind each change |

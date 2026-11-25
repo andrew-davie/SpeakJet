@@ -7,6 +7,33 @@ and Go libraries share one number: a Go module at v2 or above needs a /v2 import
 importer, so the Go library is tagged v0.5.0 upstream. The git tags v0.5.0 and v0.5.1 mark the same release commits;
 v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 
+### 0.5.8 (2026-11-25; technical manual 1.29)
+
+**The scale.** X now judges against unit A alone: VoxProbe 17's three rounds of every sound (one session) with vrnA,
+the same unit in an earlier session, so its spread includes what changes from one power-up to the next (technical
+manual 12.10). Every sound reads further on it than on the old four takes from both units, so earlier figures don't
+compare; every release was rescored on it. All 127 sounds mean X 1.64 (0.4.3) -> 1.26 (0.5.7) -> 1.21 (-27 % on 0.4.3,
+-4 % on 0.5.7), median 1.46 -> 1.16 -> 1.13; allophones 1.30 -> 1.07 -> 1.01; effects 2.10 -> 1.50 -> 1.46; over 1.0
+113 -> 95 -> 87. 51 sounds closer than 0.5.7 - 130 EY -41 %, 176 ED -28 %, 174 DE -25 %, 129 IH -21 %, 158 IYEH -19 %,
+171 BO -18 % - and **none further**, by any amount. Phrase items 236.3 -> 234.3, none further. Tables 7324 bytes.
+
+**Engine**
+
+- **A voiced fricative after a pause and a Reset has no noise lead-in** (VoxProbe 17, unit A: VV ZZ ZH DH after P1 and
+  Reset voice at once in all three rounds, and VoxRecord's solo takes, also after a Reset, agree). Man Goes Down's DH,
+  with a sound and P4 before it and no Reset, keeps the 40 ms lead-in.
+
+**Sounds**
+
+- About 50 sounds refitted to unit A. Each fit is locked in time to the chip (its start and end charged), checked by
+  picture, and an allophone's fit keeps a step only if no glide or phrase item built from it gets worse. 165 JH gains
+  an onset (5 ms, -10.5 dB) in place of its hard burst; 233 C3 loses its trailing 25 ms of silence.
+
+**Tried and left out** (each measured against VoxProbe 17 and worse on X or the phrase items): a silent lead-in for
+voiced stops from silence, shorter closures for 191 TT and 196 EK, a shorter 252 M0 tail, a 4 ms longer 179 GO closure
+(its end right, one slowed phrase 7 % further), a longer slowed voiced-stop bar, and an onset gain from silence, shared or
+per sound.
+
 ### 0.5.7 (2026-11-24; technical manual 1.28)
 
 **The scale.** X as in 0.5.6. Beside it, a new picture and score: the gallery's one delta is now the **excess** - ours

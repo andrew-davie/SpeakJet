@@ -1,6 +1,6 @@
 # The SpeakJet: a technical manual for implementers
 
-**Version 1.28, 2026-11-24.** The version rises with every change to what is known about the chip (new
+**Version 1.29, 2026-11-25.** The version rises with every change to what is known about the chip (new
 measurements, corrected findings, newly modelled mechanisms); the revision history is at the end. Regenerated
 parameter tables alone do not change it.
 
@@ -1043,7 +1043,9 @@ What the allophones gained, each measured on both units:
   bar). A voiced fricative after a pause opens with 40 ms of its noise alone before its voicing (P2's EYIY P4 DH:
   the chip's frication 40 ms, 10 alone); the 40 ms is added to the sound, not taken from it, and above Speed 115 the
   sound and its lead-in take the vowels' step (1.26; VoxProbe 12, per sound by DTW: P2's DH 140-150 ms at Speed 114
-  and 110 at 118 on both units). A voiced stop after a short pause (P4-P6) opens its bar 12 ms into the
+  and 110 at 118 on both units). Not when a Reset came after the pause (1.29; VoxProbe 17, unit A, VV ZZ ZH DH after
+  P1 and Reset, three rounds, and VoxRecord's solo takes, also after a Reset: voiced at once, the next code 37-53 ms
+  sooner than ours with the lead-in). A voiced stop after a short pause (P4-P6) opens its bar 12 ms into the
   pause (P1's ZZ P4 DO: the bar 11 ms after ZZ's end). The longer closure after a sound (6.9) belongs to DO (+25 ms)
   and GO (+15) only; DE and GE had it by analogy and ran 25 ms long after a vowel (VoxProbe 4's EH DE). A crossing
   cut (6.2) longer than a glide's last segment trims across its segments instead of being skipped (VoxProbe 8's
@@ -1614,6 +1616,12 @@ VoxProbe 13    build 5, posted 2026-11-07, recorded 2026-11-08 on both units (4 
 VoxProbe 14    build 1 (sha1 f94b1488), recorded 2026-11-09 on both units (4 takes): the Speed step, consonants
                above 114, Slow on unvoiced stops, hisses after vowels and alone, velars, joins, nasals and BO
                before stops, copies, the slowed glide, M2, every effect at Speed 0
+VoxProbe 15    build 1 (sha1 d0fb98b0), recorded 2026-11-16 on unit A: fresh solo takes of every sound, Pitch
+               timing, a slowed vowel copy
+VoxProbe 16    build 1 (sha1 83de1bce), recorded 2026-11-18 (six takes): every kind of join alone, nasal and
+               vowel joins with and without Slow, Speed and Slow on joins, Man Goes Down's phrases and joins
+VoxProbe 17    build 1 (sha1 a9d6160a), recorded 2026-11-24 on unit A, one session: every sound alone, three
+               rounds, each behind a marker tone (12.10)
 Man Goes Down  the phrases of a released game, for whole-phrase checks
 ```
 
@@ -1758,7 +1766,42 @@ pitch put each take's harmonics a few Hz apart. Each picture also plots the soun
 from its tag and scored on today's measure. The library's mean: 0.3.0 1.52, 0.4.3 1.44, 0.5.0 1.32, 0.5.6
 1.07, 0.5.7 1.02.
 
+### 12.10 VoxProbe 17: one unit, one session (library 0.5.8, 1.29)
+
+VoxProbe 17 plays every allophone and effect alone, three times round, each behind a marker tone (D0 at Bend 15),
+recorded on unit A in one session (2026-11-24). It was built to give one chip as the target, with a spread that is that
+chip's own.
+
+- **The rounds agree closely.** Level per sound to 0.03 dB (median), length to 2 ms (median, 10 ms at the 90th
+  percentile). The chip's randomness within a session is small.
+- **Sessions of one unit differ.** Against vrnA (unit A, same 2600+ chain, 2026-11-05) the largest of seven band
+  differences in the whole-sound spectrum is 1.1 dB (median over 127 sounds), against 0.6 dB between rounds and 1.9 dB
+  against unit B. The path is the same (221 A1: within 0.1 dB in every band), yet effects fixed within a session move
+  between sessions: 254 M2 0.11 dB within, 2.61 across; 230 C0 0.28 / 2.49; 201 R1 0.47 / 2.62; 204 R4 0.75 / 3.08. Part
+  of the chip's variation is set at power-up and survives Reset. Some sounds vary within a session too: 236 C6 starts
+  its 1.5-4 kHz band at 3 ms in one round and 16 ms in the next.
+- **The measure.** X now judges against unit A alone: the three rounds with vrnA, so the spread includes the power-up
+  variation; the rounds alone left almost no spread and scored small level errors as large (all effects over 1.0). The
+  change is in the measure, not the library: every sound reads further on it (all 127: 1.02 on the four takes, 1.26 on
+  unit A for the same build). Every release was rescored on it for the history.
+- **Timing.** The markers give each sound's start and the time to the next code, which the solo takes could not.
+  Against 128 IY and 133 AX, all three rounds within ~5 ms: BE BO DE DO and the unvoiced stops PE PO TS KE KO CH start
+  with ours; GE GO ED EB OB OD EG OG start 12-24 ms after ours, silent first; TT TU 34-40 ms and EK OK 16-22 ms before
+  ours; VV ZZ ZH DH after P1 and Reset hand over to the next code 37-53 ms sooner (fixed, 6.5: no lead-in after a
+  Reset); 252 M0 ~220 ms sooner. A silent lead-in for the voiced stops, shorter closures for TT and EK and a shorter
+  M0 tail each matched these times but made X or the phrase items worse, and were left out.
+- **The recording.** The path carries a 1000 Hz line at -65 dB through the take (vrnA: -98), removed like the other
+  steady lines; the ROM pauses 2.6-3.8 s at each of its 31 chunk loads.
+
 ## 13. Known gaps and open questions
+
+**From VoxProbe 17 (1.29).** 179 GO ends 5-7 ms before the chip; a 4 ms longer closure puts the end right and three of
+the four GO OWWW phrase items 31-33 % closer, but unit B's Slow GO OWWW 7 % further, and is left out. Slow moves the
+chip's GO burst ~20 ms later, ours ~12, yet a longer slowed bar made every slowed voiced-stop item worse. 187 SE alone
+opens on ~10 ms of weak broadband noise before its 4 kHz band; ours brings the band in at once. A quieter onset from
+silence suits SE alone but not unit A's SE AW, and WH FF SO disagree, so no per-sound or shared rule was kept. 173 OB,
+180 EG and 181 OG leave 18-28 ms more silence before the next code than ours, measured on VoxProbe 17 only. 217 A7,
+202 R2 and 222 B2 do not move under their own numbers: the fault is in the engine.
 
 **From the excess picture (1.28).** 128 IY's troughs between harmonics at 2-7 kHz are 6-10 dB deeper than any single
 take's (missing energy between the harmonics: pitch jitter or breath?); 140 MM's are shallower than every take's.
@@ -2463,6 +2506,8 @@ noise: an oscillator disordered by      Gaussian noise through a two-pole resona
 
 ## Revision history
 
+- **1.29 (2026-11-25, library 0.5.8).** A voiced fricative after a pause and a Reset has no noise lead-in (6.5); 12.10:
+  VoxProbe 17, X on unit A alone; section 13: what VoxProbe 17 leaves open.
 - **1.28 (2026-11-24, library 0.5.7).** 171 BO's pre-onset event (6.4); the vowel and glide floor −12 dB, both
   measurements recorded (6.5); a voiced fricative joined straight on starts without its onset boost (the clicks in
   "is" and "ears", found in the AtariVox demo ROMs); 12.9: the excess picture, XE and the release history; section 13: what the excess
