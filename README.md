@@ -119,13 +119,13 @@ their tags; technical manual 12.10; since 0.5.8 the target is one unit, and figu
                       n   mean X                change on   median X              over 1.0
                           0.4.3  0.5.7  0.5.8   0.4.3  0.5.7   0.4.3  0.5.7  0.5.8     0.4.3  0.5.7  0.5.8
 allophones           72    1.30   1.07   1.01    -22 %    -5 %    1.24   1.05   0.98       58     40     33
-sound effects        55    2.10   1.50   1.46    -30 %    -3 %    2.05   1.43   1.39       55     55     54
-all sounds          127    1.64   1.26   1.21    -27 %    -4 %    1.46   1.16   1.13      113     95     87
+sound effects        55    2.10   1.50   1.45    -31 %    -4 %    2.05   1.43   1.39       55     55     54
+all sounds          127    1.64   1.26   1.20    -27 %    -4 %    1.46   1.16   1.13      113     95     87
 ```
 
-Since 0.5.7, 51 sounds are closer and **none is further**, by any amount; the
-biggest gains are 130 EY -41 %, 176 ED -28 %, 174 DE -25 %, 129 IH -21 %,
-158 IYEH -19 %, 171 BO -18 %. Against 0.4.3, 116 of 127 are closer. Every
+Since 0.5.7, 54 sounds are closer and **none is further**, by any amount; the
+biggest gains are 130 EY -41 %, 176 ED -28 %, 174 DE -25 %, 254 M2 -24 %,
+129 IH -21 %, 158 IYEH -19 %, 171 BO -18 %. Against 0.4.3, 116 of 127 are closer. Every
 sound's score, and the views behind it, is in [`docs/scores.md`](docs/scores.md).
 
 **Connected speech.** 44 phrase items recorded on both units (VoxProbes 4, 7, 8
@@ -144,8 +144,8 @@ one unit against the other    143.9    138.3    (as close as a second chip gets)
 What is still known to be off (`docs/technical-manual.md` section 13 has the
 detail):
 
-- The furthest sounds: 208 R8 (2.42), 254 M2 (2.29), 238 C8 (2.27), 207 R7
-  (2.16), 239 C9 (2.07), 204 R4 (1.99), 206 R6 (1.97), 235 C5 (1.97).
+- The furthest sounds: 208 R8 (2.42), 238 C8 (2.27), 207 R7 (2.16), 239 C9
+  (2.07), 204 R4 (1.99), 254 M2 (1.93), 235 C5 (1.90), 206 R6 (1.83).
 - 179 GO ends 5-7 ms before the chip; 187 SE, 188 SO and 178 GE open differently
   from silence than the chip does (technical manual 13).
 - A Pitch command takes effect at the next sound on both units (VoxProbe 15), as

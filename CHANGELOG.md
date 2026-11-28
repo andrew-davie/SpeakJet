@@ -12,10 +12,10 @@ v2.0.0 and v2.0.1 are withdrawn. The sound is unchanged.
 **The scale.** X now judges against unit A alone: VoxProbe 17's three rounds of every sound (one session) with vrnA,
 the same unit in an earlier session, so its spread includes what changes from one power-up to the next (technical
 manual 12.10). Every sound reads further on it than on the old four takes from both units, so earlier figures don't
-compare; every release was rescored on it. All 127 sounds mean X 1.64 (0.4.3) -> 1.26 (0.5.7) -> 1.21 (-27 % on 0.4.3,
--4 % on 0.5.7), median 1.46 -> 1.16 -> 1.13; allophones 1.30 -> 1.07 -> 1.01; effects 2.10 -> 1.50 -> 1.46; over 1.0
-113 -> 95 -> 87. 51 sounds closer than 0.5.7 - 130 EY -41 %, 176 ED -28 %, 174 DE -25 %, 129 IH -21 %, 158 IYEH -19 %,
-171 BO -18 % - and **none further**, by any amount. Phrase items 236.3 -> 234.3, none further. Tables 7324 bytes.
+compare; every release was rescored on it. All 127 sounds mean X 1.64 (0.4.3) -> 1.26 (0.5.7) -> 1.20 (-27 % on 0.4.3,
+-4 % on 0.5.7), median 1.46 -> 1.16 -> 1.13; allophones 1.30 -> 1.07 -> 1.01; effects 2.10 -> 1.50 -> 1.45; over 1.0
+113 -> 95 -> 87. 54 sounds closer than 0.5.7 - 130 EY -41 %, 176 ED -28 %, 174 DE -25 %, 254 M2 -24 %, 129 IH -21 %,
+158 IYEH -19 %, 171 BO -18 % - and **none further**, by any amount. Phrase items 236.3 -> 234.3, none further. Tables 7324 bytes.
 
 **Engine**
 
@@ -26,7 +26,9 @@ compare; every release was rescored on it. All 127 sounds mean X 1.64 (0.4.3) ->
 **Sounds**
 
 - About 50 sounds refitted to unit A. Each fit is locked in time to the chip (its start and end charged), checked by
-  picture, and an allophone's fit keeps a step only if no glide or phrase item built from it gets worse. 165 JH gains
+  picture, and an allophone's fit keeps a step only if no glide or phrase item built from it gets worse. Five effects
+  refitted part by part with every band's start and end held to the chip's: 254 M2 -16 %, 206 R6 -7 %, 217 A7 -5 %,
+  235 C5 -4 %, 222 B2 -3 %. 165 JH gains
   an onset (5 ms, -10.5 dB) in place of its hard burst; 233 C3 loses its trailing 25 ms of silence.
 
 **Tried and left out** (each measured against VoxProbe 17 and worse on X or the phrase items): a silent lead-in for

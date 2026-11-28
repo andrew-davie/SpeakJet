@@ -43,7 +43,7 @@ extern "C" {
 /* library version */
 #define SJ_VERSION_MAJOR 0
 #define SJ_VERSION_MINOR 5
-#define SJ_VERSION_PATCH 7
+#define SJ_VERSION_PATCH 8
 #define SJ_VERSION "0.5.8"
 
 /* the rate at which samples are produced. the chip makes its own at about
